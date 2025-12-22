@@ -1,7 +1,7 @@
 // Neural Network Implementation with TypeScript
 // Architecture: 3 inputs -> 5 neurons (1차) -> 3 neurons (2차) -> 3 outputs (Softmax)
 
-import type { CalculationSteps, NeuronCalculation, GradientData, WeightDeltas } from './types';
+import type { CalculationSteps } from './types';
 
 /**
  * Matrix class for neural network computations
