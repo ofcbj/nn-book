@@ -1,34 +1,64 @@
-// Vector-Based Visualization for Neural Network
+// Vector-Based Visualization for Neural Network with TypeScript
 // Uses elliptical nodes to show vectors
 
-class Visualizer {
-  constructor(canvasId, textDisplayId) {
-    this.canvas = document.getElementById(canvasId);
-    this.ctx = this.canvas.getContext('2d');
-    this.textDisplay = document.getElementById(textDisplayId);
+import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData } from './types';
+import type { NeuralNetwork } from './network';
+
+type LayerType = 'input' | 'layer1' | 'layer2' | 'output';
+
+export class Visualizer {
+  private canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
+  private textDisplay: HTMLElement;
+  
+  inputLabels: string[] = ['성적', '태도', '응답수준'];
+  highlightedNeuron: AnimationPhase | null = null;
+  
+  // Calculation animation properties
+  calculationStage: CalculationStage | null = null;
+  intermediateValue: number | null = null;
+  activeConnections: number[] = [];
+  currentNeuronData: NeuronCalculation | null = null;
+  
+  // Backpropagation visualization
+  showLoss: LossDisplayData | null = null;
+  backpropPhase: AnimationPhase | null = null;
+
+  constructor(canvasId: string, textDisplayId: string) {
+    const canvas = document.getElementById(canvasId);
+    const textDisplay = document.getElementById(textDisplayId);
     
-    this.inputLabels = ['성적', '태도', '응답수준'];
-    this.highlightedNeuron = null; // {layer: 'layer1', index: 0}
+    if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
+      throw new Error(`Canvas element #${canvasId} not found`);
+    }
+    if (!textDisplay) {
+      throw new Error(`Text display element #${textDisplayId} not found`);
+    }
     
-    // Calculation animation properties
-    this.calculationStage = null; // 'connections', 'dotProduct', 'bias', 'activation'
-    this.intermediateValue = null; // Current intermediate calculation value
-    this.activeConnections = []; // Array of active connection indices
-    this.currentNeuronData = null; // Full neuron calculation data (inputs, weights, etc.)
-    
-    // Backpropagation visualization
-    this.showLoss = null; // {targetClass, targetName, predictions, loss}
-    this.backpropPhase = null; // {layer, index}
+    this.canvas = canvas;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Failed to get 2D rendering context');
+    }
+    this.ctx = ctx;
+    this.textDisplay = textDisplay;
     
     this.resizeCanvas();
   }
 
-  resizeCanvas() {
+  resizeCanvas(): void {
     this.canvas.width = this.canvas.offsetWidth;
     this.canvas.height = this.canvas.offsetHeight;
   }
 
-  drawRoundedRect(ctx, x, y, width, height, radius) {
+  private drawRoundedRect(
+    ctx: CanvasRenderingContext2D, 
+    x: number, 
+    y: number, 
+    width: number, 
+    height: number, 
+    radius: number
+  ): void {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
     ctx.lineTo(x + width - radius, y);
@@ -42,7 +72,12 @@ class Visualizer {
     ctx.closePath();
   }
 
-  drawInputVector(ctx, x, y, values) {
+  private drawInputVector(
+    ctx: CanvasRenderingContext2D, 
+    x: number, 
+    y: number, 
+    values: number[]
+  ): NodePosition {
     const width = 140;
     const height = 100;
     const centerX = x - width / 2;
@@ -83,16 +118,26 @@ class Visualizer {
     return { x: centerX, y: centerY, width, height, centerX: x, centerY: y };
   }
 
-  drawNeuronVector(ctx, x, y, weights, bias, activation, label, layerType, isHighlighted = false) {
+  private drawNeuronVector(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    weights: number[],
+    bias: number,
+    activation: number,
+    label: string,
+    layerType: LayerType,
+    isHighlighted: boolean = false
+  ): NodePosition {
     // Adjust width based on layer type to prevent text overflow
     const baseWidth = weights.length * 25;
     let width = Math.max(130, baseWidth + 40);
     if (layerType === 'layer1') {
-      width += 30; // 1차 면접관: +30px
+      width += 30;
     } else if (layerType === 'layer2') {
-      width += 60; // 2차 면접관: +60px
+      width += 60;
     } else if (layerType === 'output') {
-      width += 20; // 최종 결정: +20px
+      width += 20;
     }
     const height = 90;
     const centerX = x - width / 2;
@@ -101,8 +146,8 @@ class Visualizer {
     // Draw ellipse background
     this.drawRoundedRect(ctx, centerX, centerY, width, height, 12);
     
-    let gradient;
-    let strokeColor;
+    let gradient: CanvasGradient;
+    let strokeColor: string;
     
     if (layerType === 'layer1') {
       gradient = ctx.createLinearGradient(centerX, centerY, centerX, centerY + height);
@@ -150,7 +195,7 @@ class Visualizer {
     ctx.textAlign = 'center';
     ctx.fillText(label, x, centerY + 16);
     
-    // Draw weight vector with larger font size
+    // Draw weight vector
     ctx.font = '12px monospace';
     ctx.fillStyle = '#cbd5e1';
     ctx.textAlign = 'left';
@@ -158,12 +203,9 @@ class Visualizer {
     
     ctx.fillStyle = '#a5b4fc';
     const vectorStr = '[' + weights.map(w => w.toFixed(2)).join(', ') + ']';
-    // Measure text to ensure it fits
     let textWidth = ctx.measureText(vectorStr).width;
     if (textWidth > width - 40) {
-      // If too long, use slightly smaller font
       ctx.font = '11px monospace';
-      textWidth = ctx.measureText(vectorStr).width;
     }
     ctx.fillText(vectorStr, centerX + 24, centerY + 35);
     
@@ -192,7 +234,13 @@ class Visualizer {
     return { x: centerX, y: centerY, width, height, centerX: x, centerY: y };
   }
 
-  drawCalculationOverlay(ctx, x, y, stage, value) {
+  private drawCalculationOverlay(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    stage: CalculationStage,
+    value: number
+  ): void {
     if (!this.currentNeuronData) return;
     
     let text = '';
@@ -206,7 +254,6 @@ class Visualizer {
         break;
         
       case 'dotProduct':
-        // Show expanded dot product formula: input1×weight1 + input2×weight2 + ...
         const terms = data.inputs.map((input, i) => 
           `${input.toFixed(2)}×${data.weights[i].toFixed(2)}`
         );
@@ -215,13 +262,11 @@ class Visualizer {
         break;
         
       case 'bias':
-        // Show bias addition: dotProduct + bias = result
         text = `${data.dotProduct.toFixed(3)} + ${data.bias.toFixed(2)} = ${value.toFixed(3)}`;
         color = '#fbbf24';
         break;
         
       case 'activation':
-        // Show activation function: σ(withBias) = activated
         text = `σ(${data.withBias.toFixed(3)}) = ${value.toFixed(3)}`;
         color = '#34d399';
         break;
@@ -229,14 +274,13 @@ class Visualizer {
     
     if (!text) return;
     
-    // Calculate text size for multi-line if needed
+    // Calculate text size
     ctx.font = 'bold 13px monospace';
     const metrics = ctx.measureText(text);
-    const maxWidth = 600; // Maximum width before wrapping
+    const maxWidth = 600;
     
     let lines = [text];
     if (metrics.width > maxWidth && stage === 'dotProduct') {
-      // Split long dot product formulas into multiple lines
       const termsPerLine = Math.ceil(data.inputs.length / 2);
       const line1Terms = data.inputs.slice(0, termsPerLine).map((input, i) => 
         `${input.toFixed(2)}×${data.weights[i].toFixed(2)}`
@@ -279,7 +323,7 @@ class Visualizer {
     });
   }
 
-  drawNetwork(nn, steps) {
+  drawNetwork(nn: NeuralNetwork, steps: CalculationSteps | null): void {
     const ctx = this.ctx;
     const width = this.canvas.width;
     const height = this.canvas.height;
@@ -290,14 +334,14 @@ class Visualizer {
     
     if (!steps) return;
     
-    const nodes = [];
+    const nodes: NodePosition[][] = [];
     
-    // Draw input vector (single ellipse)
+    // Draw input vector
     const inputNode = this.drawInputVector(ctx, 80, height / 2, steps.input);
     nodes.push([inputNode]);
     
     // Draw layer 1 neurons (1차 면접관)
-    const layer1Nodes = [];
+    const layer1Nodes: NodePosition[] = [];
     const layer1StartY = (height - (5 - 1) * 100) / 2;
     for (let i = 0; i < 5; i++) {
       const neuron = steps.layer1[i];
@@ -313,14 +357,14 @@ class Visualizer {
         neuron.activated,
         `1차 #${i + 1}`,
         'layer1',
-        isHighlighted
+        isHighlighted || false
       );
       layer1Nodes.push(node);
     }
     nodes.push(layer1Nodes);
     
     // Draw layer 2 neurons (2차 면접관)
-    const layer2Nodes = [];
+    const layer2Nodes: NodePosition[] = [];
     const layer2StartY = (height - (3 - 1) * 130) / 2;
     for (let i = 0; i < 3; i++) {
       const neuron = steps.layer2[i];
@@ -336,14 +380,14 @@ class Visualizer {
         neuron.activated,
         `2차 #${i + 1}`,
         'layer2',
-        isHighlighted
+        isHighlighted || false
       );
       layer2Nodes.push(node);
     }
     nodes.push(layer2Nodes);
     
-    // Draw output neurons (3 classes: 불합격/보류/합격)
-    const outputNodes = [];
+    // Draw output neurons (3 classes)
+    const outputNodes: NodePosition[] = [];
     const classNames = ['불합격', '보류', '합격'];
     const outputStartY = (height - (3 - 1) * 100) / 2;
     
@@ -361,7 +405,7 @@ class Visualizer {
         output.activated,
         classNames[i],
         'output',
-        isHighlighted
+        isHighlighted || false
       );
       outputNodes.push(outputNode);
     }
@@ -381,7 +425,11 @@ class Visualizer {
     }
   }
 
-  drawConnectionsVector(ctx, nodes, nn) {
+  private drawConnectionsVector(
+    ctx: CanvasRenderingContext2D, 
+    nodes: NodePosition[][], 
+    nn: NeuralNetwork
+  ): void {
     // Input to Layer 1
     for (let i = 0; i < 5; i++) {
       const from = nodes[0][0];
@@ -404,7 +452,7 @@ class Visualizer {
         ctx.shadowBlur = 0;
       }
       ctx.stroke();
-      ctx.shadowBlur = 0; // Reset shadow
+      ctx.shadowBlur = 0;
     }
     
     // Layer 1 to Layer 2
@@ -434,7 +482,7 @@ class Visualizer {
       }
     }
     
-    // Layer 2 to Output (3 output neurons)
+    // Layer 2 to Output
     for (let i = 0; i < 3; i++) {
       for (let j = 0; j < 3; j++) {
         const from = nodes[2][i];
@@ -462,16 +510,22 @@ class Visualizer {
     }
   }
 
-  isConnectionActive(fromLayer, fromIndex, toLayer, toIndex) {
+  private isConnectionActive(
+    fromLayer: string, 
+    fromIndex: number, 
+    toLayer: string, 
+    toIndex: number
+  ): boolean {
     if (this.calculationStage !== 'connections') return false;
     if (!this.highlightedNeuron) return false;
     
-    // Check if this connection leads to the highlighted neuron
     return this.highlightedNeuron.layer === toLayer && 
            this.highlightedNeuron.index === toIndex;
   }
 
-  drawLossOverlay(ctx, width, height) {
+  private drawLossOverlay(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+    if (!this.showLoss) return;
+    
     const { targetClass, targetName, predictions, loss } = this.showLoss;
     const classNames = ['불합격', '보류', '합격'];
     
@@ -516,11 +570,12 @@ class Visualizer {
     ctx.fillText(`Cross-Entropy Loss: ${loss.toFixed(4)}`, width/2, height/2 + 80);
   }
 
-  drawBackpropHighlight(ctx, nodes) {
-    const { layer, index } = this.backpropPhase;
-    let nodeInfo = null;
+  private drawBackpropHighlight(ctx: CanvasRenderingContext2D, nodes: NodePosition[][]): void {
+    if (!this.backpropPhase) return;
     
-    // Find the node to highlight
+    const { layer, index } = this.backpropPhase;
+    let nodeInfo: NodePosition | null = null;
+    
     if (layer === 'layer1' && nodes[1]) {
       nodeInfo = nodes[1][index];
     } else if (layer === 'layer2' && nodes[2]) {
@@ -553,7 +608,7 @@ class Visualizer {
     ctx.fillText('◄ BACKPROP', nodeInfo.centerX, nodeInfo.y - 35);
   }
 
-  updateTextDisplay(steps) {
+  updateTextDisplay(steps: CalculationSteps | null): void {
     if (!steps) {
       this.textDisplay.innerHTML = '<div class="step-info">No calculation data available</div>';
       return;
@@ -575,14 +630,13 @@ class Visualizer {
     html += '<div class="vector-labels">(성적, 태도, 응답수준)</div>';
     html += '</div></div>';
     
-    // Layer 1: 1차 면접관
+    // Layer 1
     html += '<div class="layer-section layer1-section">';
     html += '<h3>👥 1차 면접관 (5명)</h3>';
     steps.layer1.forEach((neuron, idx) => {
       html += `<div class="neuron-calc">`;
       html += `<div class="neuron-header">1차 면접관 #${idx + 1}</div>`;
       
-      // Weight vector
       html += '<div class="calc-step">';
       html += '<div class="vector-display">';
       html += '<div class="vector-label">가중치 벡터 w = </div>';
@@ -594,7 +648,6 @@ class Visualizer {
       html += ']</div>';
       html += '</div></div>';
       
-      // Dot product
       html += '<div class="calc-step">';
       html += '<div class="calc-label">벡터 내적 (x · w):</div>';
       html += '<div class="calc-detail">';
@@ -605,13 +658,11 @@ class Visualizer {
       html += ` = <span class="result">${neuron.dotProduct.toFixed(3)}</span>`;
       html += '</div></div>';
       
-      // Add bias
       html += '<div class="calc-step">';
       html += '<div class="calc-label">바이아스 추가:</div>';
       html += `<div class="calc-detail">${neuron.dotProduct.toFixed(3)} + ${neuron.bias.toFixed(2)} = <span class="result">${neuron.withBias.toFixed(3)}</span></div>`;
       html += '</div>';
       
-      // Activation
       html += '<div class="calc-step">';
       html += '<div class="calc-label">활성화 (Sigmoid):</div>';
       html += `<div class="calc-detail">σ(${neuron.withBias.toFixed(3)}) = <span class="result final">${neuron.activated.toFixed(3)}</span></div>`;
@@ -621,14 +672,13 @@ class Visualizer {
     });
     html += '</div>';
     
-    // Layer 2: 2차 면접관
+    // Layer 2
     html += '<div class="layer-section layer2-section">';
     html += '<h3>👔 2차 면접관 (3명)</h3>';
     steps.layer2.forEach((neuron, idx) => {
       html += `<div class="neuron-calc">`;
       html += `<div class="neuron-header">2차 면접관 #${idx + 1}</div>`;
       
-      // Weight vector
       html += '<div class="calc-step">';
       html += '<div class="vector-display">';
       html += '<div class="vector-label">가중치 벡터 w = </div>';
@@ -640,7 +690,6 @@ class Visualizer {
       html += ']</div>';
       html += '</div></div>';
       
-      // Dot product
       html += '<div class="calc-step">';
       html += '<div class="calc-label">벡터 내적:</div>';
       html += '<div class="calc-detail">';
@@ -651,13 +700,11 @@ class Visualizer {
       html += ` = <span class="result">${neuron.dotProduct.toFixed(3)}</span>`;
       html += '</div></div>';
       
-      // Add bias
       html += '<div class="calc-step">';
       html += '<div class="calc-label">바이아스 추가:</div>';
       html += `<div class="calc-detail">${neuron.dotProduct.toFixed(3)} + ${neuron.bias.toFixed(2)} = <span class="result">${neuron.withBias.toFixed(3)}</span></div>`;
       html += '</div>';
       
-      // Activation
       html += '<div class="calc-step">';
       html += '<div class="calc-label">활성화 (Sigmoid):</div>';
       html += `<div class="calc-detail">σ(${neuron.withBias.toFixed(3)}) = <span class="result final">${neuron.activated.toFixed(3)}</span></div>`;
@@ -670,50 +717,44 @@ class Visualizer {
     // Output
     html += '<div class="layer-section output-section">';
     html += '<h3>⚖️ 최종 결정</h3>';
-    const output = steps.output[0];
-    html += `<div class="neuron-calc">`;
-    
-    // Weight vector
-    html += '<div class="calc-step">';
-    html += '<div class="vector-display">';
-    html += '<div class="vector-label">가중치 벡터 w = </div>';
-    html += '<div class="vector-values">[';
-    output.weights.forEach((w, i) => {
-      if (i > 0) html += ', ';
-      html += `<span class="vector-component">${w.toFixed(2)}</span>`;
+    const classNames = ['불합격', '보류', '합격'];
+    steps.output.forEach((neuron, idx) => {
+      html += `<div class="neuron-calc">`;
+      html += `<div class="neuron-header">${classNames[idx]}</div>`;
+      
+      html += '<div class="calc-step">';
+      html += '<div class="vector-display">';
+      html += '<div class="vector-label">가중치 벡터 w = </div>';
+      html += '<div class="vector-values">[';
+      neuron.weights.forEach((w, i) => {
+        if (i > 0) html += ', ';
+        html += `<span class="vector-component">${w.toFixed(2)}</span>`;
+      });
+      html += ']</div>';
+      html += '</div></div>';
+      
+      html += '<div class="calc-step">';
+      html += '<div class="calc-label">벡터 내적:</div>';
+      html += '<div class="calc-detail">';
+      neuron.inputs.forEach((input, i) => {
+        if (i > 0) html += ' + ';
+        html += `<span class="term">${input.toFixed(2)}×${neuron.weights[i].toFixed(2)}</span>`;
+      });
+      html += ` = <span class="result">${neuron.dotProduct.toFixed(3)}</span>`;
+      html += '</div></div>';
+      
+      html += '<div class="calc-step">';
+      html += '<div class="calc-label">바이아스 추가:</div>';
+      html += `<div class="calc-detail">${neuron.dotProduct.toFixed(3)} + ${neuron.bias.toFixed(2)} = <span class="result">${neuron.withBias.toFixed(3)}</span></div>`;
+      html += '</div>';
+      
+      html += '<div class="calc-step">';
+      html += '<div class="calc-label">활성화 (Softmax):</div>';
+      html += `<div class="calc-detail">${classNames[idx]}: <span class="result final">${(neuron.activated * 100).toFixed(1)}%</span></div>`;
+      html += '</div>';
+      
+      html += '</div>';
     });
-    html += ']</div>';
-    html += '</div></div>';
-    
-    // Dot product
-    html += '<div class="calc-step">';
-    html += '<div class="calc-label">벡터 내적:</div>';
-    html += '<div class="calc-detail">';
-    output.inputs.forEach((input, i) => {
-      if (i > 0) html += ' + ';
-      html += `<span class="term">${input.toFixed(2)}×${output.weights[i].toFixed(2)}</span>`;
-    });
-    html += ` = <span class="result">${output.dotProduct.toFixed(3)}</span>`;
-    html += '</div></div>';
-    
-    // Add bias
-    html += '<div class="calc-step">';
-    html += '<div class="calc-label">바이아스 추가:</div>';
-    html += `<div class="calc-detail">${output.dotProduct.toFixed(3)} + ${output.bias.toFixed(2)} = <span class="result">${output.withBias.toFixed(3)}</span></div>`;
-    html += '</div>';
-    
-    // Activation
-    html += '<div class="calc-step">';
-    html += '<div class="calc-label">활성화 (Sigmoid):</div>';
-    html += `<div class="calc-detail">σ(${output.withBias.toFixed(3)}) = <span class="result final">${output.activated.toFixed(3)}</span></div>`;
-    html += '</div>';
-    
-    // Final decision
-    const decision = output.activated > 0.5 ? '합격' : '불합격';
-    const confidence = (Math.abs(output.activated - 0.5) * 200).toFixed(1);
-    html += `<div class="final-decision">결정: <strong>${decision}</strong> (확신도: ${confidence}%)</div>`;
-    
-    html += '</div>';
     html += '</div>';
     
     html += '</div>';
@@ -721,7 +762,7 @@ class Visualizer {
     this.textDisplay.innerHTML = html;
   }
 
-  update(nn) {
+  update(nn: NeuralNetwork): void {
     const steps = nn.getCalculationSteps();
     this.drawNetwork(nn, steps);
     this.updateTextDisplay(steps);

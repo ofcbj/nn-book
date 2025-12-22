@@ -1,318 +1,421 @@
-// network.ts - Neural Network Implementation
-// Pure TypeScript implementation without external libraries
+// Neural Network Implementation with TypeScript
+// Architecture: 3 inputs -> 5 neurons (1차) -> 3 neurons (2차) -> 3 outputs (Softmax)
+
+import type { CalculationSteps, NeuronCalculation, GradientData, WeightDeltas } from './types';
 
 /**
- * Matrix utility functions for neural network computations
+ * Matrix class for neural network computations
  */
-class Matrix {
-    static multiply(a: number[][], b: number[][]): number[][] {
-        const rows = a.length;
-        const cols = b[0].length;
-        const common = b.length;
-        
-        const result: number[][] = Array(rows).fill(0).map(() => Array(cols).fill(0));
-        
-        for (let i = 0; i < rows; i++) {
-            for (let j = 0; j < cols; j++) {
-                for (let k = 0; k < common; k++) {
-                    result[i][j] += a[i][k] * b[k][j];
-                }
-            }
-        }
-        
-        return result;
-    }
-    
-    static transpose(matrix: number[][]): number[][] {
-        return matrix[0].map((_, colIndex) => matrix.map(row => row[colIndex]));
-    }
-    
-    static add(a: number[][], b: number[][]): number[][] {
-        return a.map((row, i) => row.map((val, j) => val + b[i][j]));
-    }
-    
-    static subtract(a: number[][], b: number[][]): number[][] {
-        return a.map((row, i) => row.map((val, j) => val - b[i][j]));
-    }
-    
-    static scalarMultiply(matrix: number[][], scalar: number): number[][] {
-        return matrix.map(row => row.map(val => val * scalar));
-    }
-    
-    static hadamard(a: number[][], b: number[][]): number[][] {
-        return a.map((row, i) => row.map((val, j) => val * b[i][j]));
-    }
-}
+export class Matrix {
+  rows: number;
+  cols: number;
+  data: number[][];
 
-/**
- * Activation functions and their derivatives
- */
-class Activation {
-    static sigmoid(x: number): number {
-        return 1 / (1 + Math.exp(-x));
-    }
-    
-    static sigmoidDerivative(x: number): number {
-        const sig = Activation.sigmoid(x);
-        return sig * (1 - sig);
-    }
-    
-    static sigmoidMatrix(matrix: number[][]): number[][] {
-        return matrix.map(row => row.map(val => Activation.sigmoid(val)));
-    }
-    
-    static sigmoidDerivativeMatrix(matrix: number[][]): number[][] {
-        return matrix.map(row => row.map(val => Activation.sigmoidDerivative(val)));
-    }
-}
+  constructor(rows: number, cols: number) {
+    this.rows = rows;
+    this.cols = cols;
+    this.data = Array(rows).fill(null).map(() => Array(cols).fill(0));
+  }
 
-/**
- * Layer class representing a group of neurons (interviewers)
- */
-class Layer {
-    weights: number[][];
-    biases: number[][];
-    activation: number[][] | null = null;
-    weightedSum: number[][] | null = null;
-    input: number[][] | null = null;
-    
-    constructor(
-        public inputSize: number,
-        public outputSize: number,
-        public name: string
-    ) {
-        // Initialize weights with Xavier initialization
-        this.weights = this.initializeWeights(inputSize, outputSize);
-        this.biases = Array(1).fill(0).map(() => Array(outputSize).fill(0));
+  static fromArray(arr: number[]): Matrix {
+    const m = new Matrix(arr.length, 1);
+    for (let i = 0; i < arr.length; i++) {
+      m.data[i][0] = arr[i];
     }
-    
-    private initializeWeights(inputSize: number, outputSize: number): number[][] {
-        const limit = Math.sqrt(6 / (inputSize + outputSize));
-        const weights: number[][] = [];
-        
-        for (let i = 0; i < inputSize; i++) {
-            weights[i] = [];
-            for (let j = 0; j < outputSize; j++) {
-                weights[i][j] = (Math.random() * 2 - 1) * limit;
-            }
-        }
-        
-        return weights;
-    }
-    
-    forward(input: number[][]): number[][] {
-        this.input = input;
-        
-        // z = input · weights + bias
-        this.weightedSum = Matrix.add(
-            Matrix.multiply(input, this.weights),
-            this.biases
-        );
-        
-        // activation = sigmoid(z)
-        this.activation = Activation.sigmoidMatrix(this.weightedSum);
-        
-        return this.activation;
-    }
-    
-    getWeights(): number[][] {
-        return this.weights;
-    }
-    
-    getBiases(): number[][] {
-        return this.biases;
-    }
-}
+    return m;
+  }
 
-/**
- * Neural Network class - The entire organization
- */
-class NeuralNetwork {
-    layers: Layer[] = [];
-    learningRate: number = 0.1;
-    
-    // Training history
-    lossHistory: number[] = [];
-    epoch: number = 0;
-    
-    constructor(architecture: number[]) {
-        // architecture = [5, 8, 6, 4, 1] for example
-        // Input: 5, Hidden: 8, 6, 4, Output: 1
-        
-        const layerNames = [
-            '入力層 → 隠れ層1',
-            '隠れ層1 → 隠れ層2',
-            '隠れ層2 → 隠れ層3',
-            '隠れ層3 → 出力層'
-        ];
-        
-        for (let i = 0; i < architecture.length - 1; i++) {
-            const layer = new Layer(
-                architecture[i],
-                architecture[i + 1],
-                layerNames[i] || `Layer ${i}`
-            );
-            this.layers.push(layer);
-        }
+  toArray(): number[] {
+    const arr: number[] = [];
+    for (let i = 0; i < this.rows; i++) {
+      for (let j = 0; j < this.cols; j++) {
+        arr.push(this.data[i][j]);
+      }
     }
-    
-    /**
-     * Forward propagation - The evaluation process
-     */
-    forward(input: number[][]): number[][] {
-        let current = input;
-        
-        for (const layer of this.layers) {
-            current = layer.forward(current);
-        }
-        
-        return current;
+    return arr;
+  }
+
+  randomize(): void {
+    for (let i = 0; i < this.rows; i++) {
+      for (let j = 0; j < this.cols; j++) {
+        this.data[i][j] = Math.random(); // 0 to 1 (positive weights only)
+      }
     }
-    
-    /**
-     * Backward propagation - Responsibility distribution
-     */
-    backward(input: number[][], target: number[][], output: number[][]): void {
-        const m = input.length; // batch size (usually 1 for visualization)
-        
-        // Calculate output error (delta)
-        // δ_output = (output - target) ⊙ σ'(z)
-        const outputError = Matrix.subtract(output, target);
-        const outputLayer = this.layers[this.layers.length - 1];
-        const outputDelta = Matrix.hadamard(
-            outputError,
-            Activation.sigmoidDerivativeMatrix(outputLayer.weightedSum!)
-        );
-        
-        // Store deltas for each layer
-        const deltas: number[][][] = [outputDelta];
-        
-        // Backpropagate through hidden layers
-        for (let i = this.layers.length - 2; i >= 0; i--) {
-            const layer = this.layers[i];
-            const nextLayer = this.layers[i + 1];
-            const nextDelta = deltas[deltas.length - 1];
-            
-            // δ_i = (δ_{i+1} · W_{i+1}^T) ⊙ σ'(z_i)
-            const error = Matrix.multiply(nextDelta, Matrix.transpose(nextLayer.weights));
-            const delta = Matrix.hadamard(
-                error,
-                Activation.sigmoidDerivativeMatrix(layer.weightedSum!)
-            );
-            
-            deltas.push(delta);
-        }
-        
-        deltas.reverse();
-        
-        // Update weights and biases
-        for (let i = 0; i < this.layers.length; i++) {
-            const layer = this.layers[i];
-            const delta = deltas[i];
-            const layerInput = layer.input!;
-            
-            // ΔW = (1/m) · input^T · δ
-            const weightGradient = Matrix.scalarMultiply(
-                Matrix.multiply(Matrix.transpose(layerInput), delta),
-                1 / m
-            );
-            
-            // W = W - α · ΔW
-            layer.weights = Matrix.subtract(
-                layer.weights,
-                Matrix.scalarMultiply(weightGradient, this.learningRate)
-            );
-            
-            // Δb = (1/m) · sum(δ)
-            const biasGradient = delta[0].map((_, j) => {
-                return delta.reduce((sum, row) => sum + row[j], 0) / m;
-            });
-            
-            // b = b - α · Δb
-            layer.biases[0] = layer.biases[0].map((b, j) => 
-                b - this.learningRate * biasGradient[j]
-            );
-        }
+  }
+  
+  randomizeBias(): void {
+    // Bias can be slightly negative to adjust threshold
+    for (let i = 0; i < this.rows; i++) {
+      for (let j = 0; j < this.cols; j++) {
+        this.data[i][j] = Math.random() - 0.5; // -0.5 to 0.5
+      }
     }
-    
-    /**
-     * Train the network for one epoch
-     */
-    train(input: number[][], target: number[][]): number {
-        // Forward pass
-        const output = this.forward(input);
-        
-        // Calculate loss (MSE)
-        const loss = this.calculateLoss(output, target);
-        this.lossHistory.push(loss);
-        
-        // Backward pass
-        this.backward(input, target, output);
-        
-        this.epoch++;
-        
-        return loss;
+  }
+
+  static multiply(a: Matrix, b: Matrix): Matrix {
+    if (a.cols !== b.rows) {
+      console.error('Columns of A must match rows of B.');
+      return new Matrix(0, 0);
     }
-    
-    /**
-     * Calculate Mean Squared Error
-     */
-    calculateLoss(output: number[][], target: number[][]): number {
+    const result = new Matrix(a.rows, b.cols);
+    for (let i = 0; i < result.rows; i++) {
+      for (let j = 0; j < result.cols; j++) {
         let sum = 0;
-        for (let i = 0; i < output.length; i++) {
-            for (let j = 0; j < output[i].length; j++) {
-                const diff = output[i][j] - target[i][j];
-                sum += diff * diff;
-            }
+        for (let k = 0; k < a.cols; k++) {
+          sum += a.data[i][k] * b.data[k][j];
         }
-        return sum / (output.length * output[0].length);
+        result.data[i][j] = sum;
+      }
     }
-    
-    /**
-     * Predict output for given input
-     */
-    predict(input: number[][]): number[][] {
-        return this.forward(input);
+    return result;
+  }
+
+  static transpose(matrix: Matrix): Matrix {
+    const result = new Matrix(matrix.cols, matrix.rows);
+    for (let i = 0; i < matrix.rows; i++) {
+      for (let j = 0; j < matrix.cols; j++) {
+        result.data[j][i] = matrix.data[i][j];
+      }
     }
-    
-    /**
-     * Reset the network to initial state
-     */
-    reset(): void {
-        this.epoch = 0;
-        this.lossHistory = [];
-        
-        for (const layer of this.layers) {
-            layer.weights = this.initializeWeights(layer.inputSize, layer.outputSize);
-            layer.biases = Array(1).fill(0).map(() => Array(layer.outputSize).fill(0));
+    return result;
+  }
+
+  static subtract(a: Matrix, b: Matrix): Matrix {
+    const result = new Matrix(a.rows, a.cols);
+    for (let i = 0; i < a.rows; i++) {
+      for (let j = 0; j < a.cols; j++) {
+        result.data[i][j] = a.data[i][j] - b.data[i][j];
+      }
+    }
+    return result;
+  }
+
+  multiply(n: Matrix | number): void {
+    if (n instanceof Matrix) {
+      // Element-wise multiplication
+      for (let i = 0; i < this.rows; i++) {
+        for (let j = 0; j < this.cols; j++) {
+          this.data[i][j] *= n.data[i][j];
         }
-    }
-    
-    private initializeWeights(inputSize: number, outputSize: number): number[][] {
-        const limit = Math.sqrt(6 / (inputSize + outputSize));
-        const weights: number[][] = [];
-        
-        for (let i = 0; i < inputSize; i++) {
-            weights[i] = [];
-            for (let j = 0; j < outputSize; j++) {
-                weights[i][j] = (Math.random() * 2 - 1) * limit;
-            }
+      }
+    } else {
+      // Scalar multiplication
+      for (let i = 0; i < this.rows; i++) {
+        for (let j = 0; j < this.cols; j++) {
+          this.data[i][j] *= n;
         }
-        
-        return weights;
+      }
     }
-    
-    /**
-     * Set learning rate
-     */
-    setLearningRate(rate: number): void {
-        this.learningRate = rate;
+  }
+
+  add(n: Matrix | number): void {
+    if (n instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        for (let j = 0; j < this.cols; j++) {
+          this.data[i][j] += n.data[i][j];
+        }
+      }
+    } else {
+      for (let i = 0; i < this.rows; i++) {
+        for (let j = 0; j < this.cols; j++) {
+          this.data[i][j] += n;
+        }
+      }
     }
+  }
+
+  static map(matrix: Matrix, func: (val: number) => number): Matrix {
+    const result = new Matrix(matrix.rows, matrix.cols);
+    for (let i = 0; i < matrix.rows; i++) {
+      for (let j = 0; j < matrix.cols; j++) {
+        result.data[i][j] = func(matrix.data[i][j]);
+      }
+    }
+    return result;
+  }
+
+  map(func: (val: number) => number): void {
+    for (let i = 0; i < this.rows; i++) {
+      for (let j = 0; j < this.cols; j++) {
+        this.data[i][j] = func(this.data[i][j]);
+      }
+    }
+  }
 }
 
-// Export for use in other files
-if (typeof window !== 'undefined') {
-    (window as any).NeuralNetwork = NeuralNetwork;
-    (window as any).Matrix = Matrix;
-    (window as any).Activation = Activation;
+// Activation functions
+export function sigmoid(x: number): number {
+  return 1 / (1 + Math.exp(-x));
+}
+
+export function dsigmoid(y: number): number {
+  // Derivative of sigmoid (where y is already sigmoid(x))
+  return y * (1 - y);
+}
+
+export function softmax(arr: number[]): number[] {
+  const max = Math.max(...arr);
+  const exps = arr.map(x => Math.exp(x - max)); // Subtract max for numerical stability
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return exps.map(x => x / sum);
+}
+
+/**
+ * Neural Network Class
+ * Architecture: 3 -> 5 -> 3 -> 3 (3-class output with Softmax)
+ */
+export class NeuralNetwork {
+  // Layer 1: 1차 면접관 (5 neurons)
+  weights_input_hidden1: Matrix;
+  bias_hidden1: Matrix;
+  
+  // Layer 2: 2차 면접관 (3 neurons)
+  weights_hidden1_hidden2: Matrix;
+  bias_hidden2: Matrix;
+  
+  // Output layer: 최종 결정 (3 classes: 불합격/보류/합격)
+  weights_hidden2_output: Matrix;
+  bias_output: Matrix;
+  
+  learning_rate: number = 0.1;
+  
+  // Store intermediate values for visualization
+  lastInput: Matrix | null = null;
+  lastHidden1: Matrix | null = null;
+  lastHidden2: Matrix | null = null;
+  lastOutput: Matrix | null = null;
+  lastHidden1Raw: Matrix | null = null; // Before activation
+  lastHidden2Raw: Matrix | null = null; // Before activation
+  lastOutputRaw: Matrix | null = null;  // Before activation
+  
+  // Store gradients for backprop visualization
+  lastGradients: {
+    output: Matrix | null;
+    layer2: Matrix | null;
+    layer1: Matrix | null;
+  };
+  
+  // Store weight deltas for update visualization
+  lastWeightDeltas: {
+    output_layer2: Matrix | null;
+    layer2_layer1: Matrix | null;
+    layer1_input: Matrix | null;
+  };
+  
+  lastLoss: number = 0;
+
+  constructor() {
+    // Layer 1: 1차 면접관 (5 neurons, each takes 3 inputs)
+    this.weights_input_hidden1 = new Matrix(5, 3);
+    this.bias_hidden1 = new Matrix(5, 1);
+    this.weights_input_hidden1.randomize();
+    this.bias_hidden1.randomizeBias();
+    
+    // Layer 2: 2차 면접관 (3 neurons, each takes 5 inputs)
+    this.weights_hidden1_hidden2 = new Matrix(3, 5);
+    this.bias_hidden2 = new Matrix(3, 1);
+    this.weights_hidden1_hidden2.randomize();
+    this.bias_hidden2.randomizeBias();
+    
+    // Output layer: 최종 결정 (3 neurons for softmax: 불합격/보류/합격)
+    this.weights_hidden2_output = new Matrix(3, 3);
+    this.bias_output = new Matrix(3, 1);
+    this.weights_hidden2_output.randomize();
+    this.bias_output.randomizeBias();
+    
+    this.lastGradients = {
+      output: null,
+      layer2: null,
+      layer1: null
+    };
+    
+    this.lastWeightDeltas = {
+      output_layer2: null,
+      layer2_layer1: null,
+      layer1_input: null
+    };
+  }
+
+  feedforward(input_array: number[]): number[] {
+    // Convert inputs to matrix
+    const inputs = Matrix.fromArray(input_array);
+    this.lastInput = inputs;
+    
+    // Layer 1: 1차 면접관
+    const hidden1_raw = Matrix.multiply(this.weights_input_hidden1, inputs);
+    hidden1_raw.add(this.bias_hidden1);
+    this.lastHidden1Raw = hidden1_raw;
+    const hidden1 = Matrix.map(hidden1_raw, sigmoid);
+    this.lastHidden1 = hidden1;
+    
+    // Layer 2: 2차 면접관
+    const hidden2_raw = Matrix.multiply(this.weights_hidden1_hidden2, hidden1);
+    hidden2_raw.add(this.bias_hidden2);
+    this.lastHidden2Raw = hidden2_raw;
+    const hidden2 = Matrix.map(hidden2_raw, sigmoid);
+    this.lastHidden2 = hidden2;
+    
+    // Output layer: 최종 결정 (Softmax for 3-class classification)
+    const output_raw = Matrix.multiply(this.weights_hidden2_output, hidden2);
+    output_raw.add(this.bias_output);
+    this.lastOutputRaw = output_raw;
+    
+    // Apply softmax activation
+    const output_logits = output_raw.toArray();
+    const output_probs = softmax(output_logits);
+    const outputs = Matrix.fromArray(output_probs);
+    this.lastOutput = outputs;
+    
+    return output_probs;
+  }
+
+  train(input_array: number[], target_array: number[]): void {
+    // Feedforward
+    this.feedforward(input_array);
+    
+    const inputs = this.lastInput!;
+    const hidden1 = this.lastHidden1!;
+    const hidden2 = this.lastHidden2!;
+    const outputs = this.lastOutput!;
+    
+    // Convert target to matrix
+    const targets = Matrix.fromArray(target_array);
+    
+    // Calculate output errors
+    const output_errors = Matrix.subtract(targets, outputs);
+    
+    // Calculate output gradient
+    const gradients_output = Matrix.map(outputs, dsigmoid);
+    gradients_output.multiply(output_errors);
+    gradients_output.multiply(this.learning_rate);
+    
+    // Calculate hidden2 -> output deltas
+    const hidden2_T = Matrix.transpose(hidden2);
+    const weight_ho_deltas = Matrix.multiply(gradients_output, hidden2_T);
+    
+    // Adjust output weights and bias
+    this.weights_hidden2_output.add(weight_ho_deltas);
+    this.bias_output.add(gradients_output);
+    
+    // Calculate hidden2 errors
+    const who_t = Matrix.transpose(this.weights_hidden2_output);
+    const hidden2_errors = Matrix.multiply(who_t, output_errors);
+    
+    // Calculate hidden2 gradient
+    const gradients_hidden2 = Matrix.map(hidden2, dsigmoid);
+    gradients_hidden2.multiply(hidden2_errors);
+    gradients_hidden2.multiply(this.learning_rate);
+    
+    // Calculate hidden1 -> hidden2 deltas
+    const hidden1_T = Matrix.transpose(hidden1);
+    const weight_h1h2_deltas = Matrix.multiply(gradients_hidden2, hidden1_T);
+    
+    // Adjust hidden2 weights and bias
+    this.weights_hidden1_hidden2.add(weight_h1h2_deltas);
+    this.bias_hidden2.add(gradients_hidden2);
+    
+    // Calculate hidden1 errors
+    const wh1h2_t = Matrix.transpose(this.weights_hidden1_hidden2);
+    const hidden1_errors = Matrix.multiply(wh1h2_t, hidden2_errors);
+    
+    // Calculate hidden1 gradient
+    const gradients_hidden1 = Matrix.map(hidden1, dsigmoid);
+    gradients_hidden1.multiply(hidden1_errors);
+    gradients_hidden1.multiply(this.learning_rate);
+    
+    // Calculate input -> hidden1 deltas
+    const inputs_T = Matrix.transpose(inputs);
+    const weight_ih1_deltas = Matrix.multiply(gradients_hidden1, inputs_T);
+    
+    // === STORE FOR VISUALIZATION ===
+    this.lastGradients.output = output_errors;
+    this.lastGradients.layer2 = hidden2_errors;
+    this.lastGradients.layer1 = hidden1_errors;
+    
+    this.lastWeightDeltas.output_layer2 = weight_ho_deltas;
+    this.lastWeightDeltas.layer2_layer1 = weight_h1h2_deltas;
+    this.lastWeightDeltas.layer1_input = weight_ih1_deltas;
+    
+    // Calculate loss (cross-entropy for softmax)
+    const targetOneHot = target_array;
+    this.lastLoss = -targetOneHot.reduce((sum, t, i) => 
+      sum + (t > 0 ? Math.log(Math.max(outputs.data[i][0], 1e-7)) : 0), 0
+    );
+    
+    // Adjust hidden1 weights and bias
+    this.weights_input_hidden1.add(weight_ih1_deltas);
+    this.bias_hidden1.add(gradients_hidden1);
+  }
+
+  getCalculationSteps(): CalculationSteps | null {
+    if (!this.lastInput) return null;
+    
+    const steps: CalculationSteps = {
+      input: this.lastInput.toArray(),
+      layer1: [],
+      layer2: [],
+      output: []
+    };
+    
+    // Layer 1 calculations (1차 면접관)
+    for (let i = 0; i < 5; i++) {
+      const weights = this.weights_input_hidden1.data[i];
+      const bias = this.bias_hidden1.data[i][0];
+      const rawValue = this.lastHidden1Raw!.data[i][0];
+      const activatedValue = this.lastHidden1!.data[i][0];
+      
+      steps.layer1.push({
+        neuronIndex: i,
+        weights: weights,
+        bias: bias,
+        inputs: this.lastInput.toArray(),
+        dotProduct: rawValue - bias, // Subtract bias to get pure dot product
+        withBias: rawValue,
+        activated: activatedValue,
+        calculation: `(${this.lastInput.toArray().map((v, j) => `${v.toFixed(2)}×${weights[j].toFixed(2)}`).join(' + ')}) + ${bias.toFixed(2)} = ${rawValue.toFixed(3)}`
+      });
+    }
+    
+    // Layer 2 calculations (2차 면접관)
+    for (let i = 0; i < 3; i++) {
+      const weights = this.weights_hidden1_hidden2.data[i];
+      const bias = this.bias_hidden2.data[i][0];
+      const rawValue = this.lastHidden2Raw!.data[i][0];
+      const activatedValue = this.lastHidden2!.data[i][0];
+      
+      steps.layer2.push({
+        neuronIndex: i,
+        weights: weights,
+        bias: bias,
+        inputs: this.lastHidden1!.toArray(),
+        dotProduct: rawValue - bias,
+        withBias: rawValue,
+        activated: activatedValue,
+        calculation: `(${this.lastHidden1!.toArray().map((v, j) => `${v.toFixed(2)}×${weights[j].toFixed(2)}`).join(' + ')}) + ${bias.toFixed(2)} = ${rawValue.toFixed(3)}`
+      });
+    }
+    
+    // Output calculation (3 neurons with softmax)
+    const classNames = ['불합격', '보류', '합격'];
+    for (let i = 0; i < 3; i++) {
+      const weights = this.weights_hidden2_output.data[i];
+      const bias = this.bias_output.data[i][0];
+      const rawValue = this.lastOutputRaw!.data[i][0];
+      const activatedValue = this.lastOutput!.data[i][0];
+      
+      steps.output.push({
+        neuronIndex: i,
+        className: classNames[i],
+        weights: weights,
+        bias: bias,
+        inputs: this.lastHidden2!.toArray(),
+        dotProduct: rawValue - bias,
+        withBias: rawValue,
+        activated: activatedValue,
+        calculation: `(${this.lastHidden2!.toArray().map((v, j) => `${v.toFixed(2)}×${weights[j].toFixed(2)}`).join(' + ')}) + ${bias.toFixed(2)} = ${rawValue.toFixed(3)}`
+      });
+    }
+    
+    return steps;
+  }
 }

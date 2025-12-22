@@ -1,17 +1,21 @@
-// UI Controls for Neural Network
+// UI Controls for Neural Network with TypeScript
 // Handles input sliders, buttons, and training loop with step animation
 
-let nn;
-let visualizer;
-let isTraining = false;
-let trainingInterval;
-let epoch = 0;
-let currentLoss = 0;
-let isAnimating = false;
-let shouldStopAnimation = false; // Flag to stop animation
-let animationSpeed = 1.0; // Default speed (1.0x)
+import { NeuralNetwork } from './network';
+import { Visualizer } from './visualizer';
 
-function initControls() {
+// Global state
+let nn: NeuralNetwork;
+let visualizer: Visualizer;
+let isTraining: boolean = false;
+let trainingInterval: number | undefined;
+let epoch: number = 0;
+let currentLoss: number = 0;
+let isAnimating: boolean = false;
+let shouldStopAnimation: boolean = false;
+let animationSpeed: number = 1.0;
+
+function initControls(): void {
   // Initialize neural network
   nn = new NeuralNetwork();
   
@@ -22,28 +26,35 @@ function initControls() {
   setupInputSliders();
   
   // Set up buttons
-  document.getElementById('stepBtn').addEventListener('click', () => {
+  const stepBtn = getElementById<HTMLButtonElement>('stepBtn');
+  const trainBtn = getElementById<HTMLButtonElement>('trainBtn');
+  const resetBtn = getElementById<HTMLButtonElement>('resetBtn');
+  
+  stepBtn.addEventListener('click', () => {
     if (isAnimating) {
-      // Stop the animation
       stopAnimation();
     } else {
-      // Start animation
       trainOneStepWithAnimation();
     }
   });
-  document.getElementById('trainBtn').addEventListener('click', toggleTraining);
-  document.getElementById('resetBtn').addEventListener('click', resetNetwork);
+  
+  trainBtn.addEventListener('click', toggleTraining);
+  resetBtn.addEventListener('click', resetNetwork);
   
   // Set up learning rate
-  document.getElementById('learningRate').addEventListener('input', (e) => {
-    nn.learning_rate = parseFloat(e.target.value);
-    document.getElementById('learningRateValue').textContent = e.target.value;
+  const learningRateInput = getElementById<HTMLInputElement>('learningRate');
+  learningRateInput.addEventListener('input', (e) => {
+    const target = e.target as HTMLInputElement;
+    nn.learning_rate = parseFloat(target.value);
+    getElementById('learningRateValue').textContent = target.value;
   });
   
   // Set up animation speed control
-  document.getElementById('animationSpeed').addEventListener('input', (e) => {
-    animationSpeed = parseFloat(e.target.value);
-    document.getElementById('animationSpeedValue').textContent = animationSpeed.toFixed(1) + 'x';
+  const animationSpeedInput = getElementById<HTMLInputElement>('animationSpeed');
+  animationSpeedInput.addEventListener('input', (e) => {
+    const target = e.target as HTMLInputElement;
+    animationSpeed = parseFloat(target.value);
+    getElementById('animationSpeedValue').textContent = animationSpeed.toFixed(1) + 'x';
   });
   
   // Initial forward pass
@@ -54,42 +65,45 @@ function initControls() {
     visualizer.resizeCanvas();
     visualizer.update(nn);
   });
+  
   // Target value slider
-  document.getElementById('targetValue').addEventListener('input', (e) => {
+  const targetValueInput = getElementById<HTMLInputElement>('targetValue');
+  targetValueInput.addEventListener('input', (e) => {
     const classNames = ['불합격', '보류', '합격'];
-    const value = parseInt(e.target.value);
-    document.getElementById('targetValueDisplay').textContent = classNames[value];
+    const target = e.target as HTMLInputElement;
+    const value = parseInt(target.value);
+    getElementById('targetValueDisplay').textContent = classNames[value];
   });
 }
 
-function setupInputSliders() {
+function setupInputSliders(): void {
   const inputIds = ['grade', 'attitude', 'response'];
-  const labels = ['성적', '태도', '응답수준'];
   
-  inputIds.forEach((id, idx) => {
-    const slider = document.getElementById(id);
-    const valueDisplay = document.getElementById(`${id}Value`);
+  inputIds.forEach((id) => {
+    const slider = getElementById<HTMLInputElement>(id);
+    const valueDisplay = getElementById(`${id}Value`);
     
     slider.addEventListener('input', (e) => {
-      valueDisplay.textContent = e.target.value;
+      const target = e.target as HTMLInputElement;
+      valueDisplay.textContent = target.value;
       updateVisualization();
     });
   });
 }
 
-function getInputValues() {
+function getInputValues(): number[] {
   return [
-    parseFloat(document.getElementById('grade').value),
-    parseFloat(document.getElementById('attitude').value),
-    parseFloat(document.getElementById('response').value)
+    parseFloat(getElementById<HTMLInputElement>('grade').value),
+    parseFloat(getElementById<HTMLInputElement>('attitude').value),
+    parseFloat(getElementById<HTMLInputElement>('response').value)
   ];
 }
 
-function getTargetValue() {
-  return parseInt(document.getElementById('targetValue').value);
+function getTargetValue(): number {
+  return parseInt(getElementById<HTMLInputElement>('targetValue').value);
 }
 
-function updateVisualization() {
+function updateVisualization(): void {
   const inputs = getInputValues();
   nn.feedforward(inputs);
   visualizer.update(nn);
@@ -104,29 +118,31 @@ function updateVisualization() {
       `${classNames[i]}: ${(prob * 100).toFixed(1)}%`
     ).join(' | ');
     
-    document.getElementById('currentOutput').textContent = outputText;
-    document.getElementById('currentOutput').style.color = 
+    const outputElement = getElementById('currentOutput');
+    outputElement.textContent = outputText;
+    outputElement.style.color = 
       maxIndex === 0 ? '#ef4444' : maxIndex === 1 ? '#f59e0b' : '#22c55e';
   }
 }
 
-function stopAnimation() {
+function stopAnimation(): void {
   shouldStopAnimation = true;
-  // Button will be reset when animation actually stops
 }
 
-// Animate forward propagation step-by-step with detailed calculations
-async function animateForwardPropagation() {
+async function animateForwardPropagation(): Promise<void> {
   if (isAnimating) return;
   isAnimating = true;
   shouldStopAnimation = false;
   
-  // Change button to "스탑"
-  const stepBtn = document.getElementById('stepBtn');
+  const stepBtn = getElementById<HTMLButtonElement>('stepBtn');
   stepBtn.textContent = '스탑';
   stepBtn.classList.add('stop-mode');
   
   const steps = nn.getCalculationSteps();
+  if (!steps) {
+    isAnimating = false;
+    return;
+  }
   
   // Animate Layer 1 neurons
   for (let i = 0; i < 5; i++) {
@@ -142,7 +158,7 @@ async function animateForwardPropagation() {
     }
   }
   
-  // Animate output neuron (3 classes)
+  // Animate output neurons (3 classes)
   if (!shouldStopAnimation) {
     for (let i = 0; i < 3; i++) {
       if (shouldStopAnimation) break;
@@ -164,21 +180,24 @@ async function animateForwardPropagation() {
   shouldStopAnimation = false;
 }
 
-async function animateNeuronCalculation(layer, index, neuronData) {
-  const baseDelay = 400; // Base delay in ms for calculation stages
-  const connectionDelay = 150; // Shorter delay for connection highlighting
+async function animateNeuronCalculation(
+  layer: 'input' | 'layer1' | 'layer2' | 'output',
+  index: number,
+  neuronData: any
+): Promise<void> {
+  const baseDelay = 400;
+  const connectionDelay = 150;
   
-  // Set neuron data for formula display
   visualizer.currentNeuronData = neuronData;
-  visualizer.highlightedNeuron = { layer: layer, index: index };
+  visualizer.highlightedNeuron = { layer, index };
   
-  // Stage 1: Highlight input connections (shorter duration)
+  // Stage 1: Highlight input connections
   visualizer.calculationStage = 'connections';
   visualizer.intermediateValue = null;
   visualizer.update(nn);
   await sleep(connectionDelay / animationSpeed);
   
-  // Stage 2: Show dot product calculation (expanded formula)
+  // Stage 2: Show dot product calculation
   visualizer.calculationStage = 'dotProduct';
   visualizer.intermediateValue = neuronData.dotProduct;
   visualizer.update(nn);
@@ -196,75 +215,72 @@ async function animateNeuronCalculation(layer, index, neuronData) {
   visualizer.update(nn);
   await sleep(baseDelay / animationSpeed);
   
-  // Clear calculation stage but keep neuron highlighted briefly
+  // Clear calculation stage
   visualizer.calculationStage = null;
   visualizer.intermediateValue = null;
   visualizer.currentNeuronData = null;
 }
 
-function sleep(ms) {
+function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function trainOneStepWithAnimation() {
+async function trainOneStepWithAnimation(): Promise<void> {
   if (isAnimating) return;
   
   const inputs = getInputValues();
   const targetClass = getTargetValue();
   const targetOneHot = [0, 0, 0];
-  targetOneHot[targetClass] = 1; // Convert to one-hot encoding
+  targetOneHot[targetClass] = 1;
   
-  // === PHASE 1: FORWARD PASS ===
+  // PHASE 1: FORWARD PASS
   nn.feedforward(inputs);
   await animateForwardPropagation();
   
-  // === PHASE 2: LOSS DISPLAY (with user control) ===
-  nn.train(inputs, targetOneHot); // This computes gradients and loss
-  await showLossPhase(targetClass, nn.lastOutput.toArray(), nn.lastLoss);
+  // PHASE 2: LOSS DISPLAY
+  nn.train(inputs, targetOneHot);
+  await showLossPhase(targetClass, nn.lastOutput!.toArray(), nn.lastLoss);
   
-  // User has clicked "Start Backward Process" button, now continue
-  
-  // === PHASE 3: BACKWARD PASS ===
+  // PHASE 3: BACKWARD PASS
   await animateBackwardPropagation();
   
-  // === PHASE 4: WEIGHT UPDATE ===
-  // (Weight updates already applied in nn.train)
-  // Just show completion message
+  // PHASE 4: WEIGHT UPDATE
   await showUpdateComplete();
   
   // Calculate loss for display
-  const output = nn.lastOutput.toArray();
   currentLoss = nn.lastLoss;
   
   // Update displays
   epoch++;
-  document.getElementById('epochCount').textContent = epoch;
-  document.getElementById('lossValue').textContent = currentLoss.toFixed(6);
+  getElementById('epochCount').textContent = epoch.toString();
+  getElementById('lossValue').textContent = currentLoss.toFixed(6);
   
   // Final update
   updateVisualization();
 }
 
-async function showLossPhase(targetClass, output, loss) {
+async function showLossPhase(
+  targetClass: number,
+  output: number[],
+  loss: number
+): Promise<void> {
   const classNames = ['불합격', '보류', '합격'];
   
-  // Create one-hot encoded target vector
   const targetOneHot = [0, 0, 0];
   targetOneHot[targetClass] = 1;
   
   // Get modal elements
-  const modal = document.getElementById('lossModal');
-  const modalTargetClass = document.getElementById('modalTargetClass');
-  const modalTargetVector = document.getElementById('modalTargetVector');
-  const modalPredictions = document.getElementById('modalPredictions');
-  const modalPredVector = document.getElementById('modalPredVector');
-  const modalLossValue = document.getElementById('modalLossValue');
-  const startBackwardBtn = document.getElementById('startBackwardBtn');
+  const modal = getElementById('lossModal');
+  const modalTargetClass = getElementById('modalTargetClass');
+  const modalTargetVector = getElementById('modalTargetVector');
+  const modalPredictions = getElementById('modalPredictions');
+  const modalPredVector = getElementById('modalPredVector');
+  const modalLossValue = getElementById('modalLossValue');
+  const startBackwardBtn = getElementById<HTMLButtonElement>('startBackwardBtn');
   
-  // Get explanation elements
-  const explainTargetClass = document.getElementById('explainTargetClass');
-  const explainLossValue = document.getElementById('explainLossValue');
-  const lossInterpretation = document.getElementById('lossInterpretation');
+  const explainTargetClass = getElementById('explainTargetClass');
+  const explainLossValue = getElementById('explainLossValue');
+  const lossInterpretation = getElementById('lossInterpretation');
   
   // Populate modal with data
   modalTargetClass.textContent = classNames[targetClass];
@@ -277,7 +293,7 @@ async function showLossPhase(targetClass, output, loss) {
   explainLossValue.textContent = loss.toFixed(4);
   
   // Interpret loss value
-  let interpretation;
+  let interpretation: string;
   if (loss < 0.1) {
     interpretation = '매우 작은 값으로, 예측이 정답에 매우 가깝습니다';
   } else if (loss < 0.5) {
@@ -290,31 +306,31 @@ async function showLossPhase(targetClass, output, loss) {
   lossInterpretation.textContent = interpretation;
   
   // Populate loss calculation section
-  const lossFormulaExpanded = document.getElementById('lossFormulaExpanded');
-  const lossFormulaSimplified = document.getElementById('lossFormulaSimplified');
-  const lossFormulaResult = document.getElementById('lossFormulaResult');
-  const lossNote = document.getElementById('lossNote');
+  const lossFormulaExpanded = getElementById('lossFormulaExpanded');
+  const lossFormulaSimplified = getElementById('lossFormulaSimplified');
+  const lossFormulaResult = getElementById('lossFormulaResult');
+  const lossNote = getElementById('lossNote');
   
-  // Build expanded formula with actual values
+  // Build expanded formula
   const terms = output.map((prob, i) => 
     `${targetOneHot[i]}×log(${prob.toFixed(3)})`
   ).join(' + ');
   lossFormulaExpanded.textContent = `L = -(${terms})`;
   
-  // Simplified formula (only the target class term)
+  // Simplified formula
   const targetProb = output[targetClass];
   lossFormulaSimplified.textContent = `L = -log(${targetProb.toFixed(3)})`;
   
   // Result
   lossFormulaResult.textContent = `L = ${loss.toFixed(6)}`;
   
-  // Dynamic note based on prediction
+  // Dynamic note
   const targetProbPercent = (targetProb * 100).toFixed(1);
   const otherProbs = output.filter((_, i) => i !== targetClass);
   const otherProbsSum = otherProbs.reduce((sum, p) => sum + p, 0);
   const otherProbsPercent = (otherProbsSum * 100).toFixed(1);
   
-  let noteText;
+  let noteText: string;
   
   if (targetProb > 0.9) {
     noteText = `💡 <strong>${classNames[targetClass]}</strong>의 확률이 <strong>${targetProbPercent}%</strong>로 매우 높아 Loss가 작습니다! 신경망이 정답을 확신하고 있습니다.<br><br>
@@ -375,11 +391,8 @@ async function showLossPhase(targetClass, output, loss) {
   // Return a Promise that resolves when user clicks the button
   return new Promise((resolve) => {
     const handleClick = () => {
-      // Hide modal
       modal.style.display = 'none';
-      // Remove event listener
       startBackwardBtn.removeEventListener('click', handleClick);
-      // Resolve promise to continue with backward pass
       resolve();
     };
     
@@ -387,24 +400,24 @@ async function showLossPhase(targetClass, output, loss) {
   });
 }
 
-async function animateBackwardPropagation() {
+async function animateBackwardPropagation(): Promise<void> {
   const baseDelay = 250;
   
-  // Backward through output layer (3 neurons)
+  // Backward through output layer
   for (let i = 2; i >= 0; i--) {
     visualizer.backpropPhase = { layer: 'output', index: i };
     visualizer.update(nn);
     await sleep(baseDelay / animationSpeed);
   }
   
-  // Backward through layer 2 (3 neurons)
+  // Backward through layer 2
   for (let i = 2; i >= 0; i--) {
-    visualizer.backpropPhase = { layer: 'layer2', index: i };
+    visualizer.backpropPhase = { layer: 'layer2',  index: i };
     visualizer.update(nn);
     await sleep(baseDelay / animationSpeed);
   }
   
-  // Backward through layer 1 (5 neurons)
+  // Backward through layer 1
   for (let i = 4; i >= 0; i--) {
     visualizer.backpropPhase = { layer: 'layer1', index: i };
     visualizer.update(nn);
@@ -414,79 +427,88 @@ async function animateBackwardPropagation() {
   visualizer.backpropPhase = null;
 }
 
-async function showUpdateComplete() {
-  // Brief pause to show completion
+async function showUpdateComplete(): Promise<void> {
   await sleep(500 / animationSpeed);
 }
 
-function trainOneStep() {
+function trainOneStep(): void {
   const inputs = getInputValues();
   const targetClass = getTargetValue();
   const targetOneHot = [0, 0, 0];
   targetOneHot[targetClass] = 1;
   
-  // Train
   nn.train(inputs, targetOneHot);
-  
-  // Use stored loss
   currentLoss = nn.lastLoss;
   
-  // Update displays
   epoch++;
-  document.getElementById('epochCount').textContent = epoch;
-  document.getElementById('lossValue').textContent = currentLoss.toFixed(6);
+  getElementById('epochCount').textContent = epoch.toString();
+  getElementById('lossValue').textContent = currentLoss.toFixed(6);
   
-  // Update visualization
   updateVisualization();
 }
 
-function toggleTraining() {
-  const btn = document.getElementById('trainBtn');
+function toggleTraining(): void {
+  const btn = getElementById<HTMLButtonElement>('trainBtn');
   
   if (isTraining) {
-    // Stop training
     isTraining = false;
-    clearInterval(trainingInterval);
+    if (trainingInterval) {
+      clearInterval(trainingInterval);
+    }
     btn.textContent = '학습 시작';
     btn.classList.remove('training');
   } else {
-    // Start training
     isTraining = true;
     btn.textContent = '학습 중지';
     btn.classList.add('training');
     
-    trainingInterval = setInterval(() => {
+    trainingInterval = window.setInterval(() => {
       trainOneStep();
       
-      // Auto-stop if loss is very small
       if (currentLoss < 0.001) {
         toggleTraining();
       }
-    }, 50); // Train every 50ms
+    }, 50);
   }
 }
 
-function resetNetwork() {
-  // Stop training if running
+function resetNetwork(): void {
   if (isTraining) {
     toggleTraining();
   }
   
-  // Reset network
   nn = new NeuralNetwork();
   epoch = 0;
   currentLoss = 0;
   
-  // Reset displays
-  document.getElementById('epochCount').textContent = '0';
-  document.getElementById('lossValue').textContent = '0.000000';
-  document.getElementById('currentOutput').textContent = '0.000';
+  getElementById('epochCount').textContent = '0';
+  getElementById('lossValue').textContent = '0.000000';
+  getElementById('currentOutput').textContent = '0.000';
   
-  // Reset visualization
   visualizer.highlightedNeuron = null;
   updateVisualization();
 }
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', initControls);
+// Helper function for type-safe getElementById
+function getElementById<T extends HTMLElement = HTMLElement>(id: string): T {
+  const element = document.getElementById(id);
+  if (!element) {
+    throw new Error(`Element with id "${id}" not found`);
+  }
+  return element as T;
+}
 
+// Initialize when DOM is loaded
+// For ES modules, check if DOM is already loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initControls);
+} else {
+  // DOM is already loaded (common for ES modules)
+  initControls();
+}
+
+// Export for debugging  
+if (typeof window !== 'undefined') {
+  (window as any).getNN = () => nn;
+  (window as any).getVisualizer = () => visualizer;
+}
