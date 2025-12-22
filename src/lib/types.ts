@@ -71,6 +71,11 @@ export interface AnimationPhase {
 export type CalculationStage = 'connections' | 'dotProduct' | 'bias' | 'activation';
 
 /**
+ * Backpropagation calculation stage during animation
+ */
+export type BackpropStage = 'error' | 'derivative' | 'gradient' | 'weightDelta' | 'allWeightDeltas' | 'update';
+
+/**
  * Loss display information
  */
 export interface LossDisplayData {
@@ -81,21 +86,35 @@ export interface LossDisplayData {
 }
 
 /**
- * Gradient information for backpropagation
+ * Backpropagation visualization data for a single neuron
  */
-export interface GradientData {
-  output: MatrixData | null;
-  layer2: MatrixData | null;
-  layer1: MatrixData | null;
+export interface BackpropNeuronData {
+  neuronIndex: number;
+  error: number;              // 이 뉴런이 받은 오류 크기
+  gradients: number[];        // 각 가중치에 대한 그래디언트
+  weightDeltas: number[];     // 실제 가중치 변화량
+  biasDelta: number;          // bias 변화량
+  oldWeights: number[];       // 업데이트 전 가중치
+  newWeights: number[];       // 업데이트 후 가중치
+  oldBias: number;
+  newBias: number;
+  // 추가: 계산 과정 상세 정보
+  activation: number;         // 이 뉴런의 활성화 값 (y)
+  derivative: number;         // sigmoid 미분값 y(1-y)
+  gradient: number;           // error × derivative (최종 그래디언트)
+  inputs: number[];           // 이 뉴런으로 들어온 입력값들
 }
 
 /**
- * Weight delta information for visualization
+ * Complete backpropagation steps for visualization
  */
-export interface WeightDeltas {
-  output_layer2: MatrixData | null;
-  layer2_layer1: MatrixData | null;
-  layer1_input: MatrixData | null;
+export interface BackpropSteps {
+  layer1: BackpropNeuronData[];
+  layer2: BackpropNeuronData[];
+  output: BackpropNeuronData[];
+  totalLoss: number;
+  targetClass: number;
+  predictions: number[];
 }
 
 /**

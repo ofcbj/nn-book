@@ -8,7 +8,7 @@ interface UseNeuralNetworkReturn {
   nn: NeuralNetwork;
   visualizer: Visualizer | null;
   setVisualizer: (v: Visualizer) => void;
-  
+
   // Input values
   grade: number;
   attitude: number;
@@ -16,7 +16,8 @@ interface UseNeuralNetworkReturn {
   targetValue: number;
   learningRate: number;
   animationSpeed: number;
-  
+  isManualMode: boolean;
+
   // Setters
   setGrade: (v: number) => void;
   setAttitude: (v: number) => void;
@@ -24,21 +25,23 @@ interface UseNeuralNetworkReturn {
   setTargetValue: (v: number) => void;
   setLearningRate: (v: number) => void;
   setAnimationSpeed: (v: number) => void;
-  
+  setIsManualMode: (v: boolean) => void;
+  nextStep: () => void;
+
   // Stats
   epoch: number;
   loss: number;
   output: number[] | null;
   steps: CalculationSteps | null;
-  
+
   // Training state
   isTraining: boolean;
   isAnimating: boolean;
-  
+
   // Loss modal
   showLossModal: boolean;
   lossModalData: { targetClass: number; predictions: number[]; loss: number } | null;
-  
+
   // Actions
   trainOneStepWithAnimation: () => Promise<void>;
   toggleTraining: () => void;
@@ -60,7 +63,17 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   const [targetValue, setTargetValue] = useState(2);
   const [learningRate, setLearningRate] = useState(0.1);
   const [animationSpeed, setAnimationSpeed] = useState(1.0);
-  
+  const [isManualMode, setIsManualMode] = useState(false);
+
+  // Use ref for animation speed so it's always current
+  const animationSpeedRef = useRef(animationSpeed);
+  const manualModeRef = useRef(isManualMode);
+  const manualStepResolverRef = useRef<(() => void) | null>(null);
+
+  // Update ref whenever animationSpeed changes
+  animationSpeedRef.current = animationSpeed;
+  manualModeRef.current = isManualMode;
+
   // Stats
   const [epoch, setEpoch] = useState(0);
   const [loss, setLoss] = useState(0);
@@ -80,7 +93,23 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     visualizerRef.current = v;
   }, []);
 
-  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  const sleep = (ms: number) => {
+    // Manual mode or speed is 0: wait for user to click "Next Step"
+    if (manualModeRef.current || animationSpeedRef.current === 0) {
+      return new Promise<void>(resolve => {
+        manualStepResolverRef.current = resolve;
+      });
+    } else {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+  };
+
+  const nextStep = useCallback(() => {
+    if (manualStepResolverRef.current) {
+      manualStepResolverRef.current();
+      manualStepResolverRef.current = null;
+    }
+  }, []);
   
   const updateVisualization = useCallback(() => {
     const nn = nnRef.current;
@@ -104,37 +133,37 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   ) => {
     const visualizer = visualizerRef.current;
     if (!visualizer) return;
-    
+
     const baseDelay = 400;
     const connectionDelay = 150;
-    
+
     visualizer.currentNeuronData = neuronData;
     visualizer.highlightedNeuron = { layer, index };
-    
+
     // Stage 1: Connections
     visualizer.calculationStage = 'connections';
     visualizer.intermediateValue = null;
     visualizer.update(nnRef.current);
-    await sleep(connectionDelay / animationSpeed);
-    
+    await sleep(connectionDelay / animationSpeedRef.current);
+
     // Stage 2: Dot product
     visualizer.calculationStage = 'dotProduct';
     visualizer.intermediateValue = neuronData.dotProduct;
     visualizer.update(nnRef.current);
-    await sleep(baseDelay / animationSpeed);
-    
+    await sleep(baseDelay / animationSpeedRef.current);
+
     // Stage 3: Bias
     visualizer.calculationStage = 'bias';
     visualizer.intermediateValue = neuronData.withBias;
     visualizer.update(nnRef.current);
-    await sleep(baseDelay / animationSpeed);
-    
+    await sleep(baseDelay / animationSpeedRef.current);
+
     // Stage 4: Activation
     visualizer.calculationStage = 'activation';
     visualizer.intermediateValue = neuronData.activated;
     visualizer.update(nnRef.current);
-    await sleep(baseDelay / animationSpeed);
-    
+    await sleep(baseDelay / animationSpeedRef.current);
+
     // Clear
     visualizer.calculationStage = null;
     visualizer.intermediateValue = null;
@@ -177,34 +206,65 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     }
   };
   
-  const animateBackwardPropagation = async () => {
+  const animateBackpropNeuron = async (
+    layer: 'layer1' | 'layer2' | 'output',
+    index: number,
+    neuronData: any
+  ) => {
     const visualizer = visualizerRef.current;
     if (!visualizer) return;
-    
-    const baseDelay = 250;
-    
+
+    const stages: Array<'error' | 'derivative' | 'gradient' | 'weightDelta' | 'update'> =
+      ['error', 'derivative', 'gradient', 'weightDelta', 'update'];
+
+    const stageDuration = [300, 350, 350, 350, 300]; // Duration for each stage
+
+    visualizer.backpropPhase = { layer, index };
+    visualizer.currentBackpropData = neuronData;
+
+    for (let i = 0; i < stages.length; i++) {
+      if (shouldStopAnimationRef.current) break;
+
+      visualizer.backpropStage = stages[i];
+      visualizer.update(nnRef.current);
+      await sleep(stageDuration[i] / animationSpeedRef.current);
+    }
+
+    visualizer.backpropStage = null;
+  };
+
+  const animateBackwardPropagation = async () => {
+    const visualizer = visualizerRef.current;
+    const nn = nnRef.current;
+    if (!visualizer || !nn.lastBackpropSteps) return;
+
+    const backpropData = nn.lastBackpropSteps;
+
     // Output layer
     for (let i = 2; i >= 0; i--) {
-      visualizer.backpropPhase = { layer: 'output', index: i };
-      visualizer.update(nnRef.current);
-      await sleep(baseDelay / animationSpeed);
+      if (shouldStopAnimationRef.current) break;
+      await animateBackpropNeuron('output', i, backpropData.output[i]);
     }
-    
+
     // Layer 2
-    for (let i = 2; i >= 0; i--) {
-      visualizer.backpropPhase = { layer: 'layer2', index: i };
-      visualizer.update(nnRef.current);
-      await sleep(baseDelay / animationSpeed);
+    if (!shouldStopAnimationRef.current) {
+      for (let i = 2; i >= 0; i--) {
+        if (shouldStopAnimationRef.current) break;
+        await animateBackpropNeuron('layer2', i, backpropData.layer2[i]);
+      }
     }
-    
+
     // Layer 1
-    for (let i = 4; i >= 0; i--) {
-      visualizer.backpropPhase = { layer: 'layer1', index: i };
-      visualizer.update(nnRef.current);
-      await sleep(baseDelay / animationSpeed);
+    if (!shouldStopAnimationRef.current) {
+      for (let i = 4; i >= 0; i--) {
+        if (shouldStopAnimationRef.current) break;
+        await animateBackpropNeuron('layer1', i, backpropData.layer1[i]);
+      }
     }
-    
+
     visualizer.backpropPhase = null;
+    visualizer.currentBackpropData = null;
+    visualizer.backpropStage = null;
   };
 
   const trainOneStepWithAnimation = useCallback(async () => {
@@ -236,20 +296,20 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   
   const closeLossModal = useCallback(async () => {
     setShowLossModal(false);
-    
+
     // Backward pass animation
     await animateBackwardPropagation();
-    await sleep(500 / animationSpeed);
-    
+    await sleep(500 / animationSpeedRef.current);
+
     // Update stats
     setEpoch(prev => prev + 1);
     setLoss(nnRef.current.lastLoss);
-    
+
     // Final update
     updateVisualization();
     setIsAnimating(false);
     shouldStopAnimationRef.current = false;
-  }, [animationSpeed, updateVisualization]);
+  }, [updateVisualization]);
   
   const trainOneStep = useCallback(() => {
     const nn = nnRef.current;
@@ -318,12 +378,15 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     targetValue,
     learningRate,
     animationSpeed,
+    isManualMode,
     setGrade,
     setAttitude,
     setResponse,
     setTargetValue,
     setLearningRate: handleLearningRateChange,
     setAnimationSpeed,
+    setIsManualMode,
+    nextStep,
     epoch,
     loss,
     output,

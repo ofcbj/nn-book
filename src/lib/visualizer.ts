@@ -1,7 +1,7 @@
 // Visualizer for React - Canvas-based visualization
 // Modified to work with React refs instead of direct DOM queries
 
-import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData } from './types';
+import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage } from './types';
 import type { NeuralNetwork } from './network';
 
 type LayerType = 'input' | 'layer1' | 'layer2' | 'output';
@@ -9,19 +9,21 @@ type LayerType = 'input' | 'layer1' | 'layer2' | 'output';
 export class Visualizer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
-  
+
   inputLabels: string[] = ['성적', '태도', '응답수준'];
   highlightedNeuron: AnimationPhase | null = null;
-  
+
   // Calculation animation properties
   calculationStage: CalculationStage | null = null;
   intermediateValue: number | null = null;
   activeConnections: number[] = [];
   currentNeuronData: NeuronCalculation | null = null;
-  
+
   // Backpropagation visualization
   showLoss: LossDisplayData | null = null;
   backpropPhase: AnimationPhase | null = null;
+  currentBackpropData: BackpropNeuronData | null = null;
+  backpropStage: BackpropStage | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -276,10 +278,33 @@ export class Visualizer {
     const maxLineWidth = Math.max(...lines.map(line => ctx.measureText(line).width));
     const boxWidth = maxLineWidth + padding * 2;
     const boxHeight = lineHeight * lines.length + padding * 2;
-    
+
+    // Calculate initial box position (centered on neuron)
+    let boxX = x - boxWidth / 2;
+    let boxY = y - boxHeight / 2;
+
+    // Adjust position to stay within canvas boundaries
+    const canvasWidth = this.canvas.width;
+    const canvasHeight = this.canvas.height;
+    const margin = 10; // Keep 10px margin from edges
+
+    // Adjust horizontal position
+    if (boxX < margin) {
+      boxX = margin;
+    } else if (boxX + boxWidth > canvasWidth - margin) {
+      boxX = canvasWidth - margin - boxWidth;
+    }
+
+    // Adjust vertical position
+    if (boxY < margin) {
+      boxY = margin;
+    } else if (boxY + boxHeight > canvasHeight - margin) {
+      boxY = canvasHeight - margin - boxHeight;
+    }
+
     ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
     ctx.beginPath();
-    ctx.roundRect(x - boxWidth / 2, y - boxHeight / 2, boxWidth, boxHeight, 6);
+    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
     ctx.fill();
     
     ctx.strokeStyle = color;
@@ -289,10 +314,11 @@ export class Visualizer {
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    
+
+    const textCenterX = boxX + boxWidth / 2;
     lines.forEach((line, i) => {
-      const lineY = y - boxHeight / 2 + padding + lineHeight / 2 + i * lineHeight;
-      ctx.fillText(line, x, lineY);
+      const lineY = boxY + padding + lineHeight / 2 + i * lineHeight;
+      ctx.fillText(line, textCenterX, lineY);
     });
   }
 
@@ -549,10 +575,10 @@ export class Visualizer {
 
   private drawBackpropHighlight(ctx: CanvasRenderingContext2D, nodes: NodePosition[][]): void {
     if (!this.backpropPhase) return;
-    
+
     const { layer, index } = this.backpropPhase;
     let nodeInfo: NodePosition | null = null;
-    
+
     if (layer === 'layer1' && nodes[1]) {
       nodeInfo = nodes[1][index];
     } else if (layer === 'layer2' && nodes[2]) {
@@ -560,27 +586,181 @@ export class Visualizer {
     } else if (layer === 'output' && nodes[3]) {
       nodeInfo = nodes[3][index];
     }
-    
+
     if (!nodeInfo) return;
-    
+
+    // Draw error glow
     ctx.save();
+    const errorMagnitude = this.currentBackpropData ? Math.abs(this.currentBackpropData.error) : 0.5;
+    const glowSize = Math.min(errorMagnitude * 100 + 20, 60);
+
     const gradient = ctx.createRadialGradient(
       nodeInfo.centerX, nodeInfo.centerY, 0,
-      nodeInfo.centerX, nodeInfo.centerY, nodeInfo.width / 2 + 20
+      nodeInfo.centerX, nodeInfo.centerY, nodeInfo.width / 2 + glowSize
     );
-    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.6)');
+    gradient.addColorStop(0, `rgba(239, 68, 68, ${errorMagnitude * 0.8})`);
     gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
-    
+
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.arc(nodeInfo.centerX, nodeInfo.centerY, nodeInfo.width / 2 + 25, 0, Math.PI * 2);
+    ctx.arc(nodeInfo.centerX, nodeInfo.centerY, nodeInfo.width / 2 + glowSize, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillStyle = '#ef4444';
-    ctx.textAlign = 'center';
-    ctx.fillText('◄ BACKPROP', nodeInfo.centerX, nodeInfo.y - 35);
+
+    // Draw error information overlay with stage-by-stage formulas
+    if (this.currentBackpropData && this.backpropStage) {
+      const data = this.currentBackpropData;
+      const stage = this.backpropStage;
+
+      const y = data.activation;
+      const deriv = data.derivative;
+      const mostChangedIdx = data.weightDeltas.reduce((max, d, i) =>
+        Math.abs(d) > Math.abs(data.weightDeltas[max]) ? i : max, 0
+      );
+      const inputVal = data.inputs[mostChangedIdx];
+      const weightDelta = data.weightDeltas[mostChangedIdx];
+
+      let title = '';
+      let color = '';
+      let content: string[] = [];
+
+      switch(stage) {
+        case 'error':
+          title = '1️⃣ 받은 오류 (Error)';
+          color = '#fca5a5';
+          content = [
+            `이 뉴런이 받은 오류:`,
+            `error = ${data.error.toFixed(4)}`
+          ];
+          break;
+
+        case 'derivative':
+          title = '2️⃣ 시그모이드 편미분 (σ\')';
+          color = '#a5b4fc';
+          content = [
+            `σ'(y) = y × (1 - y)`,
+            `σ'(${y.toFixed(3)}) = ${y.toFixed(3)} × (1 - ${y.toFixed(3)})`,
+            `= ${deriv.toFixed(4)}`
+          ];
+          break;
+
+        case 'gradient':
+          title = '3️⃣ 그래디언트 계산';
+          color = '#60a5fa';
+          content = [
+            `gradient = error × σ'(y)`,
+            `= ${data.error.toFixed(4)} × ${deriv.toFixed(4)}`,
+            `= ${data.gradient.toFixed(4)}`
+          ];
+          break;
+
+        case 'weightDelta':
+          title = '4️⃣ 가중치 변화량 계산';
+          color = '#fbbf24';
+          content = [
+            `각 가중치를 얼마나 조정할지 계산:`,
+            `ΔW = gradient × input × 학습률(0.1)`,
+            ``,
+            `예) input[${mostChangedIdx}]에 연결된 가중치:`,
+            `ΔW[${mostChangedIdx}] = ${data.gradient.toFixed(4)} × ${inputVal.toFixed(3)} × 0.1 = ${weightDelta.toFixed(5)}`
+          ];
+          break;
+
+        case 'update':
+          title = '5️⃣ 가중치 업데이트 완료';
+          color = '#34d399';
+          const biasChange = data.newBias - data.oldBias;
+          const biasArrow = biasChange > 0 ? '↗' : '↘';
+
+          // Find indices of top 2 most changed weights
+          const sortedIndices = data.weightDeltas
+            .map((d, i) => ({ delta: Math.abs(d), index: i }))
+            .sort((a, b) => b.delta - a.delta)
+            .slice(0, 2);
+
+          content = [
+            `가장 많이 변한 가중치들:`,
+            `W[${sortedIndices[0].index}]: ${data.oldWeights[sortedIndices[0].index].toFixed(4)} ${data.weightDeltas[sortedIndices[0].index] > 0 ? '↗' : '↘'} ${data.newWeights[sortedIndices[0].index].toFixed(4)}`,
+            `W[${sortedIndices[1].index}]: ${data.oldWeights[sortedIndices[1].index].toFixed(4)} ${data.weightDeltas[sortedIndices[1].index] > 0 ? '↗' : '↘'} ${data.newWeights[sortedIndices[1].index].toFixed(4)}`,
+            ``,
+            `Bias: ${data.oldBias.toFixed(4)} ${biasArrow} ${data.newBias.toFixed(4)}`
+          ];
+          break;
+      }
+
+      // Draw overlay box
+      const boxWidth = 420;
+      const lineHeight = 22;
+      const boxHeight = 60 + content.length * lineHeight;
+
+      // Calculate initial box position (centered above neuron)
+      let boxX = nodeInfo.centerX - boxWidth / 2;
+      let boxY = nodeInfo.y - boxHeight - 20;
+
+      // Adjust position to stay within canvas boundaries
+      const canvasWidth = this.canvas.width;
+      const canvasHeight = this.canvas.height;
+      const margin = 10; // Keep 10px margin from edges
+
+      // Adjust horizontal position
+      if (boxX < margin) {
+        boxX = margin;
+      } else if (boxX + boxWidth > canvasWidth - margin) {
+        boxX = canvasWidth - margin - boxWidth;
+      }
+
+      // Adjust vertical position
+      if (boxY < margin) {
+        // If box would go above canvas, place it below the neuron instead
+        boxY = nodeInfo.y + nodeInfo.height + 20;
+        // Check if it still fits below
+        if (boxY + boxHeight > canvasHeight - margin) {
+          boxY = canvasHeight - margin - boxHeight;
+        }
+      } else if (boxY + boxHeight > canvasHeight - margin) {
+        boxY = canvasHeight - margin - boxHeight;
+      }
+
+      // Background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+      ctx.beginPath();
+      ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 8);
+      ctx.fill();
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Title
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      const textCenterX = boxX + boxWidth / 2;
+      ctx.fillText(title, textCenterX, boxY + 25);
+
+      // Content
+      ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'center';
+      let yOffset = boxY + 50;
+
+      content.forEach((line, idx) => {
+        if (idx === content.length - 1) {
+          ctx.fillStyle = color;
+          ctx.font = 'bold 14px monospace';
+        } else {
+          ctx.fillStyle = '#cbd5e1';
+          ctx.font = '13px monospace';
+        }
+        ctx.fillText(line, textCenterX, yOffset);
+        yOffset += lineHeight;
+      });
+    } else {
+      // Fallback label
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillStyle = '#ef4444';
+      ctx.textAlign = 'center';
+      ctx.fillText('◄ BACKPROP', nodeInfo.centerX, nodeInfo.y - 35);
+    }
   }
 
   update(nn: NeuralNetwork): void {

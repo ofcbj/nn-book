@@ -18,12 +18,15 @@ export default function App() {
     targetValue,
     learningRate,
     animationSpeed,
+    isManualMode,
     setGrade,
     setAttitude,
     setResponse,
     setTargetValue,
     setLearningRate,
     setAnimationSpeed,
+    setIsManualMode,
+    nextStep,
     epoch,
     loss,
     output,
@@ -72,12 +75,15 @@ export default function App() {
                 targetValue={targetValue}
                 learningRate={learningRate}
                 animationSpeed={animationSpeed}
+                isManualMode={isManualMode}
                 onGradeChange={setGrade}
                 onAttitudeChange={setAttitude}
                 onResponseChange={setResponse}
                 onTargetChange={setTargetValue}
                 onLearningRateChange={setLearningRate}
                 onAnimationSpeedChange={setAnimationSpeed}
+                onManualModeChange={setIsManualMode}
+                onNextStep={nextStep}
                 onStep={trainOneStepWithAnimation}
                 onTrainToggle={toggleTraining}
                 onReset={reset}

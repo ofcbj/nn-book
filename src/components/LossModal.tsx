@@ -193,15 +193,54 @@ export default function LossModal({
                 </Typography>
               </Box>
 
+              <Box sx={{ mb: 2 }}>
+                <Typography color="text.secondary" fontSize="0.85rem" sx={{ mb: 1 }}>
+                  🔍 이번에 틀린 이유:
+                </Typography>
+                <Box sx={{ p: 1.5, bgcolor: 'rgba(239, 68, 68, 0.15)', borderRadius: 1, border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                  {predictions.map((prob, i) => {
+                    const expected = targetOneHot[i];
+                    const error = expected - prob;
+                    if (Math.abs(error) < 0.01) return null;
+                    return (
+                      <Typography key={i} fontSize="0.8rem" sx={{ mb: 0.5 }}>
+                        <strong>{classNames[i]}</strong>:
+                        {error > 0
+                          ? ` 너무 낮음 (${(error * 100).toFixed(1)}% 더 높여야 함)`
+                          : ` 너무 높음 (${(Math.abs(error) * 100).toFixed(1)}% 낮춰야 함)`}
+                      </Typography>
+                    );
+                  })}
+                </Box>
+              </Box>
+
+              <Box sx={{ mb: 2 }}>
+                <Typography color="text.secondary" fontSize="0.85rem" sx={{ mb: 1 }}>
+                  🎓 역전파를 쉽게 이해하기:
+                </Typography>
+                <Box sx={{ p: 1.5, bgcolor: 'rgba(59, 130, 246, 0.1)', borderRadius: 1, border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                  <Typography fontSize="0.85rem" sx={{ mb: 1 }}>
+                    <strong>비유:</strong> 팀 프로젝트에서 실수했을 때
+                  </Typography>
+                  <Typography fontSize="0.8rem" color="text.secondary" component="div">
+                    • <strong>오류 발견</strong>: "최종 결과가 틀렸네!"<br/>
+                    • <strong>영향력 파악</strong>: 각 팀원이 결과에 미친 영향도 측정<br/>
+                    • <strong>조정량 계산</strong>: 영향이 큰 사람일수록 더 많이 개선<br/>
+                    • <strong>개선 적용</strong>: 다음번엔 더 나은 판단을 하도록
+                  </Typography>
+                </Box>
+              </Box>
+
               <Box>
                 <Typography color="text.secondary" fontSize="0.85rem" sx={{ mb: 0.5 }}>
-                  ⚡ Backpropagation 과정:
+                  ⚡ 역전파 4단계 과정:
                 </Typography>
                 <Typography fontSize="0.9rem" component="div">
-                  <ol style={{ margin: 0, paddingLeft: 20 }}>
-                    <li><strong>오차 계산</strong>: 각 출력 뉴런의 오차를 계산</li>
-                    <li><strong>역전파</strong>: 출력층 → 은닉층 → 입력층 순으로 전달</li>
-                    <li><strong>가중치 업데이트</strong>: 오차를 줄이는 방향으로 조정</li>
+                  <ol style={{ margin: 0, paddingLeft: 20, fontSize: '0.85rem' }}>
+                    <li><strong>받은 오류</strong>: 이 뉴런이 받은 실수 신호</li>
+                    <li><strong>조정 방향 계산</strong>: 오류 × 민감도(기울기)</li>
+                    <li><strong>가중치 변화량</strong>: 조정방향 × 입력 × 학습률</li>
+                    <li><strong>업데이트</strong>: 가중치와 bias를 실제로 수정</li>
                   </ol>
                 </Typography>
               </Box>
