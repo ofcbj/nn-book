@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neural Network: 면접 시스템 시각화</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1>🧠 Neural Network: 면접 시스템 시각화</h1>
+      <p class="subtitle">입력값과 가중치의 내적, 그리고 활성화 함수를 통한 의사결정 과정</p>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Left Panel: Controls -->
+      <aside class="control-panel">
+        <div class="panel-section">
+          <h2>📊 입력 제어</h2>
+          
+          <div class="input-group">
+            <label for="grade">성적 (Grade)</label>
+            <input type="range" id="grade" min="0" max="1" step="0.01" value="0.7">
+            <span class="value-display" id="gradeValue">0.7</span>
+          </div>
+
+          <div class="input-group">
+            <label for="attitude">태도 (Attitude)</label>
+            <input type="range" id="attitude" min="0" max="1" step="0.01" value="0.5">
+            <span class="value-display" id="attitudeValue">0.5</span>
+          </div>
+
+          <div class="input-group">
+            <label for="response">응답수준 (Response)</label>
+            <input type="range" id="response" min="0" max="1" step="0.01" value="0.8">
+            <span class="value-display" id="responseValue">0.8</span>
+          </div>
+
+          <div class="input-group">
+            <label for="targetValue">목표 결정 (Target)</label>
+            <input type="range" id="targetValue" min="0" max="2" step="1" value="2">
+            <span class="value-display" id="targetValueDisplay">합격</span>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h2>⚙️ 학습 제어</h2>
+          
+          <div class="input-group">
+            <label for="learningRate">학습률 (Learning Rate)</label>
+            <input type="range" id="learningRate" min="0.01" max="0.5" step="0.01" value="0.1">
+            <span class="value-display" id="learningRateValue">0.1</span>
+          </div>
+
+          <div class="input-group">
+            <label for="animationSpeed">애니메이션 속도 (Speed)</label>
+            <input type="range" id="animationSpeed" min="0.1" max="2" step="0.1" value="1">
+            <span class="value-display" id="animationSpeedValue">1.0x</span>
+          </div>
+
+          <div class="button-group">
+            <button id="stepBtn" class="btn btn-primary">1 Step</button>
+            <button id="trainBtn" class="btn btn-success">학습 시작</button>
+            <button id="resetBtn" class="btn btn-danger">리셋</button>
+          </div>
+        </div>
+
+        <div class="panel-section stats-section">
+          <h2>📈 통계 정보</h2>
+          <div class="stat">
+            <span class="stat-label">Epoch:</span>
+            <span class="stat-value" id="epochCount">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Loss:</span>
+            <span class="stat-value" id="lossValue">0.000000</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Output:</span>
+            <span class="stat-value" id="currentOutput">0.000</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center: Network Visualization -->
+      <div class="visualization-area">
+        <div class="canvas-container">
+          <h2>네트워크 구조</h2>
+          <canvas id="networkCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Right Panel: Calculation Display -->
+      <aside class="calculation-panel">
+        <h2>🔢 계산 과정</h2>
+        <div id="calculationDisplay" class="scrollable">
+          <!-- Calculation details will be inserted here by JavaScript -->
+        </div>
+      </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>
+        Architecture: <strong>3 inputs</strong> → <strong>5 neurons(1차)</strong> → 
+        <strong>3 neurons(2차)</strong> → <strong>1 output</strong>
+      </p>
+      <p class="description">
+        이 시각화는 면접자의 3가지 속성(성적, 태도, 응답수준)이 1차 면접관(5명)을 거쳐 
+        2차 면접관(3명)에게 전달되고 최종 결정으로 이어지는 과정을 보여줍니다.
+      </p>
+    </footer>
+  </div>
+
+  <!-- Loss Results Modal -->
+  <div id="lossModal" class="loss-modal-overlay" style="display: none;">
+    <div class="loss-modal">
+      <div class="loss-modal-header">
+        <h2>📊 Forward Pass 결과 및 Loss 계산</h2>
+      </div>
+      <div class="loss-modal-body">
+        <!-- Two Column Layout -->
+        <div class="modal-two-columns">
+          <!-- Left Column: Loss Calculations -->
+          <div class="modal-left-column">
+            <div class="loss-info-grid">
+              <!-- Expected Result Section -->
+              <div class="loss-info-section">
+                <h3>🎯 기대 결과 (Expected)</h3>
+                <div class="result-display">
+                  <div class="result-label">Target Class:</div>
+                  <div class="result-value" id="modalTargetClass">합격</div>
+                  <div class="result-label">One-Hot Encoding:</div>
+                  <div class="result-vector" id="modalTargetVector">[0, 0, 1]</div>
+                </div>
+              </div>
+
+              <!-- Forward Result Section -->
+              <div class="loss-info-section">
+                <h3>🔮 Forward 결과 (Actual)</h3>
+                <div class="result-display">
+                  <div class="result-label">Predictions:</div>
+                  <div class="prediction-bars" id="modalPredictions">
+                    <!-- Filled by JavaScript -->
+                  </div>
+                  <div class="result-label">Probabilities:</div>
+                  <div class="result-vector" id="modalPredVector">[0.123, 0.234, 0.643]</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Loss Display -->
+            <div class="loss-value-section">
+              <div class="loss-function-name">Cross-Entropy Loss</div>
+              <div class="loss-value-display">
+                <span class="loss-label">Loss =</span>
+                <span class="loss-value" id="modalLossValue">0.1234</span>
+              </div>
+              <div class="loss-formula">L = -Σ(target × log(predicted))</div>
+            </div>
+
+            <!-- Loss Calculation Details -->
+            <div class="loss-calculation-section">
+              <h4>📐 Loss 계산 과정</h4>
+              <div class="calculation-steps">
+                <div class="calc-step">
+                  <div class="calc-label">1. Cross-Entropy 수식 전개:</div>
+                  <div class="calc-formula" id="lossFormulaExpanded">
+                    L = -(0×log(0.135) + 0×log(0.428) + 1×log(0.436))
+                  </div>
+                </div>
+                <div class="calc-step">
+                  <div class="calc-label">2. 정답 클래스만 계산 (나머지는 0):</div>
+                  <div class="calc-formula" id="lossFormulaSimplified">
+                    L = -log(0.436)
+                  </div>
+                </div>
+                <div class="calc-step">
+                  <div class="calc-label">3. 최종 결과:</div>
+                  <div class="calc-formula" id="lossFormulaResult">
+                    L = 0.829438
+                  </div>
+                </div>
+                <div class="calc-note" id="lossNote">
+                  💡 <strong>합격</strong>을 가장 높게 예측했지만, 확률이 <strong>43.6%</strong>밖에 안 되어 Loss가 큽니다. 
+                  확률이 100%에 가까워질수록 Loss는 0에 가까워집니다!
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Results Interpretation -->
+          <div class="modal-right-column">
+            <!-- Explanation Section -->
+            <div class="loss-explanation-section">
+              <h3>📚 결과 해석</h3>
+              
+              <div class="explanation-item">
+                <div class="explanation-label">🎯 Expected (기대 결과):</div>
+                <div class="explanation-text">
+                  신경망이 <strong id="explainTargetClass">합격</strong>을 예측하도록 학습해야 합니다.
+                  One-Hot Encoding은 정답 클래스를 1, 나머지를 0으로 표현합니다.
+                </div>
+              </div>
+
+              <div class="explanation-item">
+                <div class="explanation-label">📊 Loss 값의 의미:</div>
+                <div class="explanation-text">
+                  Loss 값 <strong id="explainLossValue">0.1234</strong>는 <span id="lossInterpretation">예측과 정답 사이의 차이</span>를 나타냅니다.
+                  <strong>Loss가 0에 가까울수록</strong> 신경망의 예측이 정답에 가깝습니다.
+                </div>
+              </div>
+
+              <div class="explanation-item">
+                <div class="explanation-label">⚡ Backpropagation 과정:</div>
+                <div class="explanation-text">
+                  이제 <strong>Backward Pass</strong>가 시작되면:
+                  <ol class="explanation-list">
+                    <li><strong>오차 계산</strong>: 각 출력 뉴런의 오차를 계산합니다</li>
+                    <li><strong>역전파</strong>: 오차를 출력층 → 은닉층 → 입력층 순으로 전달합니다</li>
+                    <li><strong>가중치 업데이트</strong>: 오차를 줄이는 방향으로 모든 가중치를 조정합니다</li>
+                  </ol>
+                  이 과정을 반복하면 신경망이 점점 더 정확한 예측을 하게 됩니다!
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Button -->
+            <button id="startBackwardBtn" class="start-backward-btn">
+              ▶ Backward Process 시작
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/network.js"></script>
+  <script src="js/visualizer.js"></script>
+  <script src="js/controls.js"></script>
+</body>
+</html>
