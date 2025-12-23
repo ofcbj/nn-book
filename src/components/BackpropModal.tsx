@@ -160,30 +160,30 @@ export default function BackpropModal({ open, data, onClose }: BackpropModalProp
                 {/* Layer 1 */}
                 <Box sx={{ p: 2, bgcolor: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: 2 }}>
                   <Typography fontWeight={600} color="success.light">
-                    {t('backpropSummary.layer1Weights')} ({data.oldWeights.layer1.reduce((sum, w) => sum + w.length, 0)} 개)
+                    {t('backpropSummary.layer1Weights')} ({data.oldWeights.layer1.reduce((sum, w) => sum + w.length, 0)} {t('common.count')})
                   </Typography>
                   <Typography fontSize="0.85rem" color="text.secondary" sx={{ mt: 0.5 }}>
-                    평균 변화량: {calculateAverageChange(data.oldWeights.layer1, data.newWeights.layer1).toFixed(6)}
+                    {t('backpropSummary.averageChange')} {calculateAverageChange(data.oldWeights.layer1, data.newWeights.layer1).toFixed(6)}
                   </Typography>
                 </Box>
 
                 {/* Layer 2 */}
                 <Box sx={{ p: 2, bgcolor: 'rgba(249, 115, 22, 0.1)', border: '1px solid rgba(249, 115, 22, 0.3)', borderRadius: 2 }}>
                   <Typography fontWeight={600} color="warning.light">
-                    {t('backpropSummary.layer2Weights')} ({data.oldWeights.layer2.reduce((sum, w) => sum + w.length, 0)} 개)
+                    {t('backpropSummary.layer2Weights')} ({data.oldWeights.layer2.reduce((sum, w) => sum + w.length, 0)} {t('common.count')})
                   </Typography>
                   <Typography fontSize="0.85rem" color="text.secondary" sx={{ mt: 0.5 }}>
-                    평균 변화량: {calculateAverageChange(data.oldWeights.layer2, data.newWeights.layer2).toFixed(6)}
+                    {t('backpropSummary.averageChange')} {calculateAverageChange(data.oldWeights.layer2, data.newWeights.layer2).toFixed(6)}
                   </Typography>
                 </Box>
 
                 {/* Output */}
                 <Box sx={{ p: 2, bgcolor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 2 }}>
                   <Typography fontWeight={600} color="error.light">
-                    {t('backpropSummary.outputWeights')} ({data.oldWeights.output.reduce((sum, w) => sum + w.length, 0)} 개)
+                    {t('backpropSummary.outputWeights')} ({data.oldWeights.output.reduce((sum, w) => sum + w.length, 0)} {t('common.count')})
                   </Typography>
                   <Typography fontSize="0.85rem" color="text.secondary" sx={{ mt: 0.5 }}>
-                    평균 변화량: {calculateAverageChange(data.oldWeights.output, data.newWeights.output).toFixed(6)}
+                    {t('backpropSummary.averageChange')} {calculateAverageChange(data.oldWeights.output, data.newWeights.output).toFixed(6)}
                   </Typography>
                 </Box>
               </Stack>
@@ -195,13 +195,13 @@ export default function BackpropModal({ open, data, onClose }: BackpropModalProp
                 ⚖️ {t('backpropSummary.biasChanges')}
               </Typography>
               <Typography fontSize="0.85rem" color="text.secondary">
-                Layer 1: {data.oldBiases.layer1.length} 개 업데이트
+                Layer 1: {data.oldBiases.layer1.length} {t('common.countUpdates')}
               </Typography>
               <Typography fontSize="0.85rem" color="text.secondary">
-                Layer 2: {data.oldBiases.layer2.length} 개 업데이트
+                Layer 2: {data.oldBiases.layer2.length} {t('common.countUpdates')}
               </Typography>
               <Typography fontSize="0.85rem" color="text.secondary">
-                Output: {data.oldBiases.output.length} 개 업데이트
+                Output: {data.oldBiases.output.length} {t('common.countUpdates')}
               </Typography>
             </Box>
           </Box>

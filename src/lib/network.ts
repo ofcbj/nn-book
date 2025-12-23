@@ -1,148 +1,16 @@
 // Neural Network Implementation with TypeScript
 // Architecture: 3 inputs -> 5 neurons (1차) -> 3 neurons (2차) -> 3 outputs (Softmax)
 
-import type { CalculationSteps, BackpropSteps, BackpropNeuronData } from './types';
+import type { CalculationSteps, BackpropSteps } from './types';
 import i18n from '../i18n';
+import { Matrix } from './matrix';
+import {
+  backpropOutputLayer,
+  backpropLayer2,
+  backpropLayer1,
+  createBackpropSteps
+} from './network/backpropagation';
 
-/**
- * Matrix class for neural network computations
- */
-export class Matrix {
-  rows: number;
-  cols: number;
-  data: number[][];
-
-  constructor(rows: number, cols: number) {
-    this.rows = rows;
-    this.cols = cols;
-    this.data = Array(rows).fill(null).map(() => Array(cols).fill(0));
-  }
-
-  static fromArray(arr: number[]): Matrix {
-    const m = new Matrix(arr.length, 1);
-    for (let i = 0; i < arr.length; i++) {
-      m.data[i][0] = arr[i];
-    }
-    return m;
-  }
-
-  toArray(): number[] {
-    const arr: number[] = [];
-    for (let i = 0; i < this.rows; i++) {
-      for (let j = 0; j < this.cols; j++) {
-        arr.push(this.data[i][j]);
-      }
-    }
-    return arr;
-  }
-
-  randomize(): void {
-    for (let i = 0; i < this.rows; i++) {
-      for (let j = 0; j < this.cols; j++) {
-        this.data[i][j] = Math.random(); // 0 to 1 (positive weights only)
-      }
-    }
-  }
-  
-  randomizeBias(): void {
-    // Bias can be slightly negative to adjust threshold
-    for (let i = 0; i < this.rows; i++) {
-      for (let j = 0; j < this.cols; j++) {
-        this.data[i][j] = Math.random() - 0.5; // -0.5 to 0.5
-      }
-    }
-  }
-
-  static multiply(a: Matrix, b: Matrix): Matrix {
-    if (a.cols !== b.rows) {
-      console.error('Columns of A must match rows of B.');
-      return new Matrix(0, 0);
-    }
-    const result = new Matrix(a.rows, b.cols);
-    for (let i = 0; i < result.rows; i++) {
-      for (let j = 0; j < result.cols; j++) {
-        let sum = 0;
-        for (let k = 0; k < a.cols; k++) {
-          sum += a.data[i][k] * b.data[k][j];
-        }
-        result.data[i][j] = sum;
-      }
-    }
-    return result;
-  }
-
-  static transpose(matrix: Matrix): Matrix {
-    const result = new Matrix(matrix.cols, matrix.rows);
-    for (let i = 0; i < matrix.rows; i++) {
-      for (let j = 0; j < matrix.cols; j++) {
-        result.data[j][i] = matrix.data[i][j];
-      }
-    }
-    return result;
-  }
-
-  static subtract(a: Matrix, b: Matrix): Matrix {
-    const result = new Matrix(a.rows, a.cols);
-    for (let i = 0; i < a.rows; i++) {
-      for (let j = 0; j < a.cols; j++) {
-        result.data[i][j] = a.data[i][j] - b.data[i][j];
-      }
-    }
-    return result;
-  }
-
-  multiply(n: Matrix | number): void {
-    if (n instanceof Matrix) {
-      // Element-wise multiplication
-      for (let i = 0; i < this.rows; i++) {
-        for (let j = 0; j < this.cols; j++) {
-          this.data[i][j] *= n.data[i][j];
-        }
-      }
-    } else {
-      // Scalar multiplication
-      for (let i = 0; i < this.rows; i++) {
-        for (let j = 0; j < this.cols; j++) {
-          this.data[i][j] *= n;
-        }
-      }
-    }
-  }
-
-  add(n: Matrix | number): void {
-    if (n instanceof Matrix) {
-      for (let i = 0; i < this.rows; i++) {
-        for (let j = 0; j < this.cols; j++) {
-          this.data[i][j] += n.data[i][j];
-        }
-      }
-    } else {
-      for (let i = 0; i < this.rows; i++) {
-        for (let j = 0; j < this.cols; j++) {
-          this.data[i][j] += n;
-        }
-      }
-    }
-  }
-
-  static map(matrix: Matrix, func: (val: number) => number): Matrix {
-    const result = new Matrix(matrix.rows, matrix.cols);
-    for (let i = 0; i < matrix.rows; i++) {
-      for (let j = 0; j < matrix.cols; j++) {
-        result.data[i][j] = func(matrix.data[i][j]);
-      }
-    }
-    return result;
-  }
-
-  map(func: (val: number) => number): void {
-    for (let i = 0; i < this.rows; i++) {
-      for (let j = 0; j < this.cols; j++) {
-        this.data[i][j] = func(this.data[i][j]);
-      }
-    }
-  }
-}
 
 // Activation functions
 export function sigmoid(x: number): number {
@@ -293,64 +161,54 @@ export class NeuralNetwork {
     const oldWeights_ih1 = JSON.parse(JSON.stringify(this.weights_input_hidden1.data));
     const oldBias_h1 = JSON.parse(JSON.stringify(this.bias_hidden1.data));
 
-    // Calculate output errors
-    const output_errors = Matrix.subtract(targets, outputs);
-
-    // Calculate output gradient
-    const gradients_output = Matrix.map(outputs, dsigmoid);
-    gradients_output.multiply(output_errors);
-    gradients_output.multiply(this.learning_rate);
-
-    // Calculate hidden2 -> output deltas
-    const hidden2_T = Matrix.transpose(hidden2);
-    const weight_ho_deltas = Matrix.multiply(gradients_output, hidden2_T);
+    // === BACKPROPAGATION ===
+    
+    // Output layer
+    const outputLayerResult = backpropOutputLayer(
+      outputs,
+      targets,
+      hidden2,
+      this.learning_rate
+    );
 
     // Adjust output weights and bias
-    this.weights_hidden2_output.add(weight_ho_deltas);
-    this.bias_output.add(gradients_output);
+    this.weights_hidden2_output.add(outputLayerResult.weight_ho_deltas);
+    this.bias_output.add(outputLayerResult.bias_output_deltas);
 
-    // Calculate hidden2 errors
-    const who_t = Matrix.transpose(this.weights_hidden2_output);
-    const hidden2_errors = Matrix.multiply(who_t, output_errors);
-
-    // Calculate hidden2 gradient
-    const gradients_hidden2 = Matrix.map(hidden2, dsigmoid);
-    gradients_hidden2.multiply(hidden2_errors);
-    gradients_hidden2.multiply(this.learning_rate);
-
-    // Calculate hidden1 -> hidden2 deltas
-    const hidden1_T = Matrix.transpose(hidden1);
-    const weight_h1h2_deltas = Matrix.multiply(gradients_hidden2, hidden1_T);
+    // Layer 2 (Hidden2)
+    const layer2Result = backpropLayer2(
+      outputLayerResult.output_errors,
+      hidden2,
+      hidden1,
+      this.weights_hidden2_output,
+      this.learning_rate
+    );
 
     // Adjust hidden2 weights and bias
-    this.weights_hidden1_hidden2.add(weight_h1h2_deltas);
-    this.bias_hidden2.add(gradients_hidden2);
+    this.weights_hidden1_hidden2.add(layer2Result.weight_h1h2_deltas);
+    this.bias_hidden2.add(layer2Result.bias_hidden2_deltas);
 
-    // Calculate hidden1 errors
-    const wh1h2_t = Matrix.transpose(this.weights_hidden1_hidden2);
-    const hidden1_errors = Matrix.multiply(wh1h2_t, hidden2_errors);
-
-    // Calculate hidden1 gradient
-    const gradients_hidden1 = Matrix.map(hidden1, dsigmoid);
-    gradients_hidden1.multiply(hidden1_errors);
-    gradients_hidden1.multiply(this.learning_rate);
-
-    // Calculate input -> hidden1 deltas
-    const inputs_T = Matrix.transpose(inputs);
-    const weight_ih1_deltas = Matrix.multiply(gradients_hidden1, inputs_T);
+    // Layer 1 (Hidden1)
+    const layer1Result = backpropLayer1(
+      layer2Result.hidden2_errors,
+      hidden1,
+      inputs,
+      this.weights_hidden1_hidden2,
+      this.learning_rate
+    );
 
     // Adjust hidden1 weights and bias
-    this.weights_input_hidden1.add(weight_ih1_deltas);
-    this.bias_hidden1.add(gradients_hidden1);
+    this.weights_input_hidden1.add(layer1Result.weight_ih1_deltas);
+    this.bias_hidden1.add(layer1Result.bias_hidden1_deltas);
 
     // === STORE FOR VISUALIZATION ===
-    this.lastGradients.output = output_errors;
-    this.lastGradients.layer2 = hidden2_errors;
-    this.lastGradients.layer1 = hidden1_errors;
+    this.lastGradients.output = outputLayerResult.output_errors;
+    this.lastGradients.layer2 = layer2Result.hidden2_errors;
+    this.lastGradients.layer1 = layer1Result.hidden1_errors;
 
-    this.lastWeightDeltas.output_layer2 = weight_ho_deltas;
-    this.lastWeightDeltas.layer2_layer1 = weight_h1h2_deltas;
-    this.lastWeightDeltas.layer1_input = weight_ih1_deltas;
+    this.lastWeightDeltas.output_layer2 = outputLayerResult.weight_ho_deltas;
+    this.lastWeightDeltas.layer2_layer1 = layer2Result.weight_h1h2_deltas;
+    this.lastWeightDeltas.layer1_input = layer1Result.weight_ih1_deltas;
 
     // Calculate loss (cross-entropy for softmax)
     const targetOneHot = target_array;
@@ -359,106 +217,37 @@ export class NeuralNetwork {
     );
 
     // Build detailed backprop steps for visualization
-    const targetClass = target_array.indexOf(1);
-    const predictions = outputs.toArray();
-
-    const backpropSteps: BackpropSteps = {
-      output: [],
-      layer2: [],
-      layer1: [],
-      totalLoss: this.lastLoss,
-      targetClass,
-      predictions
-    };
-
-    // Output layer backprop data
-    for (let i = 0; i < 3; i++) {
-      const activation = outputs.data[i][0];
-      const derivative = dsigmoid(activation);
-      const error = output_errors.data[i][0];
-      const gradient = error * derivative;
-
-      const neuronData: BackpropNeuronData = {
-        neuronIndex: i,
-        error: error,
-        gradients: gradients_output.data[i],
-        weightDeltas: weight_ho_deltas.data[i],
-        biasDelta: gradients_output.data[i][0],
-        oldWeights: oldWeights_ho[i],
-        newWeights: this.weights_hidden2_output.data[i],
-        oldBias: oldBias_o[i][0],
-        newBias: this.bias_output.data[i][0],
-        activation: activation,
-        derivative: derivative,
-        gradient: gradient,
-        inputs: hidden2.toArray()
-      };
-      backpropSteps.output.push(neuronData);
-    }
-
-    // Layer 2 backprop data
-    for (let i = 0; i < 3; i++) {
-      const activation = hidden2.data[i][0];
-      const derivative = dsigmoid(activation);
-      const error = hidden2_errors.data[i][0];
-      const gradient = error * derivative;
-
-      // Collect next layer (output) errors and weights for this neuron
-      const nextErrors = output_errors.toArray();
-      const nextWeights = this.weights_hidden2_output.data.map(row => row[i]);
-
-      const neuronData: BackpropNeuronData = {
-        neuronIndex: i,
-        error: error,
-        gradients: gradients_hidden2.data[i],
-        weightDeltas: weight_h1h2_deltas.data[i],
-        biasDelta: gradients_hidden2.data[i][0],
-        oldWeights: oldWeights_h1h2[i],
-        newWeights: this.weights_hidden1_hidden2.data[i],
-        oldBias: oldBias_h2[i][0],
-        newBias: this.bias_hidden2.data[i][0],
-        activation: activation,
-        derivative: derivative,
-        gradient: gradient,
-        inputs: hidden1.toArray(),
-        nextLayerErrors: nextErrors,
-        nextLayerWeights: nextWeights
-      };
-      backpropSteps.layer2.push(neuronData);
-    }
-
-    // Layer 1 backprop data
-    for (let i = 0; i < 5; i++) {
-      const activation = hidden1.data[i][0];
-      const derivative = dsigmoid(activation);
-      const error = hidden1_errors.data[i][0];
-      const gradient = error * derivative;
-
-      // Collect next layer (layer2) errors and weights for this neuron
-      const nextErrors = hidden2_errors.toArray();
-      const nextWeights = this.weights_hidden1_hidden2.data.map(row => row[i]);
-
-      const neuronData: BackpropNeuronData = {
-        neuronIndex: i,
-        error: error,
-        gradients: gradients_hidden1.data[i],
-        weightDeltas: weight_ih1_deltas.data[i],
-        biasDelta: gradients_hidden1.data[i][0],
-        oldWeights: oldWeights_ih1[i],
-        newWeights: this.weights_input_hidden1.data[i],
-        oldBias: oldBias_h1[i][0],
-        newBias: this.bias_hidden1.data[i][0],
-        activation: activation,
-        derivative: derivative,
-        gradient: gradient,
-        inputs: inputs.toArray(),
-        nextLayerErrors: nextErrors,
-        nextLayerWeights: nextWeights
-      };
-      backpropSteps.layer1.push(neuronData);
-    }
-
-    this.lastBackpropSteps = backpropSteps;
+    this.lastBackpropSteps = createBackpropSteps(
+      inputs,
+      hidden1,
+      hidden2,
+      outputs,
+      target_array,
+      outputLayerResult.output_errors,
+      layer2Result.hidden2_errors,
+      layer1Result.hidden1_errors,
+      outputLayerResult.gradients_output,
+      layer2Result.gradients_hidden2,
+      layer1Result.gradients_hidden1,
+      outputLayerResult.weight_ho_deltas,
+      layer2Result.weight_h1h2_deltas,
+      layer1Result.weight_ih1_deltas,
+      oldWeights_ho,
+      oldBias_o,
+      oldWeights_h1h2,
+      oldBias_h2,
+      oldWeights_ih1,
+      oldBias_h1,
+      this.weights_hidden2_output.data,
+      this.bias_output.data,
+      this.weights_hidden1_hidden2.data,
+      this.bias_hidden2.data,
+      this.weights_input_hidden1.data,
+      this.bias_hidden1.data,
+      this.weights_hidden2_output,
+      this.weights_hidden1_hidden2,
+      this.lastLoss
+    );
   }
 
   getCalculationSteps(): CalculationSteps | null {
