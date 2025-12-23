@@ -1,6 +1,8 @@
 // Type definitions for Neural Network Visualization
 // Core interfaces and types used across the application
 
+export type LayerType = 'input' | 'layer1' | 'layer2' | 'output';
+
 /**
  * Matrix class representation
  */

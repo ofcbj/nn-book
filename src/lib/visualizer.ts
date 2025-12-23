@@ -8,8 +8,6 @@ import { drawBackpropHighlight } from './visualizer/backpropRenderer';
 import { drawNetwork } from './visualizer/networkRenderer';
 import { drawCalculationOverlay as drawCalcOverlay } from './visualizer/calculationOverlay';
 
-type LayerType = 'input' | 'layer1' | 'layer2' | 'output';
-
 export class Visualizer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;

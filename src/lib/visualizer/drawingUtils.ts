@@ -1,5 +1,5 @@
 // Drawing utility functions for visualizer
-import type { NodePosition } from '../types';
+import type { NodePosition, LayerType } from '../types';
 import i18n from '../../i18n';
 
 export function drawRoundedRect(
@@ -67,7 +67,6 @@ export function drawInputVector(
   return { x: centerX, y: centerY, width, height, centerX: x, centerY: y };
 }
 
-type LayerType = 'input' | 'layer1' | 'layer2' | 'output';
 
 export function drawNeuronVector(
   ctx: CanvasRenderingContext2D,
