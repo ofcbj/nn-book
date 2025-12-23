@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { NeuralNetwork } from '../lib/network';
 import { Visualizer } from '../lib/visualizer';
 import type { CalculationSteps, NeuronCalculation, BackpropSummaryData } from '../lib/types';
@@ -53,6 +53,7 @@ interface UseNeuralNetworkReturn {
   closeLossModal: () => void;
   closeBackpropModal: () => void;
   updateVisualization: () => void;
+  handleCanvasClick: () => void;
 }
 
 export function useNeuralNetwork(): UseNeuralNetworkReturn {
@@ -74,10 +75,23 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   const animationSpeedRef = useRef(animationSpeed);
   const manualModeRef = useRef(isManualMode);
   const manualStepResolverRef = useRef<(() => void) | null>(null);
+  const prevAnimationSpeedRef = useRef(animationSpeed);
 
   // Update ref whenever animationSpeed changes
   animationSpeedRef.current = animationSpeed;
   manualModeRef.current = isManualMode;
+
+  // When animation speed changes from 0 to > 0, auto-resume animation
+  useEffect(() => {
+    if (prevAnimationSpeedRef.current === 0 && animationSpeed > 0) {
+      // Speed was increased from 0, resume animation automatically
+      if (manualStepResolverRef.current) {
+        manualStepResolverRef.current();
+        manualStepResolverRef.current = null;
+      }
+    }
+    prevAnimationSpeedRef.current = animationSpeed;
+  }, [animationSpeed]);
 
   // Stats
   const [epoch, setEpoch] = useState(0);
@@ -434,6 +448,19 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     nnRef.current.learning_rate = v;
   }, []);
 
+  // Handle canvas click during animation
+  const handleCanvasClick = useCallback(() => {
+    if (!isAnimating) return;
+
+    // If animation is playing (speed > 0), pause it
+    if (animationSpeed > 0) {
+      setAnimationSpeed(0);
+    } else {
+      // If paused (speed === 0), go to next step
+      nextStep();
+    }
+  }, [isAnimating, animationSpeed, nextStep]);
+
   return {
     nn: nnRef.current,
     visualizer: visualizerRef.current,
@@ -469,5 +496,6 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     closeLossModal,
     closeBackpropModal,
     updateVisualization,
+    handleCanvasClick,
   };
 }

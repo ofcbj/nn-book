@@ -45,6 +45,7 @@ export default function App() {
     closeLossModal,
     closeBackpropModal,
     updateVisualization,
+    handleCanvasClick,
   } = useNeuralNetwork();
 
   // Initial visualization
@@ -104,7 +105,7 @@ export default function App() {
 
           {/* Center: Network Visualization */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <NetworkCanvas nn={nn} onVisualizerReady={setVisualizer} onCanvasClick={nextStep} />
+            <NetworkCanvas nn={nn} onVisualizerReady={setVisualizer} onCanvasClick={handleCanvasClick} />
           </Box>
 
           {/* Right Panel: Calculation Display */}
