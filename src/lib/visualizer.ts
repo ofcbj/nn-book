@@ -4,6 +4,7 @@
 import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage } from './types';
 import type { NeuralNetwork } from './network';
 import i18n from '../i18n';
+import { activationToColor } from './activationColors';
 import { drawBackpropHighlight } from './visualizer/backpropRenderer';
 import { drawNetwork } from './visualizer/networkRenderer';
 import { drawCalculationOverlay as drawCalcOverlay } from './visualizer/calculationOverlay';
@@ -11,6 +12,7 @@ import { drawCalculationOverlay as drawCalcOverlay } from './visualizer/calculat
 export class Visualizer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+  private heatmapMode: boolean = false;
 
   get inputLabels(): string[] {
     return [i18n.t('controls.grade'), i18n.t('controls.attitude'), i18n.t('controls.response')];
@@ -68,7 +70,8 @@ export class Visualizer {
       this.drawConnectionsVector.bind(this),
       this.showLoss ? this.drawLossOverlay.bind(this) : null,
       this.backpropPhase ? this.drawBackpropHighlight.bind(this) : null,
-      this.drawCalculationOverlay.bind(this)
+      this.drawCalculationOverlay.bind(this),
+      this.heatmapMode
     );
   }
 
@@ -222,5 +225,17 @@ export class Visualizer {
   update(nn: NeuralNetwork): void {
     const steps = nn.getCalculationSteps();
     this.drawNetwork(nn, steps);
+  }
+
+  setHeatmapMode(enabled: boolean): void {
+    this.heatmapMode = enabled;
+  }
+
+  getHeatmapMode(): boolean {
+    return this.heatmapMode;
+  }
+
+  getActivationColor(value: number): string {
+    return activationToColor(value);
   }
 }

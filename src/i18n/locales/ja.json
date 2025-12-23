@@ -45,6 +45,12 @@
   "network": {
     "title": "ネットワーク構造"
   },
+  "visualization": {
+    "canvasHeatmap": "キャンバスヒートマップ",
+    "gridHeatmap": "グリッドヒートマップ",
+    "activationTitle": "レイヤー別活性化",
+    "colorLegend": "活性化強度"
+  },
   "calculation": {
     "title": "計算過程",
     "noData": "学習を開始すると計算過程が表示されます",

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { NeuralNetwork } from '../lib/network';
 import { Visualizer } from '../lib/visualizer';
 import type { CalculationSteps, NeuronCalculation, BackpropSummaryData } from '../lib/types';
+import type { ActivationData } from '../components/ActivationHeatmap';
 
 interface UseNeuralNetworkReturn {
   // Neural network
@@ -45,6 +46,13 @@ interface UseNeuralNetworkReturn {
   // Backprop summary modal
   showBackpropModal: boolean;
   backpropSummaryData: BackpropSummaryData | null;
+
+  // Heatmap visualization
+  showCanvasHeatmap: boolean;
+  showGridHeatmap: boolean;
+  activations: ActivationData | null;
+  toggleCanvasHeatmap: () => void;
+  toggleGridHeatmap: () => void;
 
   // Actions
   trainOneStepWithAnimation: () => Promise<void>;
@@ -112,6 +120,11 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   const [showBackpropModal, setShowBackpropModal] = useState(false);
   const [backpropSummaryData, setBackpropSummaryData] = useState<BackpropSummaryData | null>(null);
 
+  // Heatmap visualization
+  const [showCanvasHeatmap, setShowCanvasHeatmap] = useState(false);
+  const [showGridHeatmap, setShowGridHeatmap] = useState(true);
+  const [activations, setActivations] = useState<ActivationData | null>(null);
+
   const setVisualizer = useCallback((v: Visualizer) => {
     visualizerRef.current = v;
   }, []);
@@ -143,6 +156,16 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
       setOutput(nn.lastOutput.toArray());
     }
     setSteps(nn.getCalculationSteps());
+    
+    // Update activations for heatmap
+    if (nn.lastInput && nn.lastHidden1 && nn.lastHidden2 && nn.lastOutput) {
+      setActivations({
+        input: nn.lastInput.toArray(),
+        layer1: nn.lastHidden1.toArray(),
+        layer2: nn.lastHidden2.toArray(),
+        output: nn.lastOutput.toArray(),
+      });
+    }
     
     if (visualizerRef.current) {
       visualizerRef.current.update(nn);
@@ -488,6 +511,20 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     }
   }, [isAnimating, animationSpeed, nextStep]);
 
+  // Heatmap toggles
+  const toggleCanvasHeatmap = useCallback(() => {
+    const newValue = !showCanvasHeatmap;
+    setShowCanvasHeatmap(newValue);
+    if (visualizerRef.current) {
+      visualizerRef.current.setHeatmapMode(newValue);
+      visualizerRef.current.update(nnRef.current);
+    }
+  }, [showCanvasHeatmap]);
+
+  const toggleGridHeatmap = useCallback(() => {
+    setShowGridHeatmap(!showGridHeatmap);
+  }, [showGridHeatmap]);
+
   return {
     nn: nnRef.current,
     visualizer: visualizerRef.current,
@@ -524,5 +561,10 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     closeBackpropModal,
     updateVisualization,
     handleCanvasClick,
+    showCanvasHeatmap,
+    showGridHeatmap,
+    activations,
+    toggleCanvasHeatmap,
+    toggleGridHeatmap,
   };
 }

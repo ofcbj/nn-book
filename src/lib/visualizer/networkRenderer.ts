@@ -17,7 +17,8 @@ export function drawNetwork(
   drawConnectionsVector: (ctx: CanvasRenderingContext2D, nodes: NodePosition[][], nn: NeuralNetwork) => void,
   drawLossOverlay: ((ctx: CanvasRenderingContext2D, width: number, height: number) => void) | null,
   drawBackpropHighlight: ((ctx: CanvasRenderingContext2D, nodes: NodePosition[][]) => void) | null,
-  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: any, value: number) => void) | null
+  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: any, value: number) => void) | null,
+  heatmapMode: boolean = false
 ): void {
   const width = canvas.width;
   const height = canvas.height;
@@ -67,7 +68,8 @@ export function drawNetwork(
       `${i18n.t('layers.layer1Prefix')} #${i + 1}`,
       'layer1',
       isHighlighted || false,
-      isBackpropHighlighted || false
+      isBackpropHighlighted || false,
+      heatmapMode
     );
     
     // Show calculation overlay for highlighted neuron
@@ -103,7 +105,8 @@ export function drawNetwork(
       `${i18n.t('layers.layer2Prefix')} #${i + 1}`,
       'layer2',
       isHighlighted || false,
-      isBackpropHighlighted || false
+      isBackpropHighlighted || false,
+      heatmapMode
     );
     
     // Show calculation overlay for highlighted neuron
@@ -141,7 +144,8 @@ export function drawNetwork(
       classNames[i],
       'output',
       isHighlighted || false,
-      isBackpropHighlighted || false
+      isBackpropHighlighted || false,
+      heatmapMode
     );
     
     // Show calculation overlay for highlighted neuron

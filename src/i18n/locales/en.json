@@ -45,6 +45,12 @@
   "network": {
     "title": "Network Structure"
   },
+  "visualization": {
+    "canvasHeatmap": "Canvas Heatmap",
+    "gridHeatmap": "Grid Heatmap",
+    "activationTitle": "Layer Activations",
+    "colorLegend": "Activation Strength"
+  },
   "calculation": {
     "title": "Calculation Process",
     "noData": "Start training to see the calculation process",

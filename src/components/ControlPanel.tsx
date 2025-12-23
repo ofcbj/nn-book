@@ -26,6 +26,11 @@ interface ControlPanelProps {
   // State
   isTraining: boolean;
   isAnimating: boolean;
+  // Heatmap toggles
+  showCanvasHeatmap: boolean;
+  showGridHeatmap: boolean;
+  onToggleCanvasHeatmap: () => void;
+  onToggleGridHeatmap: () => void;
 }
 
 export default function ControlPanel({
@@ -49,6 +54,10 @@ export default function ControlPanel({
   onReset,
   isTraining,
   isAnimating,
+  showCanvasHeatmap,
+  showGridHeatmap,
+  onToggleCanvasHeatmap,
+  onToggleGridHeatmap,
 }: ControlPanelProps) {
   const { t } = useTranslation();
   const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
@@ -299,6 +308,47 @@ export default function ControlPanel({
             {t('controls.reset')}
           </Button>
         </Stack>
+      </Box>
+
+      {/* Visualization Options */}
+      <Box>
+        <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
+          👁️ {t('visualization.activationTitle')}
+        </Typography>
+        
+        <Box sx={{ mb: 1.5 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={showCanvasHeatmap}
+                onChange={onToggleCanvasHeatmap}
+                size="small"
+              />
+            }
+            label={
+              <Typography variant="body2" color="text.secondary">
+                {t('visualization.canvasHeatmap')}
+              </Typography>
+            }
+          />
+        </Box>
+
+        <Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={showGridHeatmap}
+                onChange={onToggleGridHeatmap}
+                size="small"
+              />
+            }
+            label={
+              <Typography variant="body2" color="text.secondary">
+                {t('visualization.gridHeatmap')}
+              </Typography>
+            }
+          />
+        </Box>
       </Box>
     </Paper>
   );

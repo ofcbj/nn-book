@@ -8,6 +8,7 @@ import CalculationPanel from './components/CalculationPanel';
 import LossModal from './components/LossModal';
 import BackpropModal from './components/BackpropModal';
 import HelpModal from './components/HelpModal';
+import ActivationHeatmap from './components/ActivationHeatmap';
 import { useNeuralNetwork } from './hooks/useNeuralNetwork';
 
 export default function App() {
@@ -46,6 +47,11 @@ export default function App() {
     closeBackpropModal,
     updateVisualization,
     handleCanvasClick,
+    showCanvasHeatmap,
+    showGridHeatmap,
+    activations,
+    toggleCanvasHeatmap,
+    toggleGridHeatmap,
   } = useNeuralNetwork();
 
   // Initial visualization
@@ -98,6 +104,10 @@ export default function App() {
                 onReset={reset}
                 isTraining={isTraining}
                 isAnimating={isAnimating}
+                showCanvasHeatmap={showCanvasHeatmap}
+                showGridHeatmap={showGridHeatmap}
+                onToggleCanvasHeatmap={toggleCanvasHeatmap}
+                onToggleGridHeatmap={toggleGridHeatmap}
               />
               <StatsDisplay epoch={epoch} loss={loss} output={output} />
             </Stack>
@@ -105,7 +115,12 @@ export default function App() {
 
           {/* Center: Network Visualization */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <NetworkCanvas nn={nn} onVisualizerReady={setVisualizer} onCanvasClick={handleCanvasClick} />
+            <Stack spacing={2.5}>
+              <NetworkCanvas nn={nn} onVisualizerReady={setVisualizer} onCanvasClick={handleCanvasClick} />
+              
+              {/* Activation Heatmap */}
+              {showGridHeatmap && <ActivationHeatmap activations={activations} />}
+            </Stack>
           </Box>
 
           {/* Right Panel: Calculation Display */}

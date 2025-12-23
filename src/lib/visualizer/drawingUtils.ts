@@ -1,6 +1,7 @@
 // Drawing utility functions for visualizer
 import type { NodePosition, LayerType } from '../types';
 import i18n from '../../i18n';
+import { activationToColor } from '../activationColors';
 
 export function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
@@ -78,7 +79,8 @@ export function drawNeuronVector(
   label: string,
   layerType: LayerType,
   isHighlighted: boolean = false,
-  isBackpropHighlighted: boolean = false
+  isBackpropHighlighted: boolean = false,
+  heatmapMode: boolean = false
 ): NodePosition {
   const baseWidth = weights.length * 25;
   let width = Math.max(130, baseWidth + 40);
@@ -131,6 +133,21 @@ export function drawNeuronVector(
     }
     ctx.fillStyle = gradient;
     strokeColor = isHighlighted ? '#f87171' : '#ef4444';
+  }
+
+  // Use heatmap color if in heatmap mode (unless highlighted)
+  if (heatmapMode && !isHighlighted && !isBackpropHighlighted) {
+    const heatColor = activationToColor(activation);
+    gradient = ctx.createLinearGradient(centerX, centerY, centerX, centerY + height);
+    // Convert rgb to rgba with different alphas for gradient
+    const rgbMatch = heatColor.match(/\d+/g);
+    if (rgbMatch) {
+      const [r, g, b] = rgbMatch.map(Number);
+      gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.8)`);
+      gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.5)`);
+    }
+    ctx.fillStyle = gradient;
+    strokeColor = heatColor;
   }
 
   ctx.fill();
