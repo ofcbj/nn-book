@@ -3,6 +3,7 @@
 
 import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage } from './types';
 import type { NeuralNetwork } from './network';
+import i18n from '../i18n';
 
 type LayerType = 'input' | 'layer1' | 'layer2' | 'output';
 
@@ -87,7 +88,7 @@ export class Visualizer {
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('면접자', x, centerY + 20);
+    ctx.fillText(i18n.t('layers.input'), x, centerY + 20);
     
     ctx.font = '12px monospace';
     ctx.textAlign = 'left';
@@ -379,7 +380,7 @@ export class Visualizer {
         neuron.weights,
         neuron.bias,
         neuron.activated,
-        `1차 #${i + 1}`,
+        `${i18n.t('layers.layer1Prefix')} #${i + 1}`,
         'layer1',
         i,
         isHighlighted || false,
@@ -409,7 +410,7 @@ export class Visualizer {
         neuron.weights,
         neuron.bias,
         neuron.activated,
-        `2차 #${i + 1}`,
+        `${i18n.t('layers.layer2Prefix')} #${i + 1}`,
         'layer2',
         i,
         isHighlighted || false,
@@ -421,7 +422,7 @@ export class Visualizer {
 
     // Output layer - 3 neurons with better spacing
     const outputNodes: NodePosition[] = [];
-    const classNames = ['불합격', '보류', '합격'];
+    const classNames = [i18n.t('classes.fail'), i18n.t('classes.pending'), i18n.t('classes.pass')];
     const outputVerticalSpacing = 125;
     const outputTotalHeight = (3 - 1) * outputVerticalSpacing;
     const outputStartY = (height - outputTotalHeight) / 2;
@@ -561,7 +562,7 @@ export class Visualizer {
     if (!this.showLoss) return;
     
     const { targetClass, targetName, predictions, loss } = this.showLoss;
-    const classNames = ['불합격', '보류', '합격'];
+    const classNames = [i18n.t('classes.fail'), i18n.t('classes.pending'), i18n.t('classes.pass')];
     
     ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
     ctx.fillRect(width/2 - 250, height/2 - 150, 500, 300);
@@ -680,7 +681,7 @@ export class Visualizer {
                 nextLayerLabels = ['불합격', '보류', '합격'];
               } else if (currentLayer === 'layer1') {
                 // Next layer is layer2
-                nextLayerLabels = data.nextLayerErrors.map((_, i) => `2차#${i+1}`);
+                nextLayerLabels = data.nextLayerErrors.map((_, i) => `${i18n.t('layers.layer2Prefix')}#${i+1}`);
               } else {
                 nextLayerLabels = data.nextLayerErrors.map((_, i) => `next[${i}]`);
               }

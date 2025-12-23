@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import { Visualizer } from '../lib/visualizer';
 import type { NeuralNetwork } from '../lib/network';
 
@@ -10,6 +11,7 @@ interface NetworkCanvasProps {
 }
 
 export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: NetworkCanvasProps) {
+  const { t, i18n } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const visualizerRef = useRef<Visualizer | null>(null);
@@ -53,6 +55,21 @@ export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: 
     }
   }, [nn]);
 
+  // Listen for language changes and update canvas
+  useEffect(() => {
+    const handleLanguageChange = () => {
+      if (visualizerRef.current) {
+        visualizerRef.current.update(nn);
+      }
+    };
+
+    i18n.on('languageChanged', handleLanguageChange);
+    
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n, nn]);
+
   useEffect(() => {
     const handleResize = () => {
       resizeCanvas();
@@ -69,7 +86,7 @@ export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: 
   return (
     <Paper sx={{ p: 2.5, height: '100%', minHeight: 700 }}>
       <Typography variant="h2" sx={{ mb: 2, textAlign: 'center' }}>
-        네트워크 구조
+        {t('network.title')}
       </Typography>
       <Box
         ref={containerRef}

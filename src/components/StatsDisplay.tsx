@@ -1,4 +1,5 @@
 import { Box, Paper, Typography, Stack } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 interface StatsDisplayProps {
   epoch: number;
@@ -6,9 +7,9 @@ interface StatsDisplayProps {
   output: number[] | null;
 }
 
-const classNames = ['불합격', '보류', '합격'];
-
 export default function StatsDisplay({ epoch, loss, output }: StatsDisplayProps) {
+  const { t } = useTranslation();
+  const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
   const getOutputText = () => {
     if (!output) return '0.000';
     return output.map((prob, i) => 
@@ -31,13 +32,13 @@ export default function StatsDisplay({ epoch, loss, output }: StatsDisplayProps)
       }}
     >
       <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
-        📈 통계 정보
+        📈 {t('stats.title')}
       </Typography>
       
       <Stack spacing={1.5}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #1e293b' }}>
           <Typography variant="body2" color="text.secondary">
-            Epoch:
+            {t('stats.epoch')}:
           </Typography>
           <Typography 
             sx={{ 
@@ -52,7 +53,7 @@ export default function StatsDisplay({ epoch, loss, output }: StatsDisplayProps)
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #1e293b' }}>
           <Typography variant="body2" color="text.secondary">
-            Loss:
+            {t('stats.loss')}:
           </Typography>
           <Typography 
             sx={{ 
@@ -67,7 +68,7 @@ export default function StatsDisplay({ epoch, loss, output }: StatsDisplayProps)
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1 }}>
           <Typography variant="body2" color="text.secondary">
-            Output:
+            {t('stats.prediction')}:
           </Typography>
           <Typography 
             sx={{ 

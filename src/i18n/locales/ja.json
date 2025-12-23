@@ -1,0 +1,103 @@
+{
+  "header": {
+    "title": "ニューラルネットワーク: 面接システム可視化",
+    "subtitle": "入力値と重みの内積、活性化関数による意思決定過程"
+  },
+  "controls": {
+    "inputSection": "入力パラメータ",
+    "grade": "成績",
+    "attitude": "態度",
+    "response": "応答レベル",
+    "target": "目標値",
+    "trainingSection": "学習設定",
+    "learningRate": "学習率",
+    "animationSpeed": "アニメーション速度",
+    "manualMode": "手動モード",
+    "actionSection": "学習操作",
+    "oneStep": "1回学習",
+    "autoTrain": "自動学習",
+    "stop": "停止",
+    "reset": "リセット",
+    "nextStep": "次のステップ"
+  },
+  "stats": {
+    "title": "学習統計",
+    "epoch": "エポック",
+    "loss": "損失",
+    "prediction": "予測"
+  },
+  "classes": {
+    "fail": "不合格",
+    "pending": "保留",
+    "pass": "合格"
+  },
+  "layers": {
+    "input": "面接者",
+    "layer1Prefix": "1次",
+    "layer2Prefix": "2次",
+    "output": "最終決定",
+    "interviewer": "面接官"
+  },
+  "network": {
+    "title": "ネットワーク構造"
+  },
+  "calculation": {
+    "title": "計算過程",
+    "noData": "学習を開始すると計算過程が表示されます",
+    "forwardPass": "順伝播 (Forward Pass)",
+    "backprop": "逆伝播 (Backpropagation)"
+  },
+  "lossModal": {
+    "title": "損失関数計算",
+    "targetClass": "目標クラス",
+    "predictions": "予測値",
+    "lossCalculation": "損失計算",
+    "close": "閉じる"
+  },
+  "help": {
+    "title": "ニューラルネットワークで理解する面接過程",
+    "whatIs": {
+      "title": "このシステムとは？",
+      "description": "面接過程をニューラルネットワークで可視化した教育ツールです。実際の面接のように複数段階を経て最終合否を決定する過程を、ニューラルネットワークの学習過程で表現しました。"
+    },
+    "structure": {
+      "title": "ネットワーク構造",
+      "input": {
+        "title": "入力レイヤー (3個)",
+        "items": "• 成績 (0.0 ~ 1.0)\n• 態度 (0.0 ~ 1.0)\n• 応答レベル (0.0 ~ 1.0)"
+      },
+      "layer1": {
+        "title": "1次面接官 (5名)",
+        "description": "面接者の3つの特性をそれぞれの方法で評価します。"
+      },
+      "layer2": {
+        "title": "2次面接官 (3名)",
+        "description": "1次面接官5名の評価を総合して再評価します。"
+      },
+      "output": {
+        "title": "最終決定 (3種類)",
+        "items": "• 不合格\n• 保留\n• 合格"
+      }
+    },
+    "howItWorks": {
+      "title": "動作原理",
+      "forward": {
+        "title": "順伝播 (Forward Pass)",
+        "description": "入力値が各レイヤーを通過して最終予測値を生成します。\n各ニューロンは重み(W)とバイアス(b)を使用して計算します。"
+      },
+      "backward": {
+        "title": "逆伝播 (Backpropagation)",
+        "description": "予測が間違っていた場合、誤差を逆方向に伝播して重みを調整します。\nこの過程を繰り返すことで、ニューラルネットワークがより正確になります。"
+      }
+    },
+    "features": {
+      "title": "主な機能",
+      "list": "• **入力調整**: スライダーで面接者の特性を変更\n• **1回学習**: アニメーションで学習過程を確認\n• **自動学習**: 高速で複数回学習\n• **手動モード**: キャンバスクリックまたは「次のステップ」ボタンで直接進行\n• **アニメーション速度**: 0~3倍調節 (0は手動モードと同じ)\n• **リセット**: ニューラルネットワークを初期状態に戻す"
+    },
+    "close": "閉じる"
+  },
+  "footer": {
+    "architecture": "構造: <1>3入力</1> → <3>5ニューロン(1次)</3> → <5>3ニューロン(2次)</5> → <7>3出力</7>",
+    "description": "この可視化は、面接者の3つの属性(成績、態度、応答レベル)が1次面接官(5名)を経て2次面接官(3名)に伝わり、最終決定につながる過程を示しています。"
+  }
+}

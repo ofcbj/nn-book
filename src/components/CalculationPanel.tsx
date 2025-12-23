@@ -1,20 +1,21 @@
 import { Box, Paper, Typography } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import type { CalculationSteps } from '../lib/types';
 
 interface CalculationPanelProps {
   steps: CalculationSteps | null;
 }
 
-const classNames = ['불합격', '보류', '합격'];
-
 export default function CalculationPanel({ steps }: CalculationPanelProps) {
+  const { t } = useTranslation();
+  const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
   if (!steps) {
     return (
       <Paper sx={{ p: 2.5, height: '100%' }}>
         <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
-          🔢 계산 과정
+          🔢 {t('calculation.title')}
         </Typography>
-        <Typography color="text.secondary">No calculation data available</Typography>
+        <Typography color="text.secondary">{t('calculation.noData')}</Typography>
       </Paper>
     );
   }
@@ -22,43 +23,43 @@ export default function CalculationPanel({ steps }: CalculationPanelProps) {
   return (
     <Paper sx={{ p: 2.5, height: '100%', overflow: 'hidden' }}>
       <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
-        🔢 계산 과정
+        🔢 {t('calculation.title')}
       </Typography>
       
       <Box sx={{ maxHeight: 650, overflowY: 'auto', pr: 1 }}>
         {/* Input Vector */}
         <Box sx={{ mb: 3, p: 2, borderRadius: 2, bgcolor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-          <Typography variant="h3" sx={{ mb: 1.5 }}>📥 입력 벡터</Typography>
+          <Typography variant="h3" sx={{ mb: 1.5 }}>📥 {t('layers.input')}</Typography>
           <Box sx={{ p: 1, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 1 }}>
-            <Typography component="span" color="text.secondary">면접자 = </Typography>
+            <Typography component="span" color="text.secondary">{t('layers.input')} = </Typography>
             <Typography component="span" sx={{ fontFamily: 'monospace', color: 'primary.light', fontWeight: 600 }}>
               [{steps.input.map(v => v.toFixed(2)).join(', ')}]
             </Typography>
             <Typography variant="caption" display="block" color="text.disabled" sx={{ mt: 0.5 }}>
-              (성적, 태도, 응답수준)
+              ({t('controls.grade')}, {t('controls.attitude')}, {t('controls.response')})
             </Typography>
           </Box>
         </Box>
 
         {/* Layer 1 */}
         <Box sx={{ mb: 3, p: 2, borderRadius: 2, bgcolor: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
-          <Typography variant="h3" sx={{ mb: 1.5 }}>👥 1차 면접관 (5명)</Typography>
+          <Typography variant="h3" sx={{ mb: 1.5 }}>👥 {t('help.structure.layer1.title')}</Typography>
           {steps.layer1.map((neuron, idx) => (
-            <NeuronCalcDisplay key={idx} neuron={neuron} label={`1차 면접관 #${idx + 1}`} />
+            <NeuronCalcDisplay key={idx} neuron={neuron} label={`${t('layers.layer1Prefix')}${t('layers.interviewer')} #${idx + 1}`} />
           ))}
         </Box>
 
         {/* Layer 2 */}
         <Box sx={{ mb: 3, p: 2, borderRadius: 2, bgcolor: 'rgba(249, 115, 22, 0.1)', border: '1px solid rgba(249, 115, 22, 0.3)' }}>
-          <Typography variant="h3" sx={{ mb: 1.5 }}>👔 2차 면접관 (3명)</Typography>
+          <Typography variant="h3" sx={{ mb: 1.5 }}>👔 {t('help.structure.layer2.title')}</Typography>
           {steps.layer2.map((neuron, idx) => (
-            <NeuronCalcDisplay key={idx} neuron={neuron} label={`2차 면접관 #${idx + 1}`} />
+            <NeuronCalcDisplay key={idx} neuron={neuron} label={`${t('layers.layer2Prefix')}${t('layers.interviewer')} #${idx + 1}`} />
           ))}
         </Box>
 
         {/* Output */}
         <Box sx={{ mb: 3, p: 2, borderRadius: 2, bgcolor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-          <Typography variant="h3" sx={{ mb: 1.5 }}>⚖️ 최종 결정</Typography>
+          <Typography variant="h3" sx={{ mb: 1.5 }}>⚖️ {t('layers.output')}</Typography>
           {steps.output.map((neuron, idx) => (
             <NeuronCalcDisplay key={idx} neuron={neuron} label={classNames[idx]} isOutput />
           ))}

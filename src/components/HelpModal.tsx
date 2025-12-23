@@ -7,6 +7,7 @@ import {
   Box,
   Typography,
 } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 interface HelpModalProps {
   open: boolean;
@@ -14,6 +15,8 @@ interface HelpModalProps {
 }
 
 export default function HelpModal({ open, onClose }: HelpModalProps) {
+  const { t } = useTranslation();
+  
   return (
     <Dialog
       open={open}
@@ -30,7 +33,7 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
     >
       <DialogTitle sx={{ textAlign: 'center', borderBottom: '2px solid #475569', pb: 2 }}>
         <Typography variant="h5" fontWeight={700}>
-          📚 신경망으로 이해하는 면접 과정
+          {t('help.title')}
         </Typography>
       </DialogTitle>
       
@@ -38,50 +41,52 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
         {/* Introduction */}
         <Box sx={{ mb: 3, p: 2, bgcolor: 'rgba(59, 130, 246, 0.1)', borderRadius: 2, border: '1px solid rgba(59, 130, 246, 0.3)' }}>
           <Typography variant="h6" fontWeight={600} sx={{ mb: 1.5 }}>
-            🎯 이 시스템은 무엇인가요?
+            🎯 {t('help.whatIs.title')}
           </Typography>
           <Typography fontSize="0.95rem" sx={{ lineHeight: 1.7 }}>
-            면접 과정을 신경망(Neural Network)으로 시각화한 교육용 도구입니다. 
-            실제 면접처럼 여러 단계를 거쳐 최종 합격 여부를 결정하는 과정을 
-            신경망의 학습 과정으로 표현했습니다.
+            {t('help.whatIs.description')}
           </Typography>
         </Box>
 
         {/* Network Structure */}
         <Box sx={{ mb: 3, p: 2, bgcolor: 'rgba(34, 197, 94, 0.1)', borderRadius: 2, border: '1px solid rgba(34, 197, 94, 0.3)' }}>
           <Typography variant="h6" fontWeight={600} sx={{ mb: 1.5 }}>
-            🏗️ 네트워크 구조
+            🏗️ {t('help.structure.title')}
           </Typography>
           
           <Box sx={{ mb: 2 }}>
-            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>📥 입력 레이어 (3개)</Typography>
-            <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2 }}>
-              • 성적 (0.0 ~ 1.0)<br/>
-              • 태도 (0.0 ~ 1.0)<br/>
-              • 응답수준 (0.0 ~ 1.0)
+            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>
+              📥 {t('help.structure.input.title')}
+            </Typography>
+            <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2, whiteSpace: 'pre-line' }}>
+              {t('help.structure.input.items')}
             </Typography>
           </Box>
 
           <Box sx={{ mb: 2 }}>
-            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>👥 1차 면접관 (5명)</Typography>
+            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>
+              👥 {t('help.structure.layer1.title')}
+            </Typography>
             <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2 }}>
-              면접자의 3가지 특성을 각자의 방식으로 평가합니다.
+              {t('help.structure.layer1.description')}
             </Typography>
           </Box>
 
           <Box sx={{ mb: 2 }}>
-            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>👔 2차 면접관 (3명)</Typography>
+            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>
+              👔 {t('help.structure.layer2.title')}
+            </Typography>
             <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2 }}>
-              1차 면접관 5명의 평가를 종합하여 재평가합니다.
+              {t('help.structure.layer2.description')}
             </Typography>
           </Box>
 
           <Box>
-            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>⚖️ 최종 결정 (3가지)</Typography>
-            <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2 }}>
-              • 불합격<br/>
-              • 보류<br/>
-              • 합격
+            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>
+              ⚖️ {t('help.structure.output.title')}
+            </Typography>
+            <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2, whiteSpace: 'pre-line' }}>
+              {t('help.structure.output.items')}
             </Typography>
           </Box>
         </Box>
@@ -89,22 +94,24 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
         {/* How it works */}
         <Box sx={{ mb: 3, p: 2, bgcolor: 'rgba(249, 115, 22, 0.1)', borderRadius: 2, border: '1px solid rgba(249, 115, 22, 0.3)' }}>
           <Typography variant="h6" fontWeight={600} sx={{ mb: 1.5 }}>
-            ⚙️ 어떻게 동작하나요?
+            ⚙️ {t('help.howItWorks.title')}
           </Typography>
           
           <Box sx={{ mb: 2 }}>
-            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>1️⃣ Forward Pass (순전파)</Typography>
-            <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2 }}>
-              입력값이 각 레이어를 거쳐 최종 예측값을 만들어냅니다.<br/>
-              각 뉴런은 가중치(W)와 바이어스(b)를 사용해 계산합니다.
+            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>
+              1️⃣ {t('help.howItWorks.forward.title')}
+            </Typography>
+            <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2, whiteSpace: 'pre-line' }}>
+              {t('help.howItWorks.forward.description')}
             </Typography>
           </Box>
 
           <Box>
-            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>2️⃣ Backpropagation (역전파)</Typography>
-            <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2 }}>
-              예측이 틀렸을 때, 오류를 역으로 전파하여 가중치를 조정합니다.<br/>
-              이 과정을 반복하면 신경망이 점점 더 정확해집니다.
+            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>
+              2️⃣ {t('help.howItWorks.backward.title')}
+            </Typography>
+            <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2, whiteSpace: 'pre-line' }}>
+              {t('help.howItWorks.backward.description')}
             </Typography>
           </Box>
         </Box>
@@ -112,17 +119,10 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
         {/* Controls */}
         <Box sx={{ p: 2, bgcolor: 'rgba(239, 68, 68, 0.1)', borderRadius: 2, border: '1px solid rgba(239, 68, 68, 0.3)' }}>
           <Typography variant="h6" fontWeight={600} sx={{ mb: 1.5 }}>
-            🎮 주요 기능
+            🎮 {t('help.features.title')}
           </Typography>
           
-          <Typography fontSize="0.9rem" color="text.secondary" component="div">
-            • <strong>입력 조절</strong>: 슬라이더로 면접자 특성 변경<br/>
-            • <strong>1회 학습</strong>: 애니메이션으로 학습 과정 확인<br/>
-            • <strong>자동 학습</strong>: 빠르게 여러 번 학습<br/>
-            • <strong>수동 모드</strong>: 캔버스 클릭 또는 "다음 단계" 버튼으로 직접 진행<br/>
-            • <strong>애니메이션 속도</strong>: 0~3배 조절 (0은 수동 모드와 동일)<br/>
-            • <strong>초기화</strong>: 신경망을 처음 상태로 되돌림
-          </Typography>
+          <Typography fontSize="0.9rem" color="text.secondary" component="div" sx={{ whiteSpace: 'pre-line' }} dangerouslySetInnerHTML={{ __html: t('help.features.list') }} />
         </Box>
       </DialogContent>
 
@@ -136,7 +136,7 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
             px: 4
           }}
         >
-          닫기
+          {t('help.close')}
         </Button>
       </DialogActions>
     </Dialog>

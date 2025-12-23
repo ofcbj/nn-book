@@ -1,4 +1,5 @@
 import { Box, Paper, Typography, Slider, Button, Stack, Switch, FormControlLabel } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 interface ControlPanelProps {
   // Input values
@@ -27,8 +28,6 @@ interface ControlPanelProps {
   isAnimating: boolean;
 }
 
-const classNames = ['불합격', '보류', '합격'];
-
 export default function ControlPanel({
   grade,
   attitude,
@@ -51,17 +50,20 @@ export default function ControlPanel({
   isTraining,
   isAnimating,
 }: ControlPanelProps) {
+  const { t } = useTranslation();
+  const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
+
   return (
     <Paper sx={{ p: 2, height: '100%' }}>
       {/* Input Controls */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="h3" sx={{ mb: 1.5, pb: 0.5, borderBottom: '2px solid #334155', fontSize: '0.95rem' }}>
-          📊 입력 제어
+          📊 {t('controls.inputSection')}
         </Typography>
         
         <Box sx={{ mb: 2.5 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            성적 (Grade)
+            {t('controls.grade')}
           </Typography>
           <Stack direction="row" alignItems="center" spacing={1}>
             <Slider
@@ -88,7 +90,7 @@ export default function ControlPanel({
 
         <Box sx={{ mb: 2.5 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            태도 (Attitude)
+            {t('controls.attitude')}
           </Typography>
           <Stack direction="row" alignItems="center" spacing={2}>
             <Slider
@@ -114,7 +116,7 @@ export default function ControlPanel({
 
         <Box sx={{ mb: 2.5 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            응답수준 (Response)
+            {t('controls.response')}
           </Typography>
           <Stack direction="row" alignItems="center" spacing={2}>
             <Slider
@@ -140,7 +142,7 @@ export default function ControlPanel({
 
         <Box sx={{ mb: 2.5 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            목표 결정 (Target)
+            {t('controls.target')}
           </Typography>
           <Stack direction="row" alignItems="center" spacing={2}>
             <Slider
@@ -169,12 +171,12 @@ export default function ControlPanel({
       {/* Training Controls */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
-          ⚙️ 학습 제어
+          ⚙️ {t('controls.trainingSection')}
         </Typography>
         
         <Box sx={{ mb: 2.5 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            학습률 (Learning Rate)
+            {t('controls.learningRate')}
           </Typography>
           <Stack direction="row" alignItems="center" spacing={2}>
             <Slider
@@ -200,7 +202,7 @@ export default function ControlPanel({
 
         <Box sx={{ mb: 2.5 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            애니메이션 속도 (Speed)
+            {t('controls.animationSpeed')}
           </Typography>
           <Stack direction="row" alignItems="center" spacing={2}>
             <Slider
@@ -236,7 +238,7 @@ export default function ControlPanel({
             }
             label={
               <Typography variant="body2" color="text.secondary">
-                수동 모드 (Manual)
+                {t('controls.manualMode')}
               </Typography>
             }
           />
@@ -254,7 +256,7 @@ export default function ControlPanel({
                 fontWeight: 700,
               }}
             >
-              ▶ 다음 단계
+              ▶ {t('controls.nextStep')}
             </Button>
           </Box>
         )}
@@ -270,7 +272,7 @@ export default function ControlPanel({
               }
             }}
           >
-            {isAnimating ? '스탑' : '1 Step'}
+            {isAnimating ? t('controls.stop') : t('controls.oneStep')}
           </Button>
           <Button 
             variant="contained" 
@@ -284,7 +286,7 @@ export default function ControlPanel({
               },
             }}
           >
-            {isTraining ? '학습 중지' : '학습 시작'}
+            {isTraining ? t('controls.stop') : t('controls.autoTrain')}
           </Button>
           <Button 
             variant="contained" 
@@ -294,7 +296,7 @@ export default function ControlPanel({
             }}
             onClick={onReset}
           >
-            리셋
+            {t('controls.reset')}
           </Button>
         </Stack>
       </Box>

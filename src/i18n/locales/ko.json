@@ -1,0 +1,103 @@
+{
+  "header": {
+    "title": "Neural Network: 면접 시스템 시각화",
+    "subtitle": "입력값과 가중치의 내적, 그리고 활성화 함수를 통한 의사결정 과정"
+  },
+  "controls": {
+    "inputSection": "입력 파라미터",
+    "grade": "성적",
+    "attitude": "태도",
+    "response": "응답수준",
+    "target": "목표값",
+    "trainingSection": "학습 설정",
+    "learningRate": "학습률",
+    "animationSpeed": "애니메이션 속도",
+    "manualMode": "수동 모드",
+    "actionSection": "학습 동작",
+    "oneStep": "1회 학습",
+    "autoTrain": "자동 학습",
+    "stop": "중지",
+    "reset": "초기화",
+    "nextStep": "다음 단계"
+  },
+  "stats": {
+    "title": "학습 통계",
+    "epoch": "에포크",
+    "loss": "손실",
+    "prediction": "예측"
+  },
+  "classes": {
+    "fail": "불합격",
+    "pending": "보류",
+    "pass": "합격"
+  },
+  "layers": {
+    "input": "면접자",
+    "layer1Prefix": "1차",
+    "layer2Prefix": "2차",
+    "output": "최종 결정",
+    "interviewer": "면접관"
+  },
+  "network": {
+    "title": "네트워크 구조"
+  },
+  "calculation": {
+    "title": "연산 과정",
+    "noData": "학습을 시작하면 연산 과정이 표시됩니다",
+    "forwardPass": "Forward Pass (순전파)",
+    "backprop": "Backpropagation (역전파)"
+  },
+  "lossModal": {
+    "title": "손실 함수 계산",
+    "targetClass": "목표 클래스",
+    "predictions": "예측값",
+    "lossCalculation": "손실 계산",
+    "close": "닫기"
+  },
+  "help": {
+    "title": "신경망으로 이해하는 면접 과정",
+    "whatIs": {
+      "title": "이 시스템은 무엇인가요?",
+      "description": "면접 과정을 신경망(Neural Network)으로 시각화한 교육용 도구입니다. 실제 면접처럼 여러 단계를 거쳐 최종 합격 여부를 결정하는 과정을 신경망의 학습 과정으로 표현했습니다."
+    },
+    "structure": {
+      "title": "네트워크 구조",
+      "input": {
+        "title": "입력 레이어 (3개)",
+        "items": "• 성적 (0.0 ~ 1.0)\n• 태도 (0.0 ~ 1.0)\n• 응답수준 (0.0 ~ 1.0)"
+      },
+      "layer1": {
+        "title": "1차 면접관 (5명)",
+        "description": "면접자의 3가지 특성을 각자의 방식으로 평가합니다."
+      },
+      "layer2": {
+        "title": "2차 면접관 (3명)",
+        "description": "1차 면접관 5명의 평가를 종합하여 재평가합니다."
+      },
+      "output": {
+        "title": "최종 결정 (3가지)",
+        "items": "• 불합격\n• 보류\n• 합격"
+      }
+    },
+    "howItWorks": {
+      "title": "어떻게 동작하나요?",
+      "forward": {
+        "title": "Forward Pass (순전파)",
+        "description": "입력값이 각 레이어를 거쳐 최종 예측값을 만들어냅니다.\n각 뉴런은 가중치(W)와 바이어스(b)를 사용해 계산합니다."
+      },
+      "backward": {
+        "title": "Backpropagation (역전파)",
+        "description": "예측이 틀렸을 때, 오류를 역으로 전파하여 가중치를 조정합니다.\n이 과정을 반복하면 신경망이 점점 더 정확해집니다."
+      }
+    },
+    "features": {
+      "title": "주요 기능",
+      "list": "• **입력 조절**: 슬라이더로 면접자 특성 변경\n• **1회 학습**: 애니메이션으로 학습 과정 확인\n• **자동 학습**: 빠르게 여러 번 학습\n• **수동 모드**: 캔버스 클릭 또는 \"다음 단계\" 버튼으로 직접 진행\n• **애니메이션 속도**: 0~3배 조절 (0은 수동 모드와 동일)\n• **초기화**: 신경망을 처음 상태로 되돌림"
+    },
+    "close": "닫기"
+  },
+  "footer": {
+    "architecture": "Architecture: <1>3 inputs</1> → <3>5 neurons(1차)</3> → <5>3 neurons(2차)</5> → <7>3 outputs</7>",
+    "description": "이 시각화는 면접자의 3가지 속성(성적, 태도, 응답수준)이 1차 면접관(5명)을 거쳐 2차 면접관(3명)에게 전달되고 최종 결정으로 이어지는 과정을 보여줍니다."
+  }
+}

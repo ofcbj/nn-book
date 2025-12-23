@@ -8,6 +8,7 @@ import {
   LinearProgress,
   Stack,
 } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 interface LossModalProps {
   open: boolean;
@@ -17,8 +18,6 @@ interface LossModalProps {
   onClose: () => void;
 }
 
-const classNames = ['불합격', '보류', '합격'];
-
 export default function LossModal({
   open,
   targetClass,
@@ -26,6 +25,8 @@ export default function LossModal({
   loss,
   onClose,
 }: LossModalProps) {
+  const { t } = useTranslation();
+  const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
   const targetOneHot = [0, 0, 0];
   targetOneHot[targetClass] = 1;
   const targetProb = predictions[targetClass] || 0;
