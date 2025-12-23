@@ -130,3 +130,28 @@ export interface NodePosition {
   centerX: number;
   centerY: number;
 }
+
+export interface BackpropSummaryData {
+  oldWeights: {
+    layer1: number[][];
+    layer2: number[][];
+    output: number[][];
+  };
+  newWeights: {
+    layer1: number[][];
+    layer2: number[][];
+    output: number[][];
+  };
+  oldBiases: {
+    layer1: number[];
+    layer2: number[];
+    output: number[];
+  };
+  newBiases: {
+    layer1: number[];
+    layer2: number[];
+    output: number[];
+  };
+  learningRate: number;
+  totalWeightsUpdated: number;
+}

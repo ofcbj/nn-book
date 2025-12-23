@@ -11,7 +11,9 @@ export class Visualizer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
 
-  inputLabels: string[] = ['성적', '태도', '응답수준'];
+  get inputLabels(): string[] {
+    return [i18n.t('controls.grade'), i18n.t('controls.attitude'), i18n.t('controls.response')];
+  }
   highlightedNeuron: AnimationPhase | null = null;
 
   // Calculation animation properties
@@ -98,7 +100,7 @@ export class Visualizer {
       ctx.fillText(this.inputLabels[idx] + ':', centerX + 15, startY + idx * 18);
       ctx.fillStyle = '#60a5fa';
       ctx.font = 'bold 12px monospace';
-      ctx.fillText(val.toFixed(2), centerX + 80, startY + idx * 18);
+      ctx.fillText(val.toFixed(2), centerX + 60, startY + idx * 18);
       ctx.font = '12px monospace';
     });
     
@@ -652,7 +654,7 @@ export class Visualizer {
 
       switch(stage) {
         case 'error':
-          title = '1️⃣ 받은 오류 (Error)';
+          title = i18n.t('backprop.error');
           color = '#fca5a5';
           
           // Determine layer to provide context-specific explanation
@@ -663,7 +665,7 @@ export class Visualizer {
             const prediction = data.activation;
             const target = data.error + prediction; // Reverse calculate target
             content = [
-              `출력 레이어의 오류 계산:`,
+              i18n.t('backprop.outputError'),
               '',
               `error = target - prediction`,
               `      = ${target.toFixed(4)} - ${prediction.toFixed(4)}`,
@@ -678,7 +680,7 @@ export class Visualizer {
               let nextLayerLabels: string[];
               if (currentLayer === 'layer2') {
                 // Next layer is output
-                nextLayerLabels = ['불합격', '보류', '합격'];
+                nextLayerLabels = [i18n.t('classes.fail'), i18n.t('classes.pending'), i18n.t('classes.pass')];
               } else if (currentLayer === 'layer1') {
                 // Next layer is layer2
                 nextLayerLabels = data.nextLayerErrors.map((_, i) => `${i18n.t('layers.layer2Prefix')}#${i+1}`);
@@ -687,9 +689,9 @@ export class Visualizer {
               }
               
               content = [
-                `은닉 레이어의 오류 역전파:`,
+                i18n.t('backprop.hiddenError'),
                 '',
-                `다음 레이어의 각 뉴런이 보낸 오류:`,
+                i18n.t('backprop.nextLayerErrors'),
                 ''
               ];
               
@@ -701,12 +703,12 @@ export class Visualizer {
                   `${nextLayerLabels[idx]}: ${nextError.toFixed(4)} × ${weight.toFixed(4)} = ${term.toFixed(4)}`
                 );
                 content.push(
-                  `          (그 뉴런의 오류)  (연결 가중치)  (기여도)`
+                  `          ${i18n.t('backprop.neuronError')}  ${i18n.t('backprop.connectionWeight')}  ${i18n.t('backprop.contribution')}`
                 );
               });
               
               content.push('');
-              content.push(`모두 합하면:`);
+              content.push(i18n.t('backprop.sumAll'));
               content.push(`error = ${data.nextLayerErrors.map((e, i) => 
                 `${(e * data.nextLayerWeights![i]).toFixed(4)}`
               ).join(' + ')}`);
@@ -714,10 +716,10 @@ export class Visualizer {
             } else {
               // Fallback if data not available
               content = [
-                `은닉 레이어의 오류 역전파:`,
+                i18n.t('backprop.hiddenError'),
                 '',
-                `다음 레이어의 오류들이 가중치를 통해`,
-                `이 뉴런으로 전달됩니다:`,
+                i18n.t('backprop.nextLayerPropagation'),
+                i18n.t('backprop.thisNeuron'),
                 '',
                 `error = Σ(next_error × next_weight)`,
                 `      = ${data.error.toFixed(4)}`,
@@ -729,7 +731,7 @@ export class Visualizer {
           break;
 
         case 'derivative':
-          title = '2️⃣ 시그모이드 편미분 (σ\')';
+          title = i18n.t('backprop.delta');
           color = '#a5b4fc';
           content = [
             `σ'(y) = y × (1 - y)`,
@@ -739,7 +741,7 @@ export class Visualizer {
           break;
 
         case 'gradient':
-          title = '3️⃣ 그래디언트 계산';
+          title = i18n.t('backprop.gradient');
           color = '#60a5fa';
           content = [
             `gradient = error × σ'(y)`,
@@ -749,22 +751,22 @@ export class Visualizer {
           break;
 
         case 'weightDelta':
-          title = '4️⃣ 가중치 변화량 계산';
+          title = i18n.t('backprop.weightDelta');
           color = '#fbbf24';
           content = [
-            `각 가중치를 얼마나 조정할지 계산:`,
-            `ΔW = gradient × input × 학습률(0.1)`,
+            i18n.t('backprop.weightDeltaCalc'),
+            `ΔW = gradient × input × ${i18n.t('controls.learningRate')}(0.1)`,
             ``,
-            `예) input[${mostChangedIdx}]에 연결된 가중치:`,
+            `${i18n.t('backprop.example')} input[${mostChangedIdx}]${i18n.t('backprop.connectedWeight')}:`,
             `ΔW[${mostChangedIdx}] = ${data.gradient.toFixed(4)} × ${inputVal.toFixed(3)} × 0.1 = ${weightDelta.toFixed(5)}`
           ];
           break;
 
         case 'allWeightDeltas':
-          title = '📝 모든 가중치 변화량';
+          title = i18n.t('backprop.allWeightDeltas');
           color = '#fcd34d';
           content = [
-            '각 가중치의 변화 수식:',
+            i18n.t('backprop.allWeightChanges'),
             ''
           ];
           
@@ -785,13 +787,13 @@ export class Visualizer {
           break;
 
         case 'update':
-          title = '5️⃣ 가중치 업데이트 완료';
+          title = i18n.t('backprop.update');
           color = '#34d399';
           const biasChange = data.newBias - data.oldBias;
           const biasArrow = biasChange > 0 ? '↗' : '↘';
 
           content = [
-            '모든 가중치 업데이트:',
+            i18n.t('backprop.allWeightUpdate'),
             ''
           ];
           

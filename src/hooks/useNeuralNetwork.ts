@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { NeuralNetwork } from '../lib/network';
 import { Visualizer } from '../lib/visualizer';
-import type { CalculationSteps, NeuronCalculation } from '../lib/types';
+import type { CalculationSteps, NeuronCalculation, BackpropSummaryData } from '../lib/types';
 
 interface UseNeuralNetworkReturn {
   // Neural network
@@ -42,11 +42,16 @@ interface UseNeuralNetworkReturn {
   showLossModal: boolean;
   lossModalData: { targetClass: number; predictions: number[]; loss: number } | null;
 
+  // Backprop summary modal
+  showBackpropModal: boolean;
+  backpropSummaryData: BackpropSummaryData | null;
+
   // Actions
   trainOneStepWithAnimation: () => Promise<void>;
   toggleTraining: () => void;
   reset: () => void;
   closeLossModal: () => void;
+  closeBackpropModal: () => void;
   updateVisualization: () => void;
 }
 
@@ -88,6 +93,10 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   // Loss modal
   const [showLossModal, setShowLossModal] = useState(false);
   const [lossModalData, setLossModalData] = useState<{ targetClass: number; predictions: number[]; loss: number } | null>(null);
+
+  // Backprop summary modal
+  const [showBackpropModal, setShowBackpropModal] = useState(false);
+  const [backpropSummaryData, setBackpropSummaryData] = useState<BackpropSummaryData | null>(null);
 
   const setVisualizer = useCallback((v: Visualizer) => {
     visualizerRef.current = v;
@@ -284,6 +293,40 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     visualizer.backpropPhase = null;
     visualizer.currentBackpropData = null;
     visualizer.backpropStage = null;
+
+    // Collect backprop summary data and show modal
+    if (!shouldStopAnimationRef.current) {
+      const summaryData: BackpropSummaryData = {
+        oldWeights: {
+          layer1: backpropData.layer1.map(n => [...n.oldWeights]),
+          layer2: backpropData.layer2.map(n => [...n.oldWeights]),
+          output: backpropData.output.map(n => [...n.oldWeights]),
+        },
+        newWeights: {
+          layer1: backpropData.layer1.map(n => [...n.newWeights]),
+          layer2: backpropData.layer2.map(n => [...n.newWeights]),
+          output: backpropData.output.map(n => [...n.newWeights]),
+        },
+        oldBiases: {
+          layer1: backpropData.layer1.map(n => n.oldBias),
+          layer2: backpropData.layer2.map(n => n.oldBias),
+          output: backpropData.output.map(n => n.oldBias),
+        },
+        newBiases: {
+          layer1: backpropData.layer1.map(n => n.newBias),
+          layer2: backpropData.layer2.map(n => n.newBias),
+          output: backpropData.output.map(n => n.newBias),
+        },
+        learningRate: learningRate,
+        totalWeightsUpdated: 
+          backpropData.layer1.reduce((sum, n) => sum + n.oldWeights.length, 0) +
+          backpropData.layer2.reduce((sum, n) => sum + n.oldWeights.length, 0) +
+          backpropData.output.reduce((sum, n) => sum + n.oldWeights.length, 0),
+      };
+      
+      setBackpropSummaryData(summaryData);
+      setShowBackpropModal(true);
+    }
   };
 
   const trainOneStepWithAnimation = useCallback(async () => {
@@ -329,6 +372,10 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     setIsAnimating(false);
     shouldStopAnimationRef.current = false;
   }, [updateVisualization]);
+
+  const closeBackpropModal = useCallback(() => {
+    setShowBackpropModal(false);
+  }, []);
   
   const trainOneStep = useCallback(() => {
     const nn = nnRef.current;
@@ -414,10 +461,13 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     isAnimating,
     showLossModal,
     lossModalData,
+    showBackpropModal,
+    backpropSummaryData,
     trainOneStepWithAnimation,
     toggleTraining,
     reset,
     closeLossModal,
+    closeBackpropModal,
     updateVisualization,
   };
 }

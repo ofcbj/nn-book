@@ -2,6 +2,7 @@
 // Architecture: 3 inputs -> 5 neurons (1차) -> 3 neurons (2차) -> 3 outputs (Softmax)
 
 import type { CalculationSteps, BackpropSteps, BackpropNeuronData } from './types';
+import i18n from '../i18n';
 
 /**
  * Matrix class for neural network computations
@@ -509,7 +510,7 @@ export class NeuralNetwork {
     }
     
     // Output calculation (3 neurons with softmax)
-    const classNames = ['불합격', '보류', '합격'];
+    const classNames = [i18n.t('classes.fail'), i18n.t('classes.pending'), i18n.t('classes.pass')];
     for (let i = 0; i < 3; i++) {
       const weights = this.weights_hidden2_output.data[i];
       const bias = this.bias_output.data[i][0];

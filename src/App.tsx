@@ -6,6 +6,7 @@ import StatsDisplay from './components/StatsDisplay';
 import NetworkCanvas from './components/NetworkCanvas';
 import CalculationPanel from './components/CalculationPanel';
 import LossModal from './components/LossModal';
+import BackpropModal from './components/BackpropModal';
 import HelpModal from './components/HelpModal';
 import { useNeuralNetwork } from './hooks/useNeuralNetwork';
 
@@ -36,10 +37,13 @@ export default function App() {
     isAnimating,
     showLossModal,
     lossModalData,
+    showBackpropModal,
+    backpropSummaryData,
     trainOneStepWithAnimation,
     toggleTraining,
     reset,
     closeLossModal,
+    closeBackpropModal,
     updateVisualization,
   } = useNeuralNetwork();
 
@@ -122,6 +126,13 @@ export default function App() {
             onClose={closeLossModal}
           />
         )}
+
+        {/* Backprop Summary Modal */}
+        <BackpropModal
+          open={showBackpropModal}
+          data={backpropSummaryData}
+          onClose={closeBackpropModal}
+        />
 
         {/* Help Modal */}
         <HelpModal
