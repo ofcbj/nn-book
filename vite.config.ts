@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  base: '/nn-book/',  // GitHub repository name
   root: '.',
   publicDir: 'assets',
   server: {
