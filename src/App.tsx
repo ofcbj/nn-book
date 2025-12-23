@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Container, Stack } from '@mui/material';
 import Header, { Footer } from './components/Header';
 import ControlPanel from './components/ControlPanel';
@@ -6,6 +6,7 @@ import StatsDisplay from './components/StatsDisplay';
 import NetworkCanvas from './components/NetworkCanvas';
 import CalculationPanel from './components/CalculationPanel';
 import LossModal from './components/LossModal';
+import HelpModal from './components/HelpModal';
 import { useNeuralNetwork } from './hooks/useNeuralNetwork';
 
 export default function App() {
@@ -52,10 +53,13 @@ export default function App() {
     updateVisualization();
   }, [grade, attitude, response, updateVisualization]);
 
+  // Help modal state
+  const [showHelpModal, setShowHelpModal] = useState(false);
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Container maxWidth="xl" sx={{ py: 2.5 }}>
-        <Header />
+        <Header onHelpClick={() => setShowHelpModal(true)} />
 
         <Box 
           sx={{ 
@@ -107,6 +111,7 @@ export default function App() {
 
         <Footer />
 
+
         {/* Loss Modal */}
         {lossModalData && (
           <LossModal
@@ -117,6 +122,12 @@ export default function App() {
             onClose={closeLossModal}
           />
         )}
+
+        {/* Help Modal */}
+        <HelpModal
+          open={showHelpModal}
+          onClose={() => setShowHelpModal(false)}
+        />
       </Container>
     </Box>
   );

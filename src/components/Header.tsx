@@ -1,9 +1,14 @@
-import { Typography, Paper } from '@mui/material';
+import { Typography, Paper, IconButton } from '@mui/material';
 
-export default function Header() {
+interface HeaderProps {
+  onHelpClick?: () => void;
+}
+
+export default function Header({ onHelpClick }: HeaderProps) {
   return (
     <Paper
       sx={{
+        position: 'relative',
         textAlign: 'center',
         py: 4,
         px: 3,
@@ -11,6 +16,23 @@ export default function Header() {
         background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
       }}
     >
+      {onHelpClick && (
+        <IconButton
+          onClick={onHelpClick}
+          sx={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            color: 'white',
+            bgcolor: 'rgba(59, 130, 246, 0.2)',
+            '&:hover': {
+              bgcolor: 'rgba(59, 130, 246, 0.4)',
+            },
+          }}
+        >
+          <Typography fontSize="1.5rem">❓</Typography>
+        </IconButton>
+      )}
       <Typography variant="h1" sx={{ color: 'white', mb: 1.5 }}>
         🧠 Neural Network: 면접 시스템 시각화
       </Typography>
