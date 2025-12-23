@@ -96,7 +96,7 @@ export default function App() {
 
           {/* Center: Network Visualization */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <NetworkCanvas nn={nn} onVisualizerReady={setVisualizer} />
+            <NetworkCanvas nn={nn} onVisualizerReady={setVisualizer} onCanvasClick={nextStep} />
           </Box>
 
           {/* Right Panel: Calculation Display */}

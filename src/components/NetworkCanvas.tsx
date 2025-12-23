@@ -6,9 +6,10 @@ import type { NeuralNetwork } from '../lib/network';
 interface NetworkCanvasProps {
   nn: NeuralNetwork;
   onVisualizerReady: (visualizer: Visualizer) => void;
+  onCanvasClick?: () => void;
 }
 
-export default function NetworkCanvas({ nn, onVisualizerReady }: NetworkCanvasProps) {
+export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: NetworkCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const visualizerRef = useRef<Visualizer | null>(null);
@@ -83,7 +84,8 @@ export default function NetworkCanvas({ nn, onVisualizerReady }: NetworkCanvasPr
       >
         <canvas
           ref={canvasRef}
-          style={{ display: 'block' }}
+          onClick={onCanvasClick}
+          style={{ display: 'block', cursor: onCanvasClick ? 'pointer' : 'default' }}
         />
       </Box>
     </Paper>

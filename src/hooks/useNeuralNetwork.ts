@@ -164,10 +164,12 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     visualizer.update(nnRef.current);
     await sleep(baseDelay / animationSpeedRef.current);
 
-    // Clear
+    // Clear - important to reset state before next neuron
     visualizer.calculationStage = null;
     visualizer.intermediateValue = null;
     visualizer.currentNeuronData = null;
+    visualizer.highlightedNeuron = null;
+    visualizer.update(nnRef.current);
   };
   
   const animateForwardPropagation = async () => {
@@ -214,10 +216,10 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     const visualizer = visualizerRef.current;
     if (!visualizer) return;
 
-    const stages: Array<'error' | 'derivative' | 'gradient' | 'weightDelta' | 'update'> =
-      ['error', 'derivative', 'gradient', 'weightDelta', 'update'];
+    const stages: Array<'error' | 'derivative' | 'gradient' | 'weightDelta' | 'allWeightDeltas' | 'update'> =
+      ['error', 'derivative', 'gradient', 'weightDelta', 'allWeightDeltas', 'update'];
 
-    const stageDuration = [300, 350, 350, 350, 300]; // Duration for each stage
+    const stageDuration = [300, 350, 350, 350, 400, 300]; // Duration for each stage
 
     visualizer.backpropPhase = { layer, index };
     visualizer.currentBackpropData = neuronData;
@@ -228,6 +230,23 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
       visualizer.backpropStage = stages[i];
       visualizer.update(nnRef.current);
       await sleep(stageDuration[i] / animationSpeedRef.current);
+      
+      // After 'update' stage animation completes, apply the weight and bias updates
+      if (stages[i] === 'update') {
+        const nn = nnRef.current;
+        if (layer === 'output') {
+          nn.weights_hidden2_output.data[index] = neuronData.newWeights;
+          nn.bias_output.data[index][0] = neuronData.newBias;
+        } else if (layer === 'layer2') {
+          nn.weights_hidden1_hidden2.data[index] = neuronData.newWeights;
+          nn.bias_hidden2.data[index][0] = neuronData.newBias;
+        } else if (layer === 'layer1') {
+          nn.weights_input_hidden1.data[index] = neuronData.newWeights;
+          nn.bias_hidden1.data[index][0] = neuronData.newBias;
+        }
+        // Update visualization with new weights
+        visualizer.update(nnRef.current);
+      }
     }
 
     visualizer.backpropStage = null;

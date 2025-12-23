@@ -113,7 +113,9 @@ export class Visualizer {
     activation: number,
     label: string,
     layerType: LayerType,
-    isHighlighted: boolean = false
+    neuronIndex: number,
+    isHighlighted: boolean = false,
+    isBackpropHighlighted: boolean = false
   ): NodePosition {
     const baseWidth = weights.length * 25;
     let width = Math.max(130, baseWidth + 40);
@@ -168,9 +170,17 @@ export class Visualizer {
       strokeColor = isHighlighted ? '#f87171' : '#ef4444';
     }
     
+    
     ctx.fill();
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = isHighlighted ? 4 : 2;
+    
+    // Backprop highlight takes priority over regular highlight
+    if (isBackpropHighlighted) {
+      ctx.strokeStyle = '#a855f7'; // Purple for backprop
+      ctx.lineWidth = 5;
+    } else {
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = isHighlighted ? 4 : 2;
+    }
     ctx.stroke();
     
     ctx.fillStyle = '#ffffff';
@@ -201,13 +211,13 @@ export class Visualizer {
     ctx.font = 'bold 12px monospace';
     ctx.fillText('→ ' + activation.toFixed(3), centerX + 70, centerY + 68);
     
+    // Show calculation overlay only for the currently highlighted neuron
     if (this.highlightedNeuron && 
         this.highlightedNeuron.layer === layerType && 
-        this.highlightedNeuron.index !== undefined) {
-      const neuronIndex = label.includes('#') ? parseInt(label.split('#')[1]) - 1 : 0;
-      if (this.highlightedNeuron.index === neuronIndex && this.calculationStage && this.intermediateValue !== null) {
-        this.drawCalculationOverlay(ctx, x, centerY - 20, this.calculationStage, this.intermediateValue);
-      }
+        this.highlightedNeuron.index === neuronIndex &&
+        this.calculationStage && 
+        this.intermediateValue !== null) {
+      this.drawCalculationOverlay(ctx, x, centerY - 20, this.calculationStage, this.intermediateValue);
     }
     
     return { x: centerX, y: centerY, width, height, centerX: x, centerY: y };
@@ -302,7 +312,7 @@ export class Visualizer {
       boxY = canvasHeight - margin - boxHeight;
     }
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
     ctx.beginPath();
     ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
     ctx.fill();
@@ -359,6 +369,9 @@ export class Visualizer {
       const isHighlighted = this.highlightedNeuron &&
                             this.highlightedNeuron.layer === 'layer1' &&
                             this.highlightedNeuron.index === i;
+      const isBackpropHighlighted = this.backpropPhase &&
+                                     this.backpropPhase.layer === 'layer1' &&
+                                     this.backpropPhase.index === i;
       const node = this.drawNeuronVector(
         ctx,
         layer1X,
@@ -368,7 +381,9 @@ export class Visualizer {
         neuron.activated,
         `1차 #${i + 1}`,
         'layer1',
-        isHighlighted || false
+        i,
+        isHighlighted || false,
+        isBackpropHighlighted || false
       );
       layer1Nodes.push(node);
     }
@@ -384,6 +399,9 @@ export class Visualizer {
       const isHighlighted = this.highlightedNeuron &&
                             this.highlightedNeuron.layer === 'layer2' &&
                             this.highlightedNeuron.index === i;
+      const isBackpropHighlighted = this.backpropPhase &&
+                                     this.backpropPhase.layer === 'layer2' &&
+                                     this.backpropPhase.index === i;
       const node = this.drawNeuronVector(
         ctx,
         layer2X,
@@ -393,7 +411,9 @@ export class Visualizer {
         neuron.activated,
         `2차 #${i + 1}`,
         'layer2',
-        isHighlighted || false
+        i,
+        isHighlighted || false,
+        isBackpropHighlighted || false
       );
       layer2Nodes.push(node);
     }
@@ -411,6 +431,9 @@ export class Visualizer {
       const isHighlighted = this.highlightedNeuron &&
                             this.highlightedNeuron.layer === 'output' &&
                             this.highlightedNeuron.index === i;
+      const isBackpropHighlighted = this.backpropPhase &&
+                                     this.backpropPhase.layer === 'output' &&
+                                     this.backpropPhase.index === i;
       const outputNode = this.drawNeuronVector(
         ctx,
         outputX,
@@ -420,7 +443,9 @@ export class Visualizer {
         output.activated,
         classNames[i],
         'output',
-        isHighlighted || false
+        i,
+        isHighlighted || false,
+        isBackpropHighlighted || false
       );
       outputNodes.push(outputNode);
     }
@@ -628,10 +653,78 @@ export class Visualizer {
         case 'error':
           title = '1️⃣ 받은 오류 (Error)';
           color = '#fca5a5';
-          content = [
-            `이 뉴런이 받은 오류:`,
-            `error = ${data.error.toFixed(4)}`
-          ];
+          
+          // Determine layer to provide context-specific explanation
+          const currentLayer = this.backpropPhase?.layer || 'layer1';
+          
+          if (currentLayer === 'output') {
+            // Output layer: direct error from target - prediction
+            const prediction = data.activation;
+            const target = data.error + prediction; // Reverse calculate target
+            content = [
+              `출력 레이어의 오류 계산:`,
+              '',
+              `error = target - prediction`,
+              `      = ${target.toFixed(4)} - ${prediction.toFixed(4)}`,
+              `      = ${data.error.toFixed(4)}`,
+              '',
+              target > prediction ? '✓ 목표보다 낮게 예측 → 가중치 증가 필요' : '✓ 목표보다 높게 예측 → 가중치 감소 필요'
+            ];
+          } else {
+            // Hidden layers: weighted sum of next layer's errors
+            if (data.nextLayerErrors && data.nextLayerWeights) {
+              // Determine what the next layer is
+              let nextLayerLabels: string[];
+              if (currentLayer === 'layer2') {
+                // Next layer is output
+                nextLayerLabels = ['불합격', '보류', '합격'];
+              } else if (currentLayer === 'layer1') {
+                // Next layer is layer2
+                nextLayerLabels = data.nextLayerErrors.map((_, i) => `2차#${i+1}`);
+              } else {
+                nextLayerLabels = data.nextLayerErrors.map((_, i) => `next[${i}]`);
+              }
+              
+              content = [
+                `은닉 레이어의 오류 역전파:`,
+                '',
+                `다음 레이어의 각 뉴런이 보낸 오류:`,
+                ''
+              ];
+              
+              // Show each term in the sum with labels
+              data.nextLayerErrors.forEach((nextError, idx) => {
+                const weight = data.nextLayerWeights![idx];
+                const term = nextError * weight;
+                content.push(
+                  `${nextLayerLabels[idx]}: ${nextError.toFixed(4)} × ${weight.toFixed(4)} = ${term.toFixed(4)}`
+                );
+                content.push(
+                  `          (그 뉴런의 오류)  (연결 가중치)  (기여도)`
+                );
+              });
+              
+              content.push('');
+              content.push(`모두 합하면:`);
+              content.push(`error = ${data.nextLayerErrors.map((e, i) => 
+                `${(e * data.nextLayerWeights![i]).toFixed(4)}`
+              ).join(' + ')}`);
+              content.push(`      = ${data.error.toFixed(4)}`);
+            } else {
+              // Fallback if data not available
+              content = [
+                `은닉 레이어의 오류 역전파:`,
+                '',
+                `다음 레이어의 오류들이 가중치를 통해`,
+                `이 뉴런으로 전달됩니다:`,
+                '',
+                `error = Σ(next_error × next_weight)`,
+                `      = ${data.error.toFixed(4)}`,
+                '',
+                '이 값이 이 뉴런의 책임 크기입니다'
+              ];
+            }
+          }
           break;
 
         case 'derivative':
@@ -666,25 +759,53 @@ export class Visualizer {
           ];
           break;
 
+        case 'allWeightDeltas':
+          title = '📝 모든 가중치 변화량';
+          color = '#fcd34d';
+          content = [
+            '각 가중치의 변화 수식:',
+            ''
+          ];
+          
+          // 모든 가중치에 대한 변화 수식 생성
+          data.inputs.forEach((inputVal, i) => {
+            const delta = data.weightDeltas[i];
+            const oldWeight = data.oldWeights[i];
+            content.push(
+              `W[${i}] = ${oldWeight.toFixed(4)}  →  ΔW[${i}] = η × δ × x[${i}]`
+            );
+            content.push(
+              `     = 0.1 × ${data.gradient.toFixed(4)} × ${inputVal.toFixed(3)} = ${delta.toFixed(5)}`
+            );
+          });
+          
+          content.push('');
+          content.push(`b = ${data.oldBias.toFixed(4)}  →  Δb = 0.1 × ${data.gradient.toFixed(4)} = ${data.biasDelta.toFixed(5)}`);
+          break;
+
         case 'update':
           title = '5️⃣ 가중치 업데이트 완료';
           color = '#34d399';
           const biasChange = data.newBias - data.oldBias;
           const biasArrow = biasChange > 0 ? '↗' : '↘';
 
-          // Find indices of top 2 most changed weights
-          const sortedIndices = data.weightDeltas
-            .map((d, i) => ({ delta: Math.abs(d), index: i }))
-            .sort((a, b) => b.delta - a.delta)
-            .slice(0, 2);
-
           content = [
-            `가장 많이 변한 가중치들:`,
-            `W[${sortedIndices[0].index}]: ${data.oldWeights[sortedIndices[0].index].toFixed(4)} ${data.weightDeltas[sortedIndices[0].index] > 0 ? '↗' : '↘'} ${data.newWeights[sortedIndices[0].index].toFixed(4)}`,
-            `W[${sortedIndices[1].index}]: ${data.oldWeights[sortedIndices[1].index].toFixed(4)} ${data.weightDeltas[sortedIndices[1].index] > 0 ? '↗' : '↘'} ${data.newWeights[sortedIndices[1].index].toFixed(4)}`,
-            ``,
-            `Bias: ${data.oldBias.toFixed(4)} ${biasArrow} ${data.newBias.toFixed(4)}`
+            '모든 가중치 업데이트:',
+            ''
           ];
+          
+          // Show all weights with their changes
+          data.oldWeights.forEach((oldW: number, i: number) => {
+            const newW = data.newWeights[i];
+            const delta = data.weightDeltas[i];
+            const arrow = delta > 0 ? '↗' : '↘';
+            content.push(
+              `W[${i}]: ${oldW.toFixed(4)} ${arrow} ${newW.toFixed(4)} (Δ=${delta.toFixed(5)})`
+            );
+          });
+          
+          content.push('');
+          content.push(`Bias: ${data.oldBias.toFixed(4)} ${biasArrow} ${data.newBias.toFixed(4)} (Δ=${biasChange.toFixed(5)})`);
           break;
       }
 
@@ -722,7 +843,7 @@ export class Visualizer {
       }
 
       // Background
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
       ctx.beginPath();
       ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 8);
       ctx.fill();

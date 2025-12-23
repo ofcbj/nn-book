@@ -103,6 +103,8 @@ export interface BackpropNeuronData {
   derivative: number;         // sigmoid 미분값 y(1-y)
   gradient: number;           // error × derivative (최종 그래디언트)
   inputs: number[];           // 이 뉴런으로 들어온 입력값들
+  nextLayerErrors?: number[]; // 다음 레이어의 오류들 (역전파 계산용)
+  nextLayerWeights?: number[]; // 이 뉴런에서 다음 레이어로의 가중치들
 }
 
 /**

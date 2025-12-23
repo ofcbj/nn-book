@@ -402,6 +402,10 @@ export class NeuralNetwork {
       const error = hidden2_errors.data[i][0];
       const gradient = error * derivative;
 
+      // Collect next layer (output) errors and weights for this neuron
+      const nextErrors = output_errors.toArray();
+      const nextWeights = this.weights_hidden2_output.data.map(row => row[i]);
+
       const neuronData: BackpropNeuronData = {
         neuronIndex: i,
         error: error,
@@ -415,7 +419,9 @@ export class NeuralNetwork {
         activation: activation,
         derivative: derivative,
         gradient: gradient,
-        inputs: hidden1.toArray()
+        inputs: hidden1.toArray(),
+        nextLayerErrors: nextErrors,
+        nextLayerWeights: nextWeights
       };
       backpropSteps.layer2.push(neuronData);
     }
@@ -426,6 +432,10 @@ export class NeuralNetwork {
       const derivative = dsigmoid(activation);
       const error = hidden1_errors.data[i][0];
       const gradient = error * derivative;
+
+      // Collect next layer (layer2) errors and weights for this neuron
+      const nextErrors = hidden2_errors.toArray();
+      const nextWeights = this.weights_hidden1_hidden2.data.map(row => row[i]);
 
       const neuronData: BackpropNeuronData = {
         neuronIndex: i,
@@ -440,7 +450,9 @@ export class NeuralNetwork {
         activation: activation,
         derivative: derivative,
         gradient: gradient,
-        inputs: inputs.toArray()
+        inputs: inputs.toArray(),
+        nextLayerErrors: nextErrors,
+        nextLayerWeights: nextWeights
       };
       backpropSteps.layer1.push(neuronData);
     }
