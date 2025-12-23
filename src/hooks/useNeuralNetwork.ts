@@ -267,6 +267,10 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
           nn.weights_input_hidden1.data[index] = neuronData.newWeights;
           nn.bias_hidden1.data[index][0] = neuronData.newBias;
         }
+        
+        // Re-run feedforward with new weights to update CalculationSteps
+        nn.feedforward(nn.lastInput!.toArray());
+        
         // Update visualization with new weights
         visualizer.update(nnRef.current);
       }
@@ -361,10 +365,33 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     nn.feedforward(inputs);
     await animateForwardPropagation();
     
+    // Backup old weights before training
+    const oldWeights = {
+      layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
+      layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
+      output: JSON.parse(JSON.stringify(nn.weights_hidden2_output.data))
+    };
+    const oldBiases = {
+      layer1: JSON.parse(JSON.stringify(nn.bias_hidden1.data)),
+      layer2: JSON.parse(JSON.stringify(nn.bias_hidden2.data)),
+      output: JSON.parse(JSON.stringify(nn.bias_output.data))
+    };
+    
     // Train and show loss modal
     nn.train(inputs, targetOneHot);
     const predictions = nn.lastOutput?.toArray() || [0, 0, 0];
     const currentLoss = nn.lastLoss;
+    
+    // Restore old weights for backprop animation
+    nn.weights_input_hidden1.data = oldWeights.layer1;
+    nn.weights_hidden1_hidden2.data = oldWeights.layer2;
+    nn.weights_hidden2_output.data = oldWeights.output;
+    nn.bias_hidden1.data = oldBiases.layer1;
+    nn.bias_hidden2.data = oldBiases.layer2;
+    nn.bias_output.data = oldBiases.output;
+    
+    // Re-run feedforward with old weights to update CalculationSteps
+    nn.feedforward(inputs);
     
     setLossModalData({ targetClass: targetValue, predictions, loss: currentLoss });
     setShowLossModal(true);
