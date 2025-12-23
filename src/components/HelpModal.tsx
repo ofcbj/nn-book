@@ -116,6 +116,40 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
           </Box>
         </Box>
 
+        {/* Why it learns this way */}
+        <Box sx={{ mb: 3, p: 2, bgcolor: 'rgba(168, 85, 247, 0.1)', borderRadius: 2, border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 1.5 }}>
+            💡 {t('help.whyItLearns.title')}
+          </Typography>
+          
+          <Box sx={{ mb: 2 }}>
+            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>
+              📉 {t('help.whyItLearns.gradient.title')}
+            </Typography>
+            <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2, whiteSpace: 'pre-line' }}>
+              {t('help.whyItLearns.gradient.description')}
+            </Typography>
+          </Box>
+
+          <Box sx={{ mb: 2 }}>
+            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>
+              🎯 {t('help.whyItLearns.lossMinimization.title')}
+            </Typography>
+            <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2, whiteSpace: 'pre-line' }}>
+              {t('help.whyItLearns.lossMinimization.description')}
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography fontWeight={600} fontSize="0.95rem" sx={{ mb: 0.5 }}>
+              🎲 {t('help.whyItLearns.analogy.title')}
+            </Typography>
+            <Typography fontSize="0.9rem" color="text.secondary" sx={{ ml: 2, whiteSpace: 'pre-line' }}>
+              {t('help.whyItLearns.analogy.description')}
+            </Typography>
+          </Box>
+        </Box>
+
         {/* Controls */}
         <Box sx={{ p: 2, bgcolor: 'rgba(239, 68, 68, 0.1)', borderRadius: 2, border: '1px solid rgba(239, 68, 68, 0.3)' }}>
           <Typography variant="h6" fontWeight={600} sx={{ mb: 1.5 }}>

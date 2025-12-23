@@ -137,6 +137,21 @@
         "description": "When the prediction is wrong, errors are propagated backward to adjust weights.\nRepeating this process makes the neural network more accurate."
       }
     },
+    "whyItLearns": {
+      "title": "Why Does It Learn This Way?",
+      "gradient": {
+        "title": "Gradient Descent",
+        "description": "Like descending a mountain, the neural network searches for the lowest point of loss (error).\nAt each step, it calculates the steepest downward direction (gradient) and adjusts weights slightly in that direction."
+      },
+      "lossMinimization": {
+        "title": "Loss Minimization",
+        "description": "The goal of learning is to minimize the difference (loss) between predicted and actual values.\nThrough backpropagation, it calculates how much each weight contributed to the error and updates weights by the learning rate."
+      },
+      "analogy": {
+        "title": "Analogy: Throwing Darts",
+        "description": "• Start by throwing randomly (random initialization)\n• Check how far off from the target (loss calculation)\n• Determine which direction to adjust (gradient)\n• Gradually improve accuracy (weight update)\n• Practice makes perfect! (learning)"
+      }
+    },
     "features": {
       "title": "Key Features",
       "list": "• **Adjust Inputs**: Change candidate characteristics with sliders\n• **Train Once**: Watch the learning process with animation\n• **Auto Train**: Quickly train multiple times\n• **Manual Mode**: Click canvas or use \"Next Step\" button to proceed manually\n• **Animation Speed**: Adjust 0~3x (0 is same as manual mode)\n• **Reset**: Return the neural network to initial state"
