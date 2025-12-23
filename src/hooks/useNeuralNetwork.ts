@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { NeuralNetwork } from '../lib/network';
 import { Visualizer } from '../lib/visualizer';
-import type { CalculationSteps, NeuronCalculation, BackpropSummaryData } from '../lib/types';
+import type { CalculationSteps, NeuronCalculation, BackpropSummaryData, WeightComparisonData } from '../lib/types';
 import type { ActivationData } from '../components/ActivationHeatmap';
+import { createWeightComparisonData } from '../lib/weightComparison';
 
 interface UseNeuralNetworkReturn {
   // Neural network
@@ -53,6 +54,12 @@ interface UseNeuralNetworkReturn {
   activations: ActivationData | null;
   toggleCanvasHeatmap: () => void;
   toggleGridHeatmap: () => void;
+
+  // Weight comparison
+  showComparisonModal: boolean;
+  weightComparisonData: WeightComparisonData | null;
+  openComparisonModal: () => void;
+  closeComparisonModal: () => void;
 
   // Actions
   trainOneStepWithAnimation: () => Promise<void>;
@@ -124,6 +131,10 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   const [showCanvasHeatmap, setShowCanvasHeatmap] = useState(false);
   const [showGridHeatmap, setShowGridHeatmap] = useState(true);
   const [activations, setActivations] = useState<ActivationData | null>(null);
+
+  // Weight comparison modal
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+  const [weightComparisonData, setWeightComparisonData] = useState<WeightComparisonData | null>(null);
 
   const setVisualizer = useCallback((v: Visualizer) => {
     visualizerRef.current = v;
@@ -422,10 +433,46 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   
   const closeLossModal = useCallback(async () => {
     setShowLossModal(false);
+    
+    const nn = nnRef.current;
+
+    // Store old weights before backprop for comparison
+    const oldWeights = {
+      layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
+      layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
+      output: JSON.parse(JSON.stringify(nn.weights_hidden2_output.data))
+    };
+    const oldBiases = {
+      layer1: nn.bias_hidden1.data.map(row => row[0]),
+      layer2: nn.bias_hidden2.data.map(row => row[0]),
+      output: nn.bias_output.data.map(row => row[0])
+    };
 
     // Backward pass animation
     await animateBackwardPropagation();
     await sleep(500 / animationSpeedRef.current);
+
+    // Collect new weights after backprop
+    const newWeights = {
+      layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
+      layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
+      output: JSON.parse(JSON.stringify(nn.weights_hidden2_output.data))
+    };
+    const newBiases = {
+      layer1: nn.bias_hidden1.data.map(row => row[0]),
+      layer2: nn.bias_hidden2.data.map(row => row[0]),
+      output: nn.bias_output.data.map(row => row[0])
+    };
+
+    // Create comparison data
+    const comparisonData = createWeightComparisonData(
+      oldWeights,
+      newWeights,
+      oldBiases,
+      newBiases,
+      learningRate
+    );
+    setWeightComparisonData(comparisonData);
 
     // Update stats
     setEpoch(prev => prev + 1);
@@ -435,10 +482,18 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     updateVisualization();
     setIsAnimating(false);
     shouldStopAnimationRef.current = false;
-  }, [updateVisualization]);
+  }, [updateVisualization, learningRate]);
 
   const closeBackpropModal = useCallback(() => {
     setShowBackpropModal(false);
+  }, []);
+
+  const openComparisonModal = useCallback(() => {
+    setShowComparisonModal(true);
+  }, []);
+
+  const closeComparisonModal = useCallback(() => {
+    setShowComparisonModal(false);
   }, []);
   
   const trainOneStep = useCallback(() => {
@@ -566,5 +621,9 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     activations,
     toggleCanvasHeatmap,
     toggleGridHeatmap,
+    showComparisonModal,
+    weightComparisonData,
+    openComparisonModal,
+    closeComparisonModal,
   };
 }

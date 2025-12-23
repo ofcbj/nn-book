@@ -9,6 +9,7 @@ import LossModal from './components/LossModal';
 import BackpropModal from './components/BackpropModal';
 import HelpModal from './components/HelpModal';
 import ActivationHeatmap from './components/ActivationHeatmap';
+import WeightComparisonModal from './components/WeightComparisonModal';
 import { useNeuralNetwork } from './hooks/useNeuralNetwork';
 
 export default function App() {
@@ -52,6 +53,10 @@ export default function App() {
     activations,
     toggleCanvasHeatmap,
     toggleGridHeatmap,
+    showComparisonModal,
+    weightComparisonData,
+    openComparisonModal,
+    closeComparisonModal,
   } = useNeuralNetwork();
 
   // Initial visualization
@@ -108,6 +113,8 @@ export default function App() {
                 showGridHeatmap={showGridHeatmap}
                 onToggleCanvasHeatmap={toggleCanvasHeatmap}
                 onToggleGridHeatmap={toggleGridHeatmap}
+                hasComparisonData={weightComparisonData !== null}
+                onViewComparison={openComparisonModal}
               />
               <StatsDisplay epoch={epoch} loss={loss} output={output} />
             </Stack>
@@ -154,6 +161,13 @@ export default function App() {
         <HelpModal
           open={showHelpModal}
           onClose={() => setShowHelpModal(false)}
+        />
+
+        {/* Weight Comparison Modal */}
+        <WeightComparisonModal
+          open={showComparisonModal}
+          data={weightComparisonData}
+          onClose={closeComparisonModal}
         />
       </Container>
     </Box>

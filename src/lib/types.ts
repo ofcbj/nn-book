@@ -157,3 +157,21 @@ export interface BackpropSummaryData {
   learningRate: number;
   totalWeightsUpdated: number;
 }
+
+export interface LayerWeightComparison {
+  oldWeights: number[][];
+  newWeights: number[][];
+  oldBiases: number[];
+  newBiases: number[];
+  weightDeltas: number[][];
+  biasDeltas: number[];
+}
+
+export interface WeightComparisonData {
+  layer1: LayerWeightComparison;
+  layer2: LayerWeightComparison;
+  output: LayerWeightComparison;
+  totalChange: number;
+  maxWeightChange: number;
+  learningRate: number;
+}

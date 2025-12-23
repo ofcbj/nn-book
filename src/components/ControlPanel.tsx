@@ -31,6 +31,9 @@ interface ControlPanelProps {
   showGridHeatmap: boolean;
   onToggleCanvasHeatmap: () => void;
   onToggleGridHeatmap: () => void;
+  // Weight comparison
+  hasComparisonData: boolean;
+  onViewComparison: () => void;
 }
 
 export default function ControlPanel({
@@ -58,6 +61,8 @@ export default function ControlPanel({
   showGridHeatmap,
   onToggleCanvasHeatmap,
   onToggleGridHeatmap,
+  hasComparisonData,
+  onViewComparison,
 }: ControlPanelProps) {
   const { t } = useTranslation();
   const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
@@ -348,6 +353,29 @@ export default function ControlPanel({
               </Typography>
             }
           />
+        </Box>
+
+        <Box sx={{ mt: 2 }}>
+          <Button
+            variant="outlined"
+            fullWidth
+            onClick={onViewComparison}
+            disabled={!hasComparisonData}
+            sx={{
+              borderColor: 'primary.main',
+              color: 'primary.main',
+              '&:hover': {
+                borderColor: 'primary.dark',
+                bgcolor: 'rgba(59, 130, 246, 0.1)',
+              },
+              '&:disabled': {
+                borderColor: 'action.disabled',
+                color: 'text.disabled',
+              },
+            }}
+          >
+            📊 {t('comparison.viewComparison')}
+          </Button>
         </Box>
       </Box>
     </Paper>

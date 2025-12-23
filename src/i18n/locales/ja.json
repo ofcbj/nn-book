@@ -215,7 +215,24 @@
     "step4Title": "4段階: 重み更新",
     "step4Desc": "計算された変化量を実際の重みに適用します。",
     "outputLayer": "出力レイヤー",
-    "hiddenLayer": "隐れレイヤー"
+    "hiddenLayer": "隠れレイヤー"
+  },
+  "comparison": {
+    "title": "学習前後の重み比較",
+    "before": "学習前",
+    "after": "学習後",
+    "delta": "変化量",
+    "totalChange": "総変化量",
+    "maxChange": "最大変化量",
+    "learningRate": "学習率",
+    "neuron": "ニューロン",
+    "parameter": "パラメータ",
+    "neurons": "ニューロン数",
+    "inputsPerNeuron": "ニューロンあたりの入力",
+    "totalParameters": "総パラメータ数",
+    "viewComparison": "重みの変化を表示",
+    "noData": "学習データがありません。まず「1回学習」を実行してください。",
+    "close": "閉じる"
   },
   "footer": {
     "architecture": "構造: <1>3入力</1> → <3>5ニューロン(1次)</3> → <5>3ニューロン(2次)</5> → <7>3出力</7>",
