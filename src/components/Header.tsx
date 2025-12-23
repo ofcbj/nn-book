@@ -26,6 +26,22 @@ export default function Header({ onHelpClick }: HeaderProps) {
       {/* Language Switcher */}
       <Box sx={{ position: 'absolute', top: 16, left: 16, display: 'flex', gap: 1 }}>
         <Button
+          onClick={() => changeLanguage('en')}
+          variant={i18n.language === 'en' ? 'contained' : 'outlined'}
+          size="small"
+          sx={{
+            minWidth: '50px',
+            color: i18n.language === 'en' ? 'white' : 'rgba(255,255,255,0.7)',
+            bgcolor: i18n.language === 'en' ? 'rgba(59, 130, 246, 0.8)' : 'transparent',
+            borderColor: 'rgba(255,255,255,0.3)',
+            '&:hover': {
+              bgcolor: i18n.language === 'en' ? 'rgba(59, 130, 246, 1)' : 'rgba(255,255,255,0.1)',
+            },
+          }}
+        >
+          🇺🇸
+        </Button>
+        <Button
           onClick={() => changeLanguage('ko')}
           variant={i18n.language === 'ko' ? 'contained' : 'outlined'}
           size="small"
@@ -58,6 +74,7 @@ export default function Header({ onHelpClick }: HeaderProps) {
           🇯🇵
         </Button>
       </Box>
+
 
       {/* Help Button */}
       {onHelpClick && (

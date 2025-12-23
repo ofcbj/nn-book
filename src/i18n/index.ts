@@ -1,20 +1,20 @@
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import ko from './locales/ko.json';
-import ja from './locales/ja.json';
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+import ko from "./locales/ko.json";
+import ja from "./locales/ja.json";
+import en from "./locales/en.json";
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources: {
-      ko: { translation: ko },
-      ja: { translation: ja }
-    },
-    lng: 'ja', // 기본 언어를 일본어로 변경
-    fallbackLng: 'ko',
-    interpolation: {
-      escapeValue: false // React는 XSS를 자동으로 escape함
-    }
-  });
+i18n.use(initReactI18next).init({
+  resources: {
+    en: { translation: en },
+    ko: { translation: ko },
+    ja: { translation: ja },
+  },
+  lng: "en", // Default language set to English
+  fallbackLng: "en",
+  interpolation: {
+    escapeValue: false, // React automatically escapes XSS
+  },
+});
 
 export default i18n;

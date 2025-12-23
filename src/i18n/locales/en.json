@@ -1,0 +1,203 @@
+{
+  "header": {
+    "title": "Neural Network: Interview System Visualization",
+    "subtitle": "Decision-making process through dot product of inputs and weights, and activation functions"
+  },
+  "controls": {
+    "inputSection": "Input Parameters",
+    "grade": "Grade",
+    "attitude": "Attitude",
+    "response": "Response",
+    "target": "Target",
+    "trainingSection": "Training Settings",
+    "learningRate": "Learning Rate",
+    "animationSpeed": "Animation Speed",
+    "manualMode": "Manual Mode",
+    "actionSection": "Training Actions",
+    "oneStep": "Train Once",
+    "autoTrain": "Auto Train",
+    "stop": "Stop",
+    "reset": "Reset",
+    "nextStep": "Next Step"
+  },
+  "common": {
+    "count": "items",
+    "countUpdates": "updates"
+  },
+  "stats": {
+    "title": "Training Stats",
+    "epoch": "Epoch",
+    "loss": "Loss",
+    "prediction": "Prediction"
+  },
+  "classes": {
+    "fail": "Fail",
+    "pending": "Pending",
+    "pass": "Pass"
+  },
+  "layers": {
+    "input": "Interviewee",
+    "layer1Prefix": "1st",
+    "layer2Prefix": "2nd",
+    "output": "Final Decision",
+    "interviewer": "Interviewer"
+  },
+  "network": {
+    "title": "Network Structure"
+  },
+  "calculation": {
+    "title": "Calculation Process",
+    "noData": "Start training to see the calculation process",
+    "forwardPass": "Forward Pass",
+    "backprop": "Backpropagation"
+  },
+  "lossModal": {
+    "title": "Forward Pass Result & Loss Calculation",
+    "expected": "Expected",
+    "actual": "Actual (Forward Result)",
+    "interpretation": "Interpretation",
+    "targetClass": "Target Class",
+    "oneHot": "One-Hot",
+    "lossValue": "Cross-Entropy Loss",
+    "lossFormula": "L = -Σ(target × log(predicted))",
+    "lossCalculation": "Loss Calculation Steps",
+    "step1": "1. Expand Cross-Entropy formula:",
+    "step2": "2. Calculate only for target class:",
+    "step3": "3. Final result:",
+    "expectedDesc": "Expected:",
+    "expectedText": "The network should learn to predict {{class}}.",
+    "lossValueMeaning": "Loss value meaning:",
+    "lossValueText": "Loss value {{value}} means {{interpretation}}.",
+    "probText": "{{class}} probability: {{prob}}%",
+    "probHigh": "High probability results in low loss!",
+    "probLow": "Low probability results in high loss. Training needed.",
+    "errorReason": "Why it was wrong this time:",
+    "tooLow": "Too low (needs to be {{value}}% higher)",
+    "tooHigh": "Too high (needs to be {{value}}% lower)",
+    "backpropAnalogy": "Understanding Backpropagation:",
+    "analogyTitle": "Analogy: When you make a mistake in a team project",
+    "analogyStep1": "Error Detection",
+    "analogyStep1Desc": "\"The final result is wrong!\"",
+    "analogyStep2": "Assess Impact",
+    "analogyStep2Desc": "Measure each team member's impact on the result",
+    "analogyStep3": "Calculate Adjustment",
+    "analogyStep3Desc": "The greater the impact, the more improvement needed",
+    "analogyStep4": "Apply Improvement",
+    "analogyStep4Desc": "Make better decisions next time",
+    "backpropSteps": "4 Steps of Backpropagation:",
+    "backpropStep1": "Error received: error signal this neuron received",
+    "backpropStep2": "Calculate adjustment direction: error × sensitivity (gradient)",
+    "backpropStep3": "Weight change: adjustment × input × learning rate",
+    "backpropStep4": "Update: actually modify weights and biases",
+    "startBackward": "▶ Start Backward Process",
+    "verySmall": "very small value, prediction is very close to target",
+    "small": "small value, prediction is close to target",
+    "medium": "medium value, there is a difference between prediction and target",
+    "large": "large value, prediction is far from target"
+  },
+  "help": {
+    "title": "Understanding Interview Process with Neural Networks",
+    "whatIs": {
+      "title": "What is this system?",
+      "description": "An educational tool that visualizes the interview process as a neural network. It represents the process of determining final acceptance through multiple stages, similar to an actual interview, as the learning process of a neural network."
+    },
+    "structure": {
+      "title": "Network Structure",
+      "input": {
+        "title": "Input Layer (3)",
+        "items": "• Grade (0.0 ~ 1.0)\n• Attitude (0.0 ~ 1.0)\n• Response level (0.0 ~ 1.0)"
+      },
+      "layer1": {
+        "title": "1st Stage Interviewers (5)",
+        "description": "Evaluate the candidate's 3 characteristics in their own way."
+      },
+      "layer2": {
+        "title": "2nd Stage Interviewers (3)",
+        "description": "Synthesize and re-evaluate the assessments from 5 first-stage interviewers."
+      },
+      "output": {
+        "title": "Final Decision (3)",
+        "items": "• Fail\n• Pending\n• Pass"
+      }
+    },
+    "howItWorks": {
+      "title": "How does it work?",
+      "forward": {
+        "title": "Forward Pass",
+        "description": "Input values pass through each layer to create the final prediction.\nEach neuron calculates using weights (W) and biases (b)."
+      },
+      "backward": {
+        "title": "Backpropagation",
+        "description": "When the prediction is wrong, errors are propagated backward to adjust weights.\nRepeating this process makes the neural network more accurate."
+      }
+    },
+    "features": {
+      "title": "Key Features",
+      "list": "• **Adjust Inputs**: Change candidate characteristics with sliders\n• **Train Once**: Watch the learning process with animation\n• **Auto Train**: Quickly train multiple times\n• **Manual Mode**: Click canvas or use \"Next Step\" button to proceed manually\n• **Animation Speed**: Adjust 0~3x (0 is same as manual mode)\n• **Reset**: Return the neural network to initial state"
+    },
+    "close": "Close"
+  },
+  "backprop": {
+    "error": "1️⃣ Error Received",
+    "outputError": "Output layer error calculation:",
+    "hiddenError": "Hidden layer error backpropagation:",
+    "nextLayerErrors": "Errors sent by each neuron in the next layer:",
+    "neuronError": "(that neuron's error)",
+    "connectionWeight": "(connection weight)",
+    "contribution": "(contribution)",
+    "sumAll": "Sum of all:",
+    "nextLayerPropagation": "Errors from the next layer propagate",
+    "thisNeuron": "to this neuron through weights:",
+    "delta": "2️⃣ Adjustment Direction (Delta δ)",
+    "deltaCalc": "δ = error × activation function gradient",
+    "derivative": "Derivative:",
+    "gradient": "3️⃣ Gradient Calculation",
+    "weightDelta": "4️⃣ Weight Change Calculation",
+    "weightDeltaCalc": "Calculate how much to adjust each weight:",
+    "example": "Example)",
+    "connectedWeight": "weight connected to",
+    "allWeightDeltas": "📝 All Weight Changes",
+    "allWeightChanges": "Change formula for each weight:",
+    "currentWeight": "Current weight:",
+    "update": "5️⃣ Update",
+    "allWeightUpdate": "Update all weights:",
+    "biasUpdate": "Update bias:",
+    "oldValue": "Old:",
+    "newValue": "→ New:",
+    "neuronResponsibility": "This value is the magnitude of this neuron's responsibility",
+    "needIncreaseWeight": "✓ Predicted lower than target → need to increase weight",
+    "needDecreaseWeight": "✓ Predicted higher than target → need to decrease weight"
+  },
+  "backpropSummary": {
+    "title": "🎉 Backpropagation Complete",
+    "overview": "All weights and biases have been updated",
+    "formulas": "Formulas Used",
+    "errorCalc": "1. Error Calculation",
+    "gradientCalc": "2. Gradient Calculation",
+    "weightUpdate": "3. Weight Update",
+    "weightChanges": "Weight Changes",
+    "biasChanges": "Bias Changes",
+    "layer1Weights": "1st Stage Interviewer Weights",
+    "layer2Weights": "2nd Stage Interviewer Weights",
+    "outputWeights": "Output Layer Weights",
+    "totalUpdated": "Total Updated Weights",
+    "learningRate": "Learning Rate",
+    "close": "Close",
+    "startForward": "▶ Start Forward Pass",
+    "detailedProcess": "Detailed Process",
+    "step1Title": "Step 1: Error Calculation",
+    "step1Desc": "Calculate the error each neuron will receive.",
+    "step2Title": "Step 2: Gradient Calculation",
+    "step2Desc": "Multiply the error by the derivative of the activation function to get the gradient.",
+    "step3Title": "Step 3: Weight Change Calculation",
+    "step3Desc": "Calculate how much to adjust each weight and bias.",
+    "step4Title": "Step 4: Weight Update",
+    "step4Desc": "Apply the calculated changes to the actual weights.",
+    "outputLayer": "Output Layer",
+    "hiddenLayer": "Hidden Layer"
+  },
+  "footer": {
+    "architecture": "Architecture: <1>3 inputs</1> → <3>5 neurons(1st)</3> → <5>3 neurons(2nd)</5> → <7>3 outputs</7>",
+    "description": "This visualization shows how a candidate's 3 attributes (grade, attitude, response level) are passed through 1st stage interviewers (5) and 2nd stage interviewers (3), leading to the final decision."
+  }
+}
