@@ -6,7 +6,7 @@
 
 面接システムを例に、順伝播(Forward Propagation)と誤差逆伝播(Backpropagation)を直感的に学べます。
 
-🌐 **Live Demo**: https://your-username.github.io/nn-book/
+🌐 **Live Demo**: https://ofcbj.github.io/nn-book/
 
 ## ✨ 主な機能
 
