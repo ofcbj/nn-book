@@ -53,10 +53,9 @@ export class Visualizer {
     x: number,
     y: number,
     stage: CalculationStage,
-    value: number,
     neuronData: NeuronCalculation | null
   ): void {
-    drawCalcOverlay(ctx, this.canvas, x, y, stage, value, neuronData);
+    drawCalcOverlay(ctx, this.canvas, x, y, stage, neuronData);
   }
 
   drawNetwork(nn: NeuralNetwork, steps: CalculationSteps | null): void {
@@ -168,9 +167,11 @@ export class Visualizer {
     toLayer: string, 
     toIndex: number
   ): boolean {
-    if (this.calculationStage !== 'connections') return false;
+    // Show active connections when any calculation stage is active (not just 'connections')
+    // This keeps connection lines visible during the entire calculation popup display
     if (!this.highlightedNeuron) return false;
     
+    // Check if this connection leads to the highlighted neuron
     return this.highlightedNeuron.layer === toLayer && 
            this.highlightedNeuron.index === toIndex;
   }
