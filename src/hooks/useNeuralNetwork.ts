@@ -20,6 +20,13 @@ import {
   FORWARD_STAGES,
   BACKPROP_STAGES,
 } from './useAnimationStateMachine';
+import {
+  runAnimationLoop,
+  forwardNeuronIndices,
+  backwardNeuronIndices,
+  FORWARD_STAGE_DURATIONS,
+  BACKWARD_STAGE_DURATIONS,
+} from '../lib/animationLoop';
 
 interface UseNeuralNetworkReturn {
   // Neural network
@@ -242,45 +249,28 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   // =========================================================================
   const animateForwardPropagation = useCallback(async () => {
     const nn = nnRef.current;
-    const calcSteps = nn.getCalculationSteps();
-    if (!calcSteps) return;
     
-    const layers: Array<'layer1' | 'layer2' | 'output'> = ['layer1', 'layer2', 'output'];
-    const layerSizes = { layer1: 5, layer2: 3, output: 3 };
-    const layerData = { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
-    
-    const baseDelay = 400;
-    const connectionDelay = 150;
-    const stageDurations: Record<CalculationStage, number> = {
-      connections: connectionDelay,
-      dotProduct: baseDelay,
-      bias: baseDelay,
-      activation: baseDelay,
-    };
-    
-    for (const layer of layers) {
-      for (let neuronIndex = 0; neuronIndex < layerSizes[layer]; neuronIndex++) {
-        if (shouldStopRef.current) return;
-        
-        const neuronData = layerData[layer][neuronIndex];
-        
-        for (const stage of FORWARD_STAGES) {
-          if (shouldStopRef.current) return;
-          
-          // Update state machine
-          animationMachine.forwardTick(layer, neuronIndex, stage, neuronData);
-          
-          // Update visualization
-          updateVisualization();
-          
-          // Wait for appropriate duration
-          await sleep(stageDurations[stage]);
-        }
-      }
-    }
-    
-    // Forward complete
-    animationMachine.forwardComplete();
+    await runAnimationLoop({
+      mode: 'forward',
+      layers: ['layer1', 'layer2', 'output'],
+      getNeuronIndices: forwardNeuronIndices,
+      stages: FORWARD_STAGES,
+      stageDurations: FORWARD_STAGE_DURATIONS,
+      getData: () => {
+        const calcSteps = nn.getCalculationSteps();
+        if (!calcSteps) return null;
+        return { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
+      },
+      onTick: (layer, neuronIndex, stage, data) => {
+        animationMachine.forwardTick(layer, neuronIndex, stage, data);
+      },
+      onComplete: () => {
+        animationMachine.forwardComplete();
+      },
+      shouldStop: () => shouldStopRef.current,
+      sleep,
+      updateVisualization,
+    });
   }, [animationMachine, sleep, updateVisualization]);
   
   // =========================================================================
@@ -291,61 +281,45 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     const backpropData = nn.lastBackpropSteps;
     if (!backpropData) return;
     
-    // Reverse order: output -> layer2 -> layer1
-    const layers: Array<'layer1' | 'layer2' | 'output'> = ['output', 'layer2', 'layer1'];
-    const layerStartIndices = { output: 2, layer2: 2, layer1: 4 };
-    const layerData = { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
-    
-    const stageDurations: Record<BackpropStage, number> = {
-      error: 300,
-      derivative: 350,
-      gradient: 350,
-      weightDelta: 350,
-      allWeightDeltas: 400,
-      update: 300,
-    };
-    
-    for (const layer of layers) {
-      for (let neuronIndex = layerStartIndices[layer]; neuronIndex >= 0; neuronIndex--) {
-        if (shouldStopRef.current) return;
-        
-        const neuronData = layerData[layer][neuronIndex];
-        
-        for (const stage of BACKPROP_STAGES) {
-          if (shouldStopRef.current) return;
-          
-          // Update state machine
-          animationMachine.backwardTick(layer, neuronIndex, stage, neuronData);
-          
-          // Update visualization
-          updateVisualization();
-          
-          // Wait for appropriate duration - use speedOverride to avoid stale state issues
-          await sleep(stageDurations[stage], speedOverride);
-          
-          // After 'update' stage, apply weight updates
-          if (stage === 'update') {
-            if (layer === 'output') {
-              nn.weights_hidden2_output.data[neuronIndex] = neuronData.newWeights;
-              nn.bias_output.data[neuronIndex][0] = neuronData.newBias;
-            } else if (layer === 'layer2') {
-              nn.weights_hidden1_hidden2.data[neuronIndex] = neuronData.newWeights;
-              nn.bias_hidden2.data[neuronIndex][0] = neuronData.newBias;
-            } else if (layer === 'layer1') {
-              nn.weights_input_hidden1.data[neuronIndex] = neuronData.newWeights;
-              nn.bias_hidden1.data[neuronIndex][0] = neuronData.newBias;
-            }
-            
-            // Re-run feedforward to update calculation steps
-            nn.feedforward(nn.lastInput!.toArray());
-            updateVisualization();
+    await runAnimationLoop({
+      mode: 'backward',
+      layers: ['output', 'layer2', 'layer1'], // Reverse order
+      getNeuronIndices: backwardNeuronIndices,
+      stages: BACKPROP_STAGES,
+      stageDurations: BACKWARD_STAGE_DURATIONS,
+      getData: () => {
+        return { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
+      },
+      onTick: (layer, neuronIndex, stage, data) => {
+        animationMachine.backwardTick(layer, neuronIndex, stage, data);
+      },
+      onStageComplete: (layer, neuronIndex, stage, data) => {
+        // After 'update' stage, apply weight updates
+        if (stage === 'update') {
+          if (layer === 'output') {
+            nn.weights_hidden2_output.data[neuronIndex] = data.newWeights;
+            nn.bias_output.data[neuronIndex][0] = data.newBias;
+          } else if (layer === 'layer2') {
+            nn.weights_hidden1_hidden2.data[neuronIndex] = data.newWeights;
+            nn.bias_hidden2.data[neuronIndex][0] = data.newBias;
+          } else if (layer === 'layer1') {
+            nn.weights_input_hidden1.data[neuronIndex] = data.newWeights;
+            nn.bias_hidden1.data[neuronIndex][0] = data.newBias;
           }
+          
+          // Re-run feedforward to update calculation steps
+          nn.feedforward(nn.lastInput!.toArray());
+          updateVisualization();
         }
-      }
-    }
-    
-    // Backward complete
-    animationMachine.backwardComplete();
+      },
+      onComplete: () => {
+        animationMachine.backwardComplete();
+      },
+      shouldStop: () => shouldStopRef.current,
+      sleep,
+      updateVisualization,
+      speedOverride,
+    });
     
     // Collect summary data
     const summaryData: BackpropSummaryData = {
