@@ -208,6 +208,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
         visualizerRef.current.backpropPhase = null;
         visualizerRef.current.currentBackpropData = null;
         visualizerRef.current.backpropStage = null;
+        visualizerRef.current.allBackpropData = null;
       } else if (state.type === 'backward_animating') {
         visualizerRef.current.highlightedNeuron = null;
         visualizerRef.current.calculationStage = null;
@@ -215,6 +216,8 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
         visualizerRef.current.backpropPhase = { layer: state.layer, index: state.neuronIndex };
         visualizerRef.current.currentBackpropData = state.neuronData;
         visualizerRef.current.backpropStage = state.stage;
+        // Set all backprop data for persistent error labels
+        visualizerRef.current.allBackpropData = nn.lastBackpropSteps;
       } else {
         // Clear all highlights
         visualizerRef.current.highlightedNeuron = null;
@@ -223,6 +226,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
         visualizerRef.current.backpropPhase = null;
         visualizerRef.current.currentBackpropData = null;
         visualizerRef.current.backpropStage = null;
+        visualizerRef.current.allBackpropData = null;
       }
       
       visualizerRef.current.update(nn);

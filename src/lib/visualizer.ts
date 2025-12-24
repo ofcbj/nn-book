@@ -1,7 +1,7 @@
 // Visualizer for React - Canvas-based visualization
 // Modified to work with React refs instead of direct DOM queries
 
-import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage } from './types';
+import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage, BackpropSteps } from './types';
 import type { NeuralNetwork } from './network';
 import i18n from '../i18n';
 import { activationToColor } from './activationColors';
@@ -29,6 +29,7 @@ export class Visualizer {
   backpropPhase: AnimationPhase | null = null;
   currentBackpropData: BackpropNeuronData | null = null;
   backpropStage: BackpropStage | null = null;
+  allBackpropData: BackpropSteps | null = null;  // All backprop data for persistent error labels
 
   // Store node positions for click detection
   private lastNodes: NodePosition[][] = [];
@@ -224,7 +225,8 @@ export class Visualizer {
       nodes,
       this.backpropPhase,
       this.currentBackpropData,
-      this.backpropStage
+      this.backpropStage,
+      this.allBackpropData
     );
   }
 

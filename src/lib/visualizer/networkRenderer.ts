@@ -49,7 +49,7 @@ export function drawNetwork(
 
   // Layer 1 - 5 neurons with tighter spacing
   const layer1Nodes: NodePosition[] = [];
-  const layer1VerticalSpacing = 95;
+  const layer1VerticalSpacing = 105;
   const layer1TotalHeight = (5 - 1) * layer1VerticalSpacing;
   const layer1StartY = (height - layer1TotalHeight) / 2;
   for (let i = 0; i < 5; i++) {

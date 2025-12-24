@@ -91,7 +91,8 @@ export function drawNeuronVector(
   } else if (layerType === 'output') {
     width += 20;
   }
-  const height = 90;
+  // Layer1 has reduced height to make room for error labels
+  const height = layerType === 'layer1' ? 80 : 90;
   const centerX = x - width / 2;
   const centerY = y - height / 2;
 

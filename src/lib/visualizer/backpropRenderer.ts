@@ -1,5 +1,5 @@
 // Backpropagation visualization renderer
-import type { NodePosition, BackpropNeuronData, BackpropStage, AnimationPhase } from '../types';
+import type { NodePosition, BackpropNeuronData, BackpropStage, AnimationPhase, BackpropSteps } from '../types';
 import { generateBackpropContent } from './overlayContentGenerator';
 import { renderOverlay } from './overlayRenderer';
 
@@ -134,6 +134,55 @@ function drawBackpropConnections(
   ctx.restore();
 }
 
+/**
+ * Draw error labels on all neurons during backpropagation.
+ * This provides persistent visualization of error values.
+ */
+function drawAllErrorLabels(
+  ctx: CanvasRenderingContext2D,
+  nodes: NodePosition[][],
+  allBackpropData: BackpropSteps
+): void {
+  ctx.save();
+  
+  const layerData: { nodes: NodePosition[], data: BackpropNeuronData[] }[] = [
+    { nodes: nodes[1] || [], data: allBackpropData.layer1 },
+    { nodes: nodes[2] || [], data: allBackpropData.layer2 },
+    { nodes: nodes[3] || [], data: allBackpropData.output },
+  ];
+  
+  layerData.forEach(({ nodes: layerNodes, data }) => {
+    layerNodes.forEach((node, idx) => {
+      if (data[idx]) {
+        const errorValue = data[idx].error;
+        
+        // Position label below the neuron
+        const labelX = node.centerX;
+        const labelY = node.y + node.height + 14;
+        
+        // Background with semi-transparent red
+        const errorMagnitude = Math.min(Math.abs(errorValue) * 2, 1);
+        ctx.fillStyle = `rgba(239, 68, 68, ${0.5 + errorMagnitude * 0.4})`;
+        const errorText = `δ=${errorValue.toFixed(3)}`;
+        ctx.font = 'bold 10px monospace';
+        const textWidth = ctx.measureText(errorText).width;
+        
+        // Rounded rectangle background
+        ctx.beginPath();
+        ctx.roundRect(labelX - textWidth / 2 - 4, labelY - 8, textWidth + 8, 14, 3);
+        ctx.fill();
+        
+        // Error text
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText(errorText, labelX, labelY + 2);
+      }
+    });
+  });
+  
+  ctx.restore();
+}
+
 // ============================================================================
 // Main Function
 // ============================================================================
@@ -148,8 +197,14 @@ export function drawBackpropHighlight(
   nodes: NodePosition[][],
   backpropPhase: AnimationPhase | null,
   currentBackpropData: BackpropNeuronData | null,
-  backpropStage: BackpropStage | null
+  backpropStage: BackpropStage | null,
+  allBackpropData: BackpropSteps | null = null
 ): void {
+  // Draw persistent error labels on all neurons if we have backprop data
+  if (allBackpropData) {
+    drawAllErrorLabels(ctx, nodes, allBackpropData);
+  }
+  
   if (!backpropPhase) return;
 
   const { layer, index } = backpropPhase;
@@ -193,4 +248,5 @@ export function drawBackpropHighlight(
     ctx.fillText('◄ BACKPROP', nodeInfo.centerX, nodeInfo.y - 35);
   }
 }
+
 
