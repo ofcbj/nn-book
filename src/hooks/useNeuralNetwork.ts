@@ -780,10 +780,55 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
             animationMachine.forwardTick(state.layer, state.neuronIndex, nextStage, state.neuronData);
             updateVisualization();
           } else {
-            // All stages done, continue from next neuron
-            shouldStopRef.current = false;
-            animationMachine.resume(animationSpeed || 1.0);
-            continueFromJumpedPosition();
+            // All stages done - move to next neuron while staying paused
+            const nextNeuron = getNextForwardNeuron(state.layer, state.neuronIndex);
+            if (nextNeuron) {
+              // Get neuron data for the next neuron
+              const calcSteps = nn.getCalculationSteps();
+              if (calcSteps) {
+                const layerData = { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
+                const nextNeuronData = layerData[nextNeuron.layer as 'layer1' | 'layer2' | 'output'][nextNeuron.index];
+                // Jump to next neuron (stays paused with speed=0)
+                animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
+                animationMachine.forwardTick(nextNeuron.layer, nextNeuron.index, 'dotProduct', nextNeuronData);
+                updateVisualization();
+              }
+            } else {
+              // No more neurons - forward pass complete
+              const inputs = [grade, attitude, response];
+              const targetOneHot = [0, 0, 0];
+              targetOneHot[targetValue] = 1;
+              
+              // Backup old weights
+              const oldWeights = {
+                layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
+                layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
+                output: JSON.parse(JSON.stringify(nn.weights_hidden2_output.data))
+              };
+              const oldBiases = {
+                layer1: JSON.parse(JSON.stringify(nn.bias_hidden1.data)),
+                layer2: JSON.parse(JSON.stringify(nn.bias_hidden2.data)),
+                output: JSON.parse(JSON.stringify(nn.bias_output.data))
+              };
+              
+              // Train to prepare backprop data
+              nn.train(inputs, targetOneHot);
+              const predictions = nn.lastOutput?.toArray() || [0, 0, 0];
+              const currentLoss = nn.lastLoss;
+              
+              // Restore old weights for backprop visualization
+              nn.weights_input_hidden1.data = oldWeights.layer1;
+              nn.weights_hidden1_hidden2.data = oldWeights.layer2;
+              nn.weights_hidden2_output.data = oldWeights.output;
+              nn.bias_hidden1.data = oldBiases.layer1;
+              nn.bias_hidden2.data = oldBiases.layer2;
+              nn.bias_output.data = oldBiases.output;
+              nn.feedforward(inputs);
+              
+              // Show loss modal
+              animationMachine.forwardComplete();
+              setLossModalData({ targetClass: targetValue, predictions, loss: currentLoss });
+            }
           }
         } else if (state.type === 'backward_animating') {
           const nextStage = getNextBackpropStage(state.stage);
@@ -807,10 +852,22 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
             animationMachine.backwardTick(state.layer, state.neuronIndex, nextStage, state.neuronData);
             updateVisualization();
           } else {
-            // All stages done, continue from next neuron
-            shouldStopRef.current = false;
-            animationMachine.resume(animationSpeed || 1.0);
-            continueFromJumpedPosition();
+            // All stages done - move to next neuron while staying paused
+            const nextNeuron = getNextBackwardNeuron(state.layer, state.neuronIndex);
+            if (nextNeuron) {
+              const backpropData = nn.lastBackpropSteps;
+              if (backpropData) {
+                const layerData = { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
+                const nextNeuronData = layerData[nextNeuron.layer as 'layer1' | 'layer2' | 'output'][nextNeuron.index];
+                // Jump to next neuron (stays paused with speed=0)
+                animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
+                animationMachine.backwardTick(nextNeuron.layer, nextNeuron.index, 'error', nextNeuronData);
+                updateVisualization();
+              }
+            } else {
+              // No more neurons - backward pass complete
+              animationMachine.backwardComplete();
+            }
           }
         }
       } else {

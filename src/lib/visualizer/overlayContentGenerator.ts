@@ -98,6 +98,17 @@ function generateErrorContent(
     ];
   } else {
     if (data.nextLayerErrors && data.nextLayerWeights) {
+      // Get current neuron label
+      let currentNeuronLabel: string;
+      if (currentLayer === 'layer2') {
+        currentNeuronLabel = `${i18n.t('layers.layer2Prefix')}#${data.neuronIndex + 1}`;
+      } else if (currentLayer === 'layer1') {
+        currentNeuronLabel = `${i18n.t('layers.layer1Prefix')}#${data.neuronIndex + 1}`;
+      } else {
+        currentNeuronLabel = `neuron[${data.neuronIndex}]`;
+      }
+      
+      // Get next layer neuron labels
       let nextLayerLabels: string[];
       if (currentLayer === 'layer2') {
         nextLayerLabels = [i18n.t('classes.fail'), i18n.t('classes.pending'), i18n.t('classes.pass')];
@@ -110,26 +121,34 @@ function generateErrorContent(
       const content = [
         i18n.t('backprop.hiddenError'),
         '',
-        i18n.t('backprop.nextLayerErrors'),
+        `${currentNeuronLabel}: ${i18n.t('backprop.nextLayerErrors')}`,
         ''
       ];
       
+      // Show each connection with clear notation
       data.nextLayerErrors.forEach((nextError, idx) => {
         const weight = data.nextLayerWeights![idx];
         const term = nextError * weight;
+        const nextLabel = nextLayerLabels[idx];
+        
+        // Show: "nextNeuron의 오류 × (현재→next 가중치) = 기여도"
         content.push(
-          `${nextLayerLabels[idx]}: ${nextError.toFixed(4)} × ${weight.toFixed(4)} = ${term.toFixed(4)}`
+          `${nextLabel}: error=${nextError.toFixed(4)}`
         );
         content.push(
-          `          ${i18n.t('backprop.neuronError')}  ${i18n.t('backprop.connectionWeight')}  ${i18n.t('backprop.contribution')}`
+          `  × W[${currentNeuronLabel}→${nextLabel}]=${weight.toFixed(4)}`
         );
+        content.push(
+          `  = ${term.toFixed(4)}`
+        );
+        content.push('');
       });
       
-      content.push('');
       content.push(i18n.t('backprop.sumAll'));
-      content.push(`error = ${data.nextLayerErrors.map((e, i) => 
-        `${(e * data.nextLayerWeights![i]).toFixed(4)}`
-      ).join(' + ')}`);
+      const contributions = data.nextLayerErrors.map((e, i) => 
+        (e * data.nextLayerWeights![i]).toFixed(4)
+      );
+      content.push(`error = ${contributions.join(' + ')}`);
       content.push(`      = ${data.error.toFixed(4)}`);
       
       return content;
