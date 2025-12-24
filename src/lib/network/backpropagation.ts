@@ -42,74 +42,39 @@ export function backpropOutputLayer(
 }
 
 /**
- * Perform backpropagation for layer 2 (hidden2) and return deltas
+ * Generic backpropagation for hidden layers
+ * Calculates errors, gradients, and weight deltas for a layer
  */
-export function backpropLayer2(
-  output_errors: Matrix,
-  hidden2: Matrix,
-  hidden1: Matrix,
-  weights_hidden2_output: Matrix,
+export function backpropHiddenLayer(
+  next_layer_errors: Matrix,
+  current_layer: Matrix,
+  previous_layer: Matrix,
+  weights_current_next: Matrix,
   learning_rate: number
 ): {
-  hidden2_errors: Matrix;
-  gradients_hidden2: Matrix;
-  weight_h1h2_deltas: Matrix;
-  bias_hidden2_deltas: Matrix;
+  current_errors: Matrix;
+  current_gradients: Matrix;
+  weight_deltas: Matrix;
+  bias_deltas: Matrix;
 } {
-  // Calculate hidden2 errors
-  const who_t = Matrix.transpose(weights_hidden2_output);
-  const hidden2_errors = Matrix.multiply(who_t, output_errors);
+  // Calculate current layer errors from next layer
+  const weights_transposed = Matrix.transpose(weights_current_next);
+  const current_errors = Matrix.multiply(weights_transposed, next_layer_errors);
 
-  // Calculate hidden2 gradient
-  const gradients_hidden2 = Matrix.map(hidden2, dsigmoid);
-  gradients_hidden2.multiply(hidden2_errors);
-  gradients_hidden2.multiply(learning_rate);
+  // Calculate gradients
+  const current_gradients = Matrix.map(current_layer, dsigmoid);
+  current_gradients.multiply(current_errors);
+  current_gradients.multiply(learning_rate);
 
-  // Calculate hidden1 -> hidden2 deltas
-  const hidden1_T = Matrix.transpose(hidden1);
-  const weight_h1h2_deltas = Matrix.multiply(gradients_hidden2, hidden1_T);
+  // Calculate weight deltas
+  const previous_layer_T = Matrix.transpose(previous_layer);
+  const weight_deltas = Matrix.multiply(current_gradients, previous_layer_T);
 
   return {
-    hidden2_errors,
-    gradients_hidden2,
-    weight_h1h2_deltas,
-    bias_hidden2_deltas: gradients_hidden2
-  };
-}
-
-/**
- * Perform backpropagation for layer 1 (hidden1) and return deltas
- */
-export function backpropLayer1(
-  hidden2_errors: Matrix,
-  hidden1: Matrix,
-  inputs: Matrix,
-  weights_hidden1_hidden2: Matrix,
-  learning_rate: number
-): {
-  hidden1_errors: Matrix;
-  gradients_hidden1: Matrix;
-  weight_ih1_deltas: Matrix;
-  bias_hidden1_deltas: Matrix;
-} {
-  // Calculate hidden1 errors
-  const wh1h2_t = Matrix.transpose(weights_hidden1_hidden2);
-  const hidden1_errors = Matrix.multiply(wh1h2_t, hidden2_errors);
-
-  // Calculate hidden1 gradient
-  const gradients_hidden1 = Matrix.map(hidden1, dsigmoid);
-  gradients_hidden1.multiply(hidden1_errors);
-  gradients_hidden1.multiply(learning_rate);
-
-  // Calculate input -> hidden1 deltas
-  const inputs_T = Matrix.transpose(inputs);
-  const weight_ih1_deltas = Matrix.multiply(gradients_hidden1, inputs_T);
-
-  return {
-    hidden1_errors,
-    gradients_hidden1,
-    weight_ih1_deltas,
-    bias_hidden1_deltas: gradients_hidden1
+    current_errors,
+    current_gradients,
+    weight_deltas,
+    bias_deltas: current_gradients
   };
 }
 

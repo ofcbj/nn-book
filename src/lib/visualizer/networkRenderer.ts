@@ -1,8 +1,19 @@
 // Network rendering module
-import type { CalculationSteps, NodePosition, AnimationPhase } from '../types';
+import type { CalculationSteps, NodePosition, AnimationPhase, NeuronCalculation, CalculationStage } from '../types';
 import type { NeuralNetwork } from '../network';
 import { drawInputVector, drawNeuronVector } from './drawingUtils';
 import i18n from '../../i18n';
+
+// Helper function to get the correct value for overlay based on calculation stage
+function getOverlayValue(stage: string, data: NeuronCalculation): number {
+  switch (stage) {
+    case 'connections': return 0;
+    case 'dotProduct': return data.dotProduct;
+    case 'bias': return data.withBias;
+    case 'activation': return data.activated;
+    default: return 0;
+  }
+}
 
 export function drawNetwork(
   ctx: CanvasRenderingContext2D,
@@ -12,21 +23,21 @@ export function drawNetwork(
   inputLabels: string[],
   highlightedNeuron: AnimationPhase | null,
   backpropPhase: AnimationPhase | null,
-  calculationStage: string | null,
-  intermediateValue: number | null,
+  calculationStage: CalculationStage | null,
   drawConnectionsVector: (ctx: CanvasRenderingContext2D, nodes: NodePosition[][], nn: NeuralNetwork) => void,
   drawLossOverlay: ((ctx: CanvasRenderingContext2D, width: number, height: number) => void) | null,
   drawBackpropHighlight: ((ctx: CanvasRenderingContext2D, nodes: NodePosition[][]) => void) | null,
-  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: any, value: number) => void) | null,
+  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: any, value: number, neuronData: NeuronCalculation | null) => void) | null,
+  currentNeuronData: NeuronCalculation | null,
   heatmapMode: boolean = false
-): void {
+): NodePosition[][] {
   const width = canvas.width;
   const height = canvas.height;
 
   ctx.fillStyle = '#0a0a0a';
   ctx.fillRect(0, 0, width, height);
 
-  if (!steps) return;
+  if (!steps) return [];
 
   const nodes: NodePosition[][] = [];
 
@@ -74,8 +85,9 @@ export function drawNetwork(
     
     // Show calculation overlay for highlighted neuron
     if (highlightedNeuron && highlightedNeuron.layer === 'layer1' && highlightedNeuron.index === i && 
-        calculationStage && intermediateValue !== null && drawCalculationOverlay) {
-      drawCalculationOverlay(ctx, layer1X, layer1StartY + i * layer1VerticalSpacing - 80, calculationStage as any, intermediateValue);
+        calculationStage && currentNeuronData && drawCalculationOverlay) {
+      const overlayValue = getOverlayValue(calculationStage, currentNeuronData);
+      drawCalculationOverlay(ctx, layer1X, layer1StartY + i * layer1VerticalSpacing - 80, calculationStage as any, overlayValue, currentNeuronData);
     }
     
     layer1Nodes.push(node);
@@ -111,8 +123,9 @@ export function drawNetwork(
     
     // Show calculation overlay for highlighted neuron
     if (highlightedNeuron && highlightedNeuron.layer === 'layer2' && highlightedNeuron.index === i && 
-        calculationStage && intermediateValue !== null && drawCalculationOverlay) {
-      drawCalculationOverlay(ctx, layer2X, layer2StartY + i * layer2VerticalSpacing - 80, calculationStage as any, intermediateValue);
+        calculationStage && currentNeuronData && drawCalculationOverlay) {
+      const overlayValue = getOverlayValue(calculationStage, currentNeuronData);
+      drawCalculationOverlay(ctx, layer2X, layer2StartY + i * layer2VerticalSpacing - 80, calculationStage as any, overlayValue, currentNeuronData);
     }
     
     layer2Nodes.push(node);
@@ -150,8 +163,9 @@ export function drawNetwork(
     
     // Show calculation overlay for highlighted neuron
     if (highlightedNeuron && highlightedNeuron.layer === 'output' && highlightedNeuron.index === i && 
-        calculationStage && intermediateValue !== null && drawCalculationOverlay) {
-      drawCalculationOverlay(ctx, outputX, outputStartY + i * outputVerticalSpacing - 80, calculationStage as any, intermediateValue);
+        calculationStage && currentNeuronData && drawCalculationOverlay) {
+      const overlayValue = getOverlayValue(calculationStage, currentNeuronData);
+      drawCalculationOverlay(ctx, outputX, outputStartY + i * outputVerticalSpacing - 80, calculationStage as any, overlayValue, currentNeuronData);
     }
     
     outputNodes.push(outputNode);
@@ -167,4 +181,6 @@ export function drawNetwork(
   if (drawBackpropHighlight) {
     drawBackpropHighlight(ctx, nodes);
   }
+
+  return nodes;
 }

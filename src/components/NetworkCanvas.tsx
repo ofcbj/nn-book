@@ -7,7 +7,7 @@ import type { NeuralNetwork } from '../lib/network';
 interface NetworkCanvasProps {
   nn: NeuralNetwork;
   onVisualizerReady: (visualizer: Visualizer) => void;
-  onCanvasClick?: () => void;
+  onCanvasClick?: (x?: number, y?: number) => void;
 }
 
 export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: NetworkCanvasProps) {
@@ -83,6 +83,25 @@ export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: 
     return () => window.removeEventListener('resize', handleResize);
   }, [resizeCanvas]);
 
+  const handleClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!onCanvasClick || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Get click position relative to canvas
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    // Scale for high DPI
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const canvasX = x * scaleX;
+    const canvasY = y * scaleY;
+    
+    onCanvasClick(canvasX, canvasY);
+  }, [onCanvasClick]);
+
   return (
     <Paper sx={{ p: 2.5, height: '100%', minHeight: 700 }}>
       <Typography variant="h2" sx={{ mb: 2, textAlign: 'center' }}>
@@ -101,7 +120,7 @@ export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: 
       >
         <canvas
           ref={canvasRef}
-          onClick={onCanvasClick}
+          onClick={handleClick}
           style={{ display: 'block', cursor: onCanvasClick ? 'pointer' : 'default' }}
         />
       </Box>

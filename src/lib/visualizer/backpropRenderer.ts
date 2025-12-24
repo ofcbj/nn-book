@@ -232,25 +232,58 @@ function calculateBoxPosition(
   boxHeight: number,
   canvas: HTMLCanvasElement
 ): { x: number; y: number } {
-  let boxX = nodeInfo.centerX - boxWidth / 2;
-  let boxY = nodeInfo.y - boxHeight - 20;
-
   const margin = 10;
+  const offset = 15;
 
-  // Adjust horizontal position
-  if (boxX < margin) {
-    boxX = margin;
-  } else if (boxX + boxWidth > canvas.width - margin) {
-    boxX = canvas.width - margin - boxWidth;
+  // Default position: above neuron
+  let boxX = nodeInfo.centerX - boxWidth / 2;
+  let boxY = nodeInfo.y - boxHeight - offset;
+
+  // Check if popup overlaps with neuron box
+  const overlapsNeuron = (testX: number, testY: number): boolean => {
+    const popupLeft = testX;
+    const popupRight = testX + boxWidth;
+    const popupTop = testY;
+    const popupBottom = testY + boxHeight;
+
+    const neuronLeft = nodeInfo.x;
+    const neuronRight = nodeInfo.x + nodeInfo.width;
+    const neuronTop = nodeInfo.y;
+    const neuronBottom = nodeInfo.y + nodeInfo.height;
+
+    return !(popupRight < neuronLeft || 
+             popupLeft > neuronRight || 
+             popupBottom < neuronTop || 
+             popupTop > neuronBottom);
+  };
+
+  // If default position overlaps neuron or is out of bounds above, try below
+  if (boxY < margin || overlapsNeuron(boxX, boxY)) {
+    boxY = nodeInfo.y + nodeInfo.height + offset;
   }
 
-  // Adjust vertical position
+  // If below also overlaps or out of bounds, try to the right
+  if ((boxY + boxHeight > canvas.height - margin) || overlapsNeuron(boxX, boxY)) {
+    boxY = nodeInfo.centerY - boxHeight / 2;
+    boxX = nodeInfo.x + nodeInfo.width + offset;
+  }
+
+  // If right also overlaps or out of bounds, try to the left
+  if ((boxX + boxWidth > canvas.width - margin) || overlapsNeuron(boxX, boxY)) {
+    boxX = nodeInfo.x - boxWidth - offset;
+  }
+
+  // Final boundary adjustments (ensure within canvas)
+  if (boxX < margin) {
+    boxX = margin;
+  }
   if (boxY < margin) {
-    boxY = nodeInfo.y + nodeInfo.height + 20;
-    if (boxY + boxHeight > canvas.height - margin) {
-      boxY = canvas.height - margin - boxHeight;
-    }
-  } else if (boxY + boxHeight > canvas.height - margin) {
+    boxY = margin;
+  }
+  if (boxX + boxWidth > canvas.width - margin) {
+    boxX = canvas.width - margin - boxWidth;
+  }
+  if (boxY + boxHeight > canvas.height - margin) {
     boxY = canvas.height - margin - boxHeight;
   }
 

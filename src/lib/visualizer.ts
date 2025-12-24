@@ -21,7 +21,6 @@ export class Visualizer {
 
   // Calculation animation properties
   calculationStage: CalculationStage | null = null;
-  intermediateValue: number | null = null;
   activeConnections: number[] = [];
   currentNeuronData: NeuronCalculation | null = null;
 
@@ -30,6 +29,9 @@ export class Visualizer {
   backpropPhase: AnimationPhase | null = null;
   currentBackpropData: BackpropNeuronData | null = null;
   backpropStage: BackpropStage | null = null;
+
+  // Store node positions for click detection
+  private lastNodes: NodePosition[][] = [];
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -51,13 +53,14 @@ export class Visualizer {
     x: number,
     y: number,
     stage: CalculationStage,
-    value: number
+    value: number,
+    neuronData: NeuronCalculation | null
   ): void {
-    drawCalcOverlay(ctx, this.canvas, x, y, stage, value, this.currentNeuronData);
+    drawCalcOverlay(ctx, this.canvas, x, y, stage, value, neuronData);
   }
 
   drawNetwork(nn: NeuralNetwork, steps: CalculationSteps | null): void {
-    drawNetwork(
+    const nodes = drawNetwork(
       this.ctx,
       this.canvas,
       nn,
@@ -66,13 +69,15 @@ export class Visualizer {
       this.highlightedNeuron,
       this.backpropPhase,
       this.calculationStage,
-      this.intermediateValue,
       this.drawConnectionsVector.bind(this),
       this.showLoss ? this.drawLossOverlay.bind(this) : null,
       this.backpropPhase ? this.drawBackpropHighlight.bind(this) : null,
       this.drawCalculationOverlay.bind(this),
+      this.currentNeuronData,
       this.heatmapMode
     );
+    // Store nodes for click detection
+    this.lastNodes = nodes;
   }
 
   private drawConnectionsVector(
@@ -237,5 +242,32 @@ export class Visualizer {
 
   getActivationColor(value: number): string {
     return activationToColor(value);
+  }
+
+  // Find neuron at given canvas coordinates
+  public findNeuronAtPosition(x: number, y: number): {
+    layer: 'layer1' | 'layer2' | 'output';
+    index: number;
+  } | null {
+    for (const [layerIndex, layerNodes] of this.lastNodes.entries()) {
+      // Skip input layer (index 0)
+      if (layerIndex === 0) continue;
+      
+      for (const [nodeIndex, node] of layerNodes.entries()) {
+        if (x >= node.x && x <= node.x + node.width &&
+            y >= node.y && y <= node.y + node.height) {
+          
+          // Determine layer name
+          let layer: 'layer1' | 'layer2' | 'output';
+          if (layerIndex === 1) layer = 'layer1';
+          else if (layerIndex === 2) layer = 'layer2';
+          else if (layerIndex === 3) layer = 'output';
+          else continue;
+          
+          return { layer, index: nodeIndex };
+        }
+      }
+    }
+    return null;
   }
 }

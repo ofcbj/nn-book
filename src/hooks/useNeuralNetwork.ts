@@ -1,9 +1,25 @@
+/**
+ * Neural Network Hook - Refactored with Animation State Machine
+ * 
+ * This hook manages the neural network instance and integrates with the
+ * animation state machine for predictable state transitions.
+ */
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { NeuralNetwork } from '../lib/network';
 import { Visualizer } from '../lib/visualizer';
-import type { CalculationSteps, NeuronCalculation, BackpropSummaryData, WeightComparisonData } from '../lib/types';
+import type { CalculationSteps, BackpropSummaryData, WeightComparisonData, CalculationStage, BackpropStage } from '../lib/types';
 import type { ActivationData } from '../components/ActivationHeatmap';
 import { createWeightComparisonData } from '../lib/weightComparison';
+import {
+  useAnimationStateMachine,
+  getNextForwardStage,
+  getNextBackpropStage,
+  getNextForwardNeuron,
+  getNextBackwardNeuron,
+  FORWARD_STAGES,
+  BACKPROP_STAGES,
+} from './useAnimationStateMachine';
 
 interface UseNeuralNetworkReturn {
   // Neural network
@@ -68,45 +84,34 @@ interface UseNeuralNetworkReturn {
   closeLossModal: () => void;
   closeBackpropModal: () => void;
   updateVisualization: () => void;
-  handleCanvasClick: () => void;
+  handleCanvasClick: (x?: number, y?: number) => void;
 }
 
 export function useNeuralNetwork(): UseNeuralNetworkReturn {
-  // Neural network ref (mutable, doesn't trigger re-renders)
+  // =========================================================================
+  // Core Refs
+  // =========================================================================
   const nnRef = useRef(new NeuralNetwork());
   const visualizerRef = useRef<Visualizer | null>(null);
   const trainingIntervalRef = useRef<number | undefined>(undefined);
   
-  // Input values
+  // =========================================================================
+  // Animation State Machine
+  // =========================================================================
+  const animationMachine = useAnimationStateMachine();
+  
+  // =========================================================================
+  // Local State (non-animation related)
+  // =========================================================================
   const [grade, setGrade] = useState(0.7);
   const [attitude, setAttitude] = useState(0.5);
   const [response, setResponse] = useState(0.8);
   const [targetValue, setTargetValue] = useState(2);
   const [learningRate, setLearningRate] = useState(0.1);
-  const [animationSpeed, setAnimationSpeed] = useState(1.0);
+  
+  // Animation speed is managed both locally (for UI) and in state machine
+  const [animationSpeed, setAnimationSpeedLocal] = useState(1.0);
   const [isManualMode, setIsManualMode] = useState(false);
-
-  // Use ref for animation speed so it's always current
-  const animationSpeedRef = useRef(animationSpeed);
-  const manualModeRef = useRef(isManualMode);
-  const manualStepResolverRef = useRef<(() => void) | null>(null);
-  const prevAnimationSpeedRef = useRef(animationSpeed);
-
-  // Update ref whenever animationSpeed changes
-  animationSpeedRef.current = animationSpeed;
-  manualModeRef.current = isManualMode;
-
-  // When animation speed changes from 0 to > 0, auto-resume animation
-  useEffect(() => {
-    if (prevAnimationSpeedRef.current === 0 && animationSpeed > 0) {
-      // Speed was increased from 0, resume animation automatically
-      if (manualStepResolverRef.current) {
-        manualStepResolverRef.current();
-        manualStepResolverRef.current = null;
-      }
-    }
-    prevAnimationSpeedRef.current = animationSpeed;
-  }, [animationSpeed]);
 
   // Stats
   const [epoch, setEpoch] = useState(0);
@@ -116,48 +121,55 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   
   // Training state
   const [isTraining, setIsTraining] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const shouldStopAnimationRef = useRef(false);
   
-  // Loss modal
-  const [showLossModal, setShowLossModal] = useState(false);
+  // Loss modal (derived from state machine)
   const [lossModalData, setLossModalData] = useState<{ targetClass: number; predictions: number[]; loss: number } | null>(null);
-
-  // Backprop summary modal
-  const [showBackpropModal, setShowBackpropModal] = useState(false);
+  
+  // Backprop summary
   const [backpropSummaryData, setBackpropSummaryData] = useState<BackpropSummaryData | null>(null);
 
-  // Heatmap visualization
+  // Heatmap
   const [showCanvasHeatmap, setShowCanvasHeatmap] = useState(false);
   const [showGridHeatmap, setShowGridHeatmap] = useState(true);
   const [activations, setActivations] = useState<ActivationData | null>(null);
 
-  // Weight comparison modal
+  // Weight comparison
   const [showComparisonModal, setShowComparisonModal] = useState(false);
   const [weightComparisonData, setWeightComparisonData] = useState<WeightComparisonData | null>(null);
 
+  // Ref to signal animation should stop
+  const shouldStopRef = useRef(false);
+  
+  // Ref for continueFromJumpedPosition function (to be called from useEffect)
+  const continueFromJumpedPositionRef = useRef<(() => Promise<void>) | null>(null);
+  
+  // =========================================================================
+  // Sync animation speed with state machine
+  // =========================================================================
+  const setAnimationSpeed = useCallback((speed: number) => {
+    setAnimationSpeedLocal(speed);
+    animationMachine.setSpeed(speed);
+  }, [animationMachine]);
+  
+  // Sync local animationSpeed with state machine's speed
+  // This ensures UI reflects pauses triggered by jumpToNeuron, pause(), etc.
+  useEffect(() => {
+    const machineSpeed = animationMachine.state.speed;
+    if (machineSpeed !== animationSpeed) {
+      setAnimationSpeedLocal(machineSpeed);
+    }
+  }, [animationMachine.state.speed, animationSpeed]);
+  
+  // =========================================================================
+  // Visualizer Setup
+  // =========================================================================
   const setVisualizer = useCallback((v: Visualizer) => {
     visualizerRef.current = v;
   }, []);
 
-  const sleep = (ms: number) => {
-    // Manual mode or speed is 0: wait for user to click "Next Step"
-    if (manualModeRef.current || animationSpeedRef.current === 0) {
-      return new Promise<void>(resolve => {
-        manualStepResolverRef.current = resolve;
-      });
-    } else {
-      return new Promise(resolve => setTimeout(resolve, ms));
-    }
-  };
-
-  const nextStep = useCallback(() => {
-    if (manualStepResolverRef.current) {
-      manualStepResolverRef.current();
-      manualStepResolverRef.current = null;
-    }
-  }, []);
-  
+  // =========================================================================
+  // Update Visualization (sync visualizer with state machine)
+  // =========================================================================
   const updateVisualization = useCallback(() => {
     const nn = nnRef.current;
     const inputs = [grade, attitude, response];
@@ -179,175 +191,301 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     }
     
     if (visualizerRef.current) {
+      // Sync visualizer state from state machine
+      const state = animationMachine.state;
+      
+      if (state.type === 'forward_animating') {
+        visualizerRef.current.highlightedNeuron = { layer: state.layer, index: state.neuronIndex };
+        visualizerRef.current.calculationStage = state.stage;
+        visualizerRef.current.currentNeuronData = state.neuronData;
+        visualizerRef.current.backpropPhase = null;
+        visualizerRef.current.currentBackpropData = null;
+        visualizerRef.current.backpropStage = null;
+      } else if (state.type === 'backward_animating') {
+        visualizerRef.current.highlightedNeuron = null;
+        visualizerRef.current.calculationStage = null;
+        visualizerRef.current.currentNeuronData = null;
+        visualizerRef.current.backpropPhase = { layer: state.layer, index: state.neuronIndex };
+        visualizerRef.current.currentBackpropData = state.neuronData;
+        visualizerRef.current.backpropStage = state.stage;
+      } else {
+        // Clear all highlights
+        visualizerRef.current.highlightedNeuron = null;
+        visualizerRef.current.calculationStage = null;
+        visualizerRef.current.currentNeuronData = null;
+        visualizerRef.current.backpropPhase = null;
+        visualizerRef.current.currentBackpropData = null;
+        visualizerRef.current.backpropStage = null;
+      }
+      
       visualizerRef.current.update(nn);
     }
-  }, [grade, attitude, response]);
+  }, [grade, attitude, response, animationMachine.state]);
   
-  const animateNeuronCalculation = async (
-    layer: 'input' | 'layer1' | 'layer2' | 'output',
-    index: number,
-    neuronData: NeuronCalculation
-  ) => {
-    const visualizer = visualizerRef.current;
-    if (!visualizer) return;
-
-    const baseDelay = 400;
-    const connectionDelay = 150;
-
-    visualizer.currentNeuronData = neuronData;
-    visualizer.highlightedNeuron = { layer, index };
-
-    // Stage 1: Connections
-    visualizer.calculationStage = 'connections';
-    visualizer.intermediateValue = null;
-    visualizer.update(nnRef.current);
-    await sleep(connectionDelay / animationSpeedRef.current);
-
-    // Stage 2: Dot product
-    visualizer.calculationStage = 'dotProduct';
-    visualizer.intermediateValue = neuronData.dotProduct;
-    visualizer.update(nnRef.current);
-    await sleep(baseDelay / animationSpeedRef.current);
-
-    // Stage 3: Bias
-    visualizer.calculationStage = 'bias';
-    visualizer.intermediateValue = neuronData.withBias;
-    visualizer.update(nnRef.current);
-    await sleep(baseDelay / animationSpeedRef.current);
-
-    // Stage 4: Activation
-    visualizer.calculationStage = 'activation';
-    visualizer.intermediateValue = neuronData.activated;
-    visualizer.update(nnRef.current);
-    await sleep(baseDelay / animationSpeedRef.current);
-
-    // Clear - important to reset state before next neuron
-    visualizer.calculationStage = null;
-    visualizer.intermediateValue = null;
-    visualizer.currentNeuronData = null;
-    visualizer.highlightedNeuron = null;
-    visualizer.update(nnRef.current);
-  };
+  // =========================================================================
+  // Sleep utility that respects pause state
+  // =========================================================================
+  const sleep = useCallback(async (ms: number, overrideSpeed?: number): Promise<void> => {
+    // Use override speed if provided, otherwise use local animationSpeed state
+    const effectiveSpeed = overrideSpeed ?? animationSpeed;
+    
+    if (isManualMode || effectiveSpeed === 0) {
+      // Wait for user to advance
+      await animationMachine.waitForNextStep();
+    } else {
+      await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
+    }
+  }, [animationMachine, isManualMode, animationSpeed]);
   
-  const animateForwardPropagation = async () => {
+  // =========================================================================
+  // Forward Propagation Animation
+  // =========================================================================
+  const animateForwardPropagation = useCallback(async () => {
     const nn = nnRef.current;
     const calcSteps = nn.getCalculationSteps();
     if (!calcSteps) return;
     
-    // Layer 1
-    for (let i = 0; i < 5; i++) {
-      if (shouldStopAnimationRef.current) break;
-      await animateNeuronCalculation('layer1', i, calcSteps.layer1[i]);
-    }
+    const layers: Array<'layer1' | 'layer2' | 'output'> = ['layer1', 'layer2', 'output'];
+    const layerSizes = { layer1: 5, layer2: 3, output: 3 };
+    const layerData = { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
     
-    // Layer 2
-    if (!shouldStopAnimationRef.current) {
-      for (let i = 0; i < 3; i++) {
-        if (shouldStopAnimationRef.current) break;
-        await animateNeuronCalculation('layer2', i, calcSteps.layer2[i]);
-      }
-    }
+    const baseDelay = 400;
+    const connectionDelay = 150;
+    const stageDurations: Record<CalculationStage, number> = {
+      connections: connectionDelay,
+      dotProduct: baseDelay,
+      bias: baseDelay,
+      activation: baseDelay,
+    };
     
-    // Output
-    if (!shouldStopAnimationRef.current) {
-      for (let i = 0; i < 3; i++) {
-        if (shouldStopAnimationRef.current) break;
-        await animateNeuronCalculation('output', i, calcSteps.output[i]);
-      }
-    }
-    
-    // Clear animation state
-    if (visualizerRef.current) {
-      visualizerRef.current.highlightedNeuron = null;
-      visualizerRef.current.calculationStage = null;
-      visualizerRef.current.intermediateValue = null;
-      visualizerRef.current.update(nn);
-    }
-  };
-  
-  const animateBackpropNeuron = async (
-    layer: 'layer1' | 'layer2' | 'output',
-    index: number,
-    neuronData: any
-  ) => {
-    const visualizer = visualizerRef.current;
-    if (!visualizer) return;
-
-    const stages: Array<'error' | 'derivative' | 'gradient' | 'weightDelta' | 'allWeightDeltas' | 'update'> =
-      ['error', 'derivative', 'gradient', 'weightDelta', 'allWeightDeltas', 'update'];
-
-    const stageDuration = [300, 350, 350, 350, 400, 300]; // Duration for each stage
-
-    visualizer.backpropPhase = { layer, index };
-    visualizer.currentBackpropData = neuronData;
-
-    for (let i = 0; i < stages.length; i++) {
-      if (shouldStopAnimationRef.current) break;
-
-      visualizer.backpropStage = stages[i];
-      visualizer.update(nnRef.current);
-      await sleep(stageDuration[i] / animationSpeedRef.current);
-      
-      // After 'update' stage animation completes, apply the weight and bias updates
-      if (stages[i] === 'update') {
-        const nn = nnRef.current;
-        if (layer === 'output') {
-          nn.weights_hidden2_output.data[index] = neuronData.newWeights;
-          nn.bias_output.data[index][0] = neuronData.newBias;
-        } else if (layer === 'layer2') {
-          nn.weights_hidden1_hidden2.data[index] = neuronData.newWeights;
-          nn.bias_hidden2.data[index][0] = neuronData.newBias;
-        } else if (layer === 'layer1') {
-          nn.weights_input_hidden1.data[index] = neuronData.newWeights;
-          nn.bias_hidden1.data[index][0] = neuronData.newBias;
+    for (const layer of layers) {
+      for (let neuronIndex = 0; neuronIndex < layerSizes[layer]; neuronIndex++) {
+        if (shouldStopRef.current) return;
+        
+        const neuronData = layerData[layer][neuronIndex];
+        
+        for (const stage of FORWARD_STAGES) {
+          if (shouldStopRef.current) return;
+          
+          // Update state machine
+          animationMachine.forwardTick(layer, neuronIndex, stage, neuronData);
+          
+          // Update visualization
+          updateVisualization();
+          
+          // Wait for appropriate duration
+          await sleep(stageDurations[stage]);
         }
-        
-        // Re-run feedforward with new weights to update CalculationSteps
-        nn.feedforward(nn.lastInput!.toArray());
-        
-        // Update visualization with new weights
-        visualizer.update(nnRef.current);
       }
     }
-
-    visualizer.backpropStage = null;
-  };
-
-  const animateBackwardPropagation = async () => {
-    const visualizer = visualizerRef.current;
+    
+    // Forward complete
+    animationMachine.forwardComplete();
+  }, [animationMachine, sleep, updateVisualization]);
+  
+  // =========================================================================
+  // Backward Propagation Animation
+  // =========================================================================
+  const animateBackwardPropagation = useCallback(async (speedOverride: number = 1.0) => {
     const nn = nnRef.current;
-    if (!visualizer || !nn.lastBackpropSteps) return;
-
     const backpropData = nn.lastBackpropSteps;
-
-    // Output layer
-    for (let i = 2; i >= 0; i--) {
-      if (shouldStopAnimationRef.current) break;
-      await animateBackpropNeuron('output', i, backpropData.output[i]);
-    }
-
-    // Layer 2
-    if (!shouldStopAnimationRef.current) {
-      for (let i = 2; i >= 0; i--) {
-        if (shouldStopAnimationRef.current) break;
-        await animateBackpropNeuron('layer2', i, backpropData.layer2[i]);
+    if (!backpropData) return;
+    
+    // Reverse order: output -> layer2 -> layer1
+    const layers: Array<'layer1' | 'layer2' | 'output'> = ['output', 'layer2', 'layer1'];
+    const layerStartIndices = { output: 2, layer2: 2, layer1: 4 };
+    const layerData = { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
+    
+    const stageDurations: Record<BackpropStage, number> = {
+      error: 300,
+      derivative: 350,
+      gradient: 350,
+      weightDelta: 350,
+      allWeightDeltas: 400,
+      update: 300,
+    };
+    
+    for (const layer of layers) {
+      for (let neuronIndex = layerStartIndices[layer]; neuronIndex >= 0; neuronIndex--) {
+        if (shouldStopRef.current) return;
+        
+        const neuronData = layerData[layer][neuronIndex];
+        
+        for (const stage of BACKPROP_STAGES) {
+          if (shouldStopRef.current) return;
+          
+          // Update state machine
+          animationMachine.backwardTick(layer, neuronIndex, stage, neuronData);
+          
+          // Update visualization
+          updateVisualization();
+          
+          // Wait for appropriate duration - use speedOverride to avoid stale state issues
+          await sleep(stageDurations[stage], speedOverride);
+          
+          // After 'update' stage, apply weight updates
+          if (stage === 'update') {
+            if (layer === 'output') {
+              nn.weights_hidden2_output.data[neuronIndex] = neuronData.newWeights;
+              nn.bias_output.data[neuronIndex][0] = neuronData.newBias;
+            } else if (layer === 'layer2') {
+              nn.weights_hidden1_hidden2.data[neuronIndex] = neuronData.newWeights;
+              nn.bias_hidden2.data[neuronIndex][0] = neuronData.newBias;
+            } else if (layer === 'layer1') {
+              nn.weights_input_hidden1.data[neuronIndex] = neuronData.newWeights;
+              nn.bias_hidden1.data[neuronIndex][0] = neuronData.newBias;
+            }
+            
+            // Re-run feedforward to update calculation steps
+            nn.feedforward(nn.lastInput!.toArray());
+            updateVisualization();
+          }
+        }
       }
     }
-
-    // Layer 1
-    if (!shouldStopAnimationRef.current) {
-      for (let i = 4; i >= 0; i--) {
-        if (shouldStopAnimationRef.current) break;
-        await animateBackpropNeuron('layer1', i, backpropData.layer1[i]);
+    
+    // Backward complete
+    animationMachine.backwardComplete();
+    
+    // Collect summary data
+    const summaryData: BackpropSummaryData = {
+      oldWeights: {
+        layer1: backpropData.layer1.map(n => [...n.oldWeights]),
+        layer2: backpropData.layer2.map(n => [...n.oldWeights]),
+        output: backpropData.output.map(n => [...n.oldWeights]),
+      },
+      newWeights: {
+        layer1: backpropData.layer1.map(n => [...n.newWeights]),
+        layer2: backpropData.layer2.map(n => [...n.newWeights]),
+        output: backpropData.output.map(n => [...n.newWeights]),
+      },
+      oldBiases: {
+        layer1: backpropData.layer1.map(n => n.oldBias),
+        layer2: backpropData.layer2.map(n => n.oldBias),
+        output: backpropData.output.map(n => n.oldBias),
+      },
+      newBiases: {
+        layer1: backpropData.layer1.map(n => n.newBias),
+        layer2: backpropData.layer2.map(n => n.newBias),
+        output: backpropData.output.map(n => n.newBias),
+      },
+      learningRate: learningRate,
+      totalWeightsUpdated:
+        backpropData.layer1.reduce((sum, n) => sum + n.oldWeights.length, 0) +
+        backpropData.layer2.reduce((sum, n) => sum + n.oldWeights.length, 0) +
+        backpropData.output.reduce((sum, n) => sum + n.oldWeights.length, 0),
+    };
+    
+    setBackpropSummaryData(summaryData);
+  }, [animationMachine, sleep, updateVisualization, learningRate]);
+  
+  // =========================================================================
+  // Continue Animation from Jumped Position
+  // =========================================================================
+  const continueFromJumpedPosition = useCallback(async () => {
+    const state = animationMachine.state;
+    if (state.type !== 'forward_animating' && state.type !== 'backward_animating') return;
+    
+    const nn = nnRef.current;
+    
+    if (state.type === 'forward_animating') {
+      const calcSteps = nn.getCalculationSteps();
+      if (!calcSteps) return;
+      
+      const layers: Array<'layer1' | 'layer2' | 'output'> = ['layer1', 'layer2', 'output'];
+      const layerSizes = { layer1: 5, layer2: 3, output: 3 };
+      const layerData = { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
+      
+      const baseDelay = 400;
+      const connectionDelay = 150;
+      const stageDurations: Record<CalculationStage, number> = {
+        connections: connectionDelay,
+        dotProduct: baseDelay,
+        bias: baseDelay,
+        activation: baseDelay,
+      };
+      
+      let startLayerIdx = layers.indexOf(state.layer);
+      let startNeuronIdx = state.neuronIndex + 1; // Start from next neuron
+      
+      for (let layerIdx = startLayerIdx; layerIdx < layers.length; layerIdx++) {
+        const layer = layers[layerIdx];
+        const startIdx = layerIdx === startLayerIdx ? startNeuronIdx : 0;
+        
+        for (let neuronIndex = startIdx; neuronIndex < layerSizes[layer]; neuronIndex++) {
+          if (shouldStopRef.current) return;
+          
+          const neuronData = layerData[layer][neuronIndex];
+          
+          for (const stage of FORWARD_STAGES) {
+            if (shouldStopRef.current) return;
+            
+            animationMachine.forwardTick(layer, neuronIndex, stage, neuronData);
+            updateVisualization();
+            await sleep(stageDurations[stage]);
+          }
+        }
       }
-    }
-
-    visualizer.backpropPhase = null;
-    visualizer.currentBackpropData = null;
-    visualizer.backpropStage = null;
-
-    // Collect backprop summary data and show modal
-    if (!shouldStopAnimationRef.current) {
+      
+      animationMachine.forwardComplete();
+      
+    } else if (state.type === 'backward_animating') {
+      const backpropData = nn.lastBackpropSteps;
+      if (!backpropData) return;
+      
+      const layers: Array<'layer1' | 'layer2' | 'output'> = ['output', 'layer2', 'layer1'];
+      const layerStartIndices = { output: 2, layer2: 2, layer1: 4 };
+      const layerData = { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
+      
+      const stageDurations: Record<BackpropStage, number> = {
+        error: 300,
+        derivative: 350,
+        gradient: 350,
+        weightDelta: 350,
+        allWeightDeltas: 400,
+        update: 300,
+      };
+      
+      let startLayerIdx = layers.indexOf(state.layer);
+      let startNeuronIdx = state.neuronIndex - 1; // Start from previous neuron (backward order)
+      
+      for (let layerIdx = startLayerIdx; layerIdx < layers.length; layerIdx++) {
+        const layer = layers[layerIdx];
+        const startIdx = layerIdx === startLayerIdx ? startNeuronIdx : layerStartIndices[layer];
+        
+        for (let neuronIndex = startIdx; neuronIndex >= 0; neuronIndex--) {
+          if (shouldStopRef.current) return;
+          
+          const neuronData = layerData[layer][neuronIndex];
+          
+          for (const stage of BACKPROP_STAGES) {
+            if (shouldStopRef.current) return;
+            
+            animationMachine.backwardTick(layer, neuronIndex, stage, neuronData);
+            updateVisualization();
+            await sleep(stageDurations[stage]);
+            
+            if (stage === 'update') {
+              if (layer === 'output') {
+                nn.weights_hidden2_output.data[neuronIndex] = neuronData.newWeights;
+                nn.bias_output.data[neuronIndex][0] = neuronData.newBias;
+              } else if (layer === 'layer2') {
+                nn.weights_hidden1_hidden2.data[neuronIndex] = neuronData.newWeights;
+                nn.bias_hidden2.data[neuronIndex][0] = neuronData.newBias;
+              } else if (layer === 'layer1') {
+                nn.weights_input_hidden1.data[neuronIndex] = neuronData.newWeights;
+                nn.bias_hidden1.data[neuronIndex][0] = neuronData.newBias;
+              }
+              nn.feedforward(nn.lastInput!.toArray());
+              updateVisualization();
+            }
+          }
+        }
+      }
+      
+      animationMachine.backwardComplete();
+      
+      // Summary data
       const summaryData: BackpropSummaryData = {
         oldWeights: {
           layer1: backpropData.layer1.map(n => [...n.oldWeights]),
@@ -370,25 +508,50 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
           output: backpropData.output.map(n => n.newBias),
         },
         learningRate: learningRate,
-        totalWeightsUpdated: 
+        totalWeightsUpdated:
           backpropData.layer1.reduce((sum, n) => sum + n.oldWeights.length, 0) +
           backpropData.layer2.reduce((sum, n) => sum + n.oldWeights.length, 0) +
           backpropData.output.reduce((sum, n) => sum + n.oldWeights.length, 0),
       };
-      
       setBackpropSummaryData(summaryData);
-      setShowBackpropModal(true);
     }
-  };
-
+  }, [animationMachine, animationSpeed, sleep, updateVisualization, learningRate]);
+  
+  // Store reference to continueFromJumpedPosition for useEffect
+  continueFromJumpedPositionRef.current = continueFromJumpedPosition;
+  
+  // Track previous speed to detect resume from pause  
+  const prevSpeedRef = useRef(animationMachine.state.speed);
+  
+  // Effect to resume animation when speed changes from 0 to > 0 while jumped
+  useEffect(() => {
+    const currentSpeed = animationMachine.state.speed;
+    const wasZero = prevSpeedRef.current === 0;
+    const isNowPositive = currentSpeed > 0;
+    const isJumped = animationMachine.state.isJumped;
+    
+    if (wasZero && isNowPositive && isJumped) {
+      // Speed was increased from paused/jumped state, continue animation
+      shouldStopRef.current = false;
+      if (continueFromJumpedPositionRef.current) {
+        continueFromJumpedPositionRef.current();
+      }
+    }
+    
+    prevSpeedRef.current = currentSpeed;
+  }, [animationMachine.state.speed, animationMachine.state.isJumped]);
+  
+  // =========================================================================
+  // Train One Step With Animation
+  // =========================================================================
   const trainOneStepWithAnimation = useCallback(async () => {
-    if (isAnimating) {
-      shouldStopAnimationRef.current = true;
+    if (animationMachine.isAnimating) {
+      shouldStopRef.current = true;
       return;
     }
     
-    setIsAnimating(true);
-    shouldStopAnimationRef.current = false;
+    shouldStopRef.current = false;
+    animationMachine.startTraining();
     
     const nn = nnRef.current;
     const inputs = [grade, attitude, response];
@@ -399,7 +562,9 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     nn.feedforward(inputs);
     await animateForwardPropagation();
     
-    // Backup old weights before training
+    if (shouldStopRef.current) return;
+    
+    // Backup old weights
     const oldWeights = {
       layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
       layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
@@ -411,32 +576,39 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
       output: JSON.parse(JSON.stringify(nn.bias_output.data))
     };
     
-    // Train and show loss modal
+    // Train
     nn.train(inputs, targetOneHot);
     const predictions = nn.lastOutput?.toArray() || [0, 0, 0];
     const currentLoss = nn.lastLoss;
     
-    // Restore old weights for backprop animation
+    // Restore old weights for backprop visualization
     nn.weights_input_hidden1.data = oldWeights.layer1;
     nn.weights_hidden1_hidden2.data = oldWeights.layer2;
     nn.weights_hidden2_output.data = oldWeights.output;
     nn.bias_hidden1.data = oldBiases.layer1;
     nn.bias_hidden2.data = oldBiases.layer2;
     nn.bias_output.data = oldBiases.output;
-    
-    // Re-run feedforward with old weights to update CalculationSteps
     nn.feedforward(inputs);
     
     setLossModalData({ targetClass: targetValue, predictions, loss: currentLoss });
-    setShowLossModal(true);
-  }, [grade, attitude, response, targetValue, isAnimating, animationSpeed]);
+  }, [grade, attitude, response, targetValue, animateForwardPropagation, animationMachine]);
   
+  // =========================================================================
+  // Close Loss Modal - Start Backward Propagation
+  // =========================================================================
   const closeLossModal = useCallback(async () => {
-    setShowLossModal(false);
+    setLossModalData(null);
+    animationMachine.closeLossModal();
+    
+    // Ensure animation speed is at least 1.0 for backprop
+    if (animationSpeed === 0) {
+      setAnimationSpeedLocal(1.0);
+    }
     
     const nn = nnRef.current;
-
-    // Store old weights before backprop for comparison
+    shouldStopRef.current = false;
+    
+    // Store old weights for comparison
     const oldWeights = {
       layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
       layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
@@ -447,12 +619,13 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
       layer2: nn.bias_hidden2.data.map(row => row[0]),
       output: nn.bias_output.data.map(row => row[0])
     };
-
-    // Backward pass animation
-    await animateBackwardPropagation();
-    await sleep(500 / animationSpeedRef.current);
-
-    // Collect new weights after backprop
+    
+    // Use speed of 1.0 if current speed is 0 (e.g., came from clicked pause)
+    const backpropSpeed = animationSpeed > 0 ? animationSpeed : 1.0;
+    await animateBackwardPropagation(backpropSpeed);
+    await sleep(500, backpropSpeed);
+    
+    // Collect new weights
     const newWeights = {
       layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
       layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
@@ -463,39 +636,225 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
       layer2: nn.bias_hidden2.data.map(row => row[0]),
       output: nn.bias_output.data.map(row => row[0])
     };
-
-    // Create comparison data
-    const comparisonData = createWeightComparisonData(
-      oldWeights,
-      newWeights,
-      oldBiases,
-      newBiases,
-      learningRate
-    );
+    
+    const comparisonData = createWeightComparisonData(oldWeights, newWeights, oldBiases, newBiases, learningRate);
     setWeightComparisonData(comparisonData);
-
-    // Update stats
+    
     setEpoch(prev => prev + 1);
-    setLoss(nnRef.current.lastLoss);
-
-    // Final update
+    setLoss(nn.lastLoss);
     updateVisualization();
-    setIsAnimating(false);
-    shouldStopAnimationRef.current = false;
-  }, [updateVisualization, learningRate]);
-
-  const closeBackpropModal = useCallback(() => {
-    setShowBackpropModal(false);
-  }, []);
-
-  const openComparisonModal = useCallback(() => {
-    setShowComparisonModal(true);
-  }, []);
-
-  const closeComparisonModal = useCallback(() => {
-    setShowComparisonModal(false);
-  }, []);
+  }, [animationMachine, animateBackwardPropagation, sleep, learningRate, updateVisualization]);
   
+  // =========================================================================
+  // Close Backprop Modal
+  // =========================================================================
+  const closeBackpropModal = useCallback(() => {
+    setBackpropSummaryData(null);
+    animationMachine.closeBackpropModal();
+    updateVisualization();
+  }, [animationMachine, updateVisualization]);
+  
+  // =========================================================================
+  // Handle Canvas Click
+  // =========================================================================
+  const handleCanvasClick = useCallback((x?: number, y?: number) => {
+    if (!animationMachine.isAnimating) return;
+    
+    const visualizer = visualizerRef.current;
+    const nn = nnRef.current;
+    const state = animationMachine.state;
+    
+    // If coordinates provided, check if clicking on a neuron
+    if (x !== undefined && y !== undefined && visualizer) {
+      const neuron = visualizer.findNeuronAtPosition(x, y);
+      
+      if (neuron && (neuron.layer === 'layer1' || neuron.layer === 'layer2' || neuron.layer === 'output')) {
+        // Check if clicking on the same neuron that's already selected (works for both forward and backward)
+        const isSameNeuronForward = state.type === 'forward_animating' && 
+                                    state.layer === neuron.layer && 
+                                    state.neuronIndex === neuron.index;
+        const isSameNeuronBackward = state.type === 'backward_animating' && 
+                                     state.layer === neuron.layer && 
+                                     state.neuronIndex === neuron.index;
+        
+        if (isSameNeuronForward) {
+          // Same neuron clicked in forward mode - advance to next stage
+          const nextStage = getNextForwardStage(state.stage);
+          if (nextStage) {
+            animationMachine.forwardTick(neuron.layer, neuron.index, nextStage, state.neuronData);
+            updateVisualization();
+          } else {
+            // All stages done for this neuron - move to next neuron manually (stay paused)
+            const nextNeuron = getNextForwardNeuron(neuron.layer, neuron.index);
+            if (nextNeuron) {
+              // Get neuron data for the next neuron
+              const calcSteps = nn.getCalculationSteps();
+              if (calcSteps) {
+                const layerData = { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
+                const nextNeuronData = layerData[nextNeuron.layer as 'layer1' | 'layer2' | 'output'][nextNeuron.index];
+                // Jump to next neuron (this sets speed to 0)
+                animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
+                animationMachine.forwardTick(nextNeuron.layer, nextNeuron.index, 'dotProduct', nextNeuronData);
+                updateVisualization();
+              }
+            } else {
+              // No next neuron - forward pass complete
+              // Need to run train() to prepare backprop data
+              const inputs = [grade, attitude, response];
+              const targetOneHot = [0, 0, 0];
+              targetOneHot[targetValue] = 1;
+              
+              // Backup old weights
+              const oldWeights = {
+                layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
+                layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
+                output: JSON.parse(JSON.stringify(nn.weights_hidden2_output.data))
+              };
+              const oldBiases = {
+                layer1: JSON.parse(JSON.stringify(nn.bias_hidden1.data)),
+                layer2: JSON.parse(JSON.stringify(nn.bias_hidden2.data)),
+                output: JSON.parse(JSON.stringify(nn.bias_output.data))
+              };
+              
+              // Train to prepare backprop data
+              nn.train(inputs, targetOneHot);
+              const predictions = nn.lastOutput?.toArray() || [0, 0, 0];
+              const currentLoss = nn.lastLoss;
+              
+              // Restore old weights for backprop visualization
+              nn.weights_input_hidden1.data = oldWeights.layer1;
+              nn.weights_hidden1_hidden2.data = oldWeights.layer2;
+              nn.weights_hidden2_output.data = oldWeights.output;
+              nn.bias_hidden1.data = oldBiases.layer1;
+              nn.bias_hidden2.data = oldBiases.layer2;
+              nn.bias_output.data = oldBiases.output;
+              nn.feedforward(inputs);
+              
+              // Show loss modal
+              animationMachine.forwardComplete();
+              setLossModalData({ targetClass: targetValue, predictions, loss: currentLoss });
+            }
+          }
+          return;
+        }
+        
+        if (isSameNeuronBackward) {
+          // Same neuron clicked in backward mode - advance to next backprop stage
+          const nextStage = getNextBackpropStage(state.stage);
+          if (nextStage) {
+            animationMachine.backwardTick(neuron.layer, neuron.index, nextStage, state.neuronData);
+            updateVisualization();
+          } else {
+            // All stages done for this neuron - move to next neuron in backward order
+            const nextNeuron = getNextBackwardNeuron(neuron.layer, neuron.index);
+            if (nextNeuron) {
+              const backpropData = nn.lastBackpropSteps;
+              if (backpropData) {
+                const layerData = { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
+                const nextNeuronData = layerData[nextNeuron.layer as 'layer1' | 'layer2' | 'output'][nextNeuron.index];
+                animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
+                animationMachine.backwardTick(nextNeuron.layer, nextNeuron.index, 'error', nextNeuronData);
+                updateVisualization();
+              }
+            } else {
+              // No next neuron - backward pass complete
+              animationMachine.backwardComplete();
+            }
+          }
+          return;
+        }
+        
+        // Different neuron clicked - jump to it
+        // Stop current animation
+        shouldStopRef.current = true;
+        
+        // Jump to this neuron
+        animationMachine.jumpToNeuron(neuron.layer, neuron.index);
+        
+        // Set up neuron data based on current mode
+        if (state.type === 'forward_animating') {
+          const calcSteps = nn.getCalculationSteps();
+          if (calcSteps) {
+            const layerData = { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
+            const neuronData = layerData[neuron.layer][neuron.index];
+            animationMachine.forwardTick(neuron.layer, neuron.index, 'dotProduct', neuronData);
+          }
+        } else if (state.type === 'backward_animating') {
+          const backpropData = nn.lastBackpropSteps;
+          if (backpropData) {
+            const layerData = { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
+            const neuronData = layerData[neuron.layer][neuron.index];
+            animationMachine.backwardTick(neuron.layer, neuron.index, 'error', neuronData);
+          }
+        }
+        
+        updateVisualization();
+        return;
+      }
+    }
+    
+    // Click on empty space - pause/resume or next step
+    if (animationMachine.state.speed > 0) {
+      animationMachine.pause();
+    } else {
+      // We're paused - check if jumped to a neuron
+      if (state.isJumped) {
+        // Advance through stages of current neuron
+        if (state.type === 'forward_animating') {
+          const nextStage = getNextForwardStage(state.stage);
+          if (nextStage) {
+            animationMachine.forwardTick(state.layer, state.neuronIndex, nextStage, state.neuronData);
+            updateVisualization();
+          } else {
+            // All stages done, continue from next neuron
+            shouldStopRef.current = false;
+            animationMachine.resume(animationSpeed || 1.0);
+            continueFromJumpedPosition();
+          }
+        } else if (state.type === 'backward_animating') {
+          const nextStage = getNextBackpropStage(state.stage);
+          if (nextStage) {
+            // Apply update if completing 'update' stage
+            if (state.stage === 'update' && state.neuronData) {
+              const nn = nnRef.current;
+              const neuronData = state.neuronData;
+              if (state.layer === 'output') {
+                nn.weights_hidden2_output.data[state.neuronIndex] = neuronData.newWeights;
+                nn.bias_output.data[state.neuronIndex][0] = neuronData.newBias;
+              } else if (state.layer === 'layer2') {
+                nn.weights_hidden1_hidden2.data[state.neuronIndex] = neuronData.newWeights;
+                nn.bias_hidden2.data[state.neuronIndex][0] = neuronData.newBias;
+              } else if (state.layer === 'layer1') {
+                nn.weights_input_hidden1.data[state.neuronIndex] = neuronData.newWeights;
+                nn.bias_hidden1.data[state.neuronIndex][0] = neuronData.newBias;
+              }
+              nn.feedforward(nn.lastInput!.toArray());
+            }
+            animationMachine.backwardTick(state.layer, state.neuronIndex, nextStage, state.neuronData);
+            updateVisualization();
+          } else {
+            // All stages done, continue from next neuron
+            shouldStopRef.current = false;
+            animationMachine.resume(animationSpeed || 1.0);
+            continueFromJumpedPosition();
+          }
+        }
+      } else {
+        animationMachine.nextStep();
+      }
+    }
+  }, [animationMachine, animationSpeed, updateVisualization, continueFromJumpedPosition]);
+  
+  // =========================================================================
+  // Next Step (manual mode button)
+  // =========================================================================
+  const nextStep = useCallback(() => {
+    animationMachine.nextStep();
+  }, [animationMachine]);
+  
+  // =========================================================================
+  // Training Controls (non-animated)
+  // =========================================================================
   const trainOneStep = useCallback(() => {
     const nn = nnRef.current;
     const inputs = [grade, attitude, response];
@@ -536,37 +895,29 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
       }
     }
     
+    shouldStopRef.current = true;
     nnRef.current = new NeuralNetwork();
     setEpoch(0);
     setLoss(0);
     setOutput(null);
+    setLossModalData(null);
+    setBackpropSummaryData(null);
     
-    if (visualizerRef.current) {
-      visualizerRef.current.highlightedNeuron = null;
-    }
+    animationMachine.reset();
     updateVisualization();
-  }, [isTraining, updateVisualization]);
-
-  // Update learning rate in NN
+  }, [isTraining, updateVisualization, animationMachine]);
+  
+  // =========================================================================
+  // Learning Rate Handler
+  // =========================================================================
   const handleLearningRateChange = useCallback((v: number) => {
     setLearningRate(v);
     nnRef.current.learning_rate = v;
   }, []);
-
-  // Handle canvas click during animation
-  const handleCanvasClick = useCallback(() => {
-    if (!isAnimating) return;
-
-    // If animation is playing (speed > 0), pause it
-    if (animationSpeed > 0) {
-      setAnimationSpeed(0);
-    } else {
-      // If paused (speed === 0), go to next step
-      nextStep();
-    }
-  }, [isAnimating, animationSpeed, nextStep]);
-
-  // Heatmap toggles
+  
+  // =========================================================================
+  // Heatmap Toggles
+  // =========================================================================
   const toggleCanvasHeatmap = useCallback(() => {
     const newValue = !showCanvasHeatmap;
     setShowCanvasHeatmap(newValue);
@@ -579,7 +930,21 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   const toggleGridHeatmap = useCallback(() => {
     setShowGridHeatmap(!showGridHeatmap);
   }, [showGridHeatmap]);
+  
+  // =========================================================================
+  // Weight Comparison Modal
+  // =========================================================================
+  const openComparisonModal = useCallback(() => {
+    setShowComparisonModal(true);
+  }, []);
 
+  const closeComparisonModal = useCallback(() => {
+    setShowComparisonModal(false);
+  }, []);
+  
+  // =========================================================================
+  // Return
+  // =========================================================================
   return {
     nn: nnRef.current,
     visualizer: visualizerRef.current,
@@ -604,10 +969,10 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     output,
     steps,
     isTraining,
-    isAnimating,
-    showLossModal,
+    isAnimating: animationMachine.isAnimating,
+    showLossModal: animationMachine.state.type === 'showing_loss_modal',
     lossModalData,
-    showBackpropModal,
+    showBackpropModal: animationMachine.state.type === 'showing_backprop_modal',
     backpropSummaryData,
     trainOneStepWithAnimation,
     toggleTraining,
