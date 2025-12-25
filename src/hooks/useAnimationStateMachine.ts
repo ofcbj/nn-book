@@ -24,7 +24,7 @@ import {
   getBackpropStage,
   getCurrentNeuronData,
   getCurrentBackpropData,
-} from '../lib/animationState';
+} from '../lib/animation';
 import type { NeuronCalculation, BackpropNeuronData, CalculationStage, BackpropStage } from '../lib/types';
 
 export interface UseAnimationStateMachineReturn {
@@ -74,6 +74,9 @@ export interface UseAnimationStateMachineReturn {
   waitForNextStep: () => Promise<void>;
   resolveStep: () => void;
 }
+
+// Type alias for external use
+export type AnimationStateMachine = UseAnimationStateMachineReturn;
 
 export function useAnimationStateMachine(): UseAnimationStateMachineReturn {
   const [state, dispatch] = useReducer(animationReducer, initialAnimationState);

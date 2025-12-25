@@ -1,6 +1,6 @@
 // Utility functions for weight comparison
 
-import type { WeightComparisonData, LayerWeightComparison } from './types';
+import type { WeightComparisonData, LayerWeightComparison } from '../types';
 
 /**
  * Creates layer weight comparison data

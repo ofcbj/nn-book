@@ -5,7 +5,7 @@
  * Uses Strategy pattern to handle differences between modes.
  */
 
-import type { CalculationStage, BackpropStage } from './types';
+import type { CalculationStage, BackpropStage } from '../types';
 
 // ============================================================================
 // Types

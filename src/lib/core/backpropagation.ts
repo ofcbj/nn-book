@@ -1,5 +1,5 @@
 // Backpropagation helper functions for neural network training
-import { Matrix } from '../matrix';
+import { Matrix } from './matrix';
 import type { BackpropSteps, BackpropNeuronData } from '../types';
 
 // Activation function derivative

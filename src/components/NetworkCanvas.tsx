@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { Visualizer } from '../lib/visualizer';
-import type { NeuralNetwork } from '../lib/network';
+import type { NeuralNetwork } from '../lib/core';
 
 interface NetworkCanvasProps {
   nn: NeuralNetwork;

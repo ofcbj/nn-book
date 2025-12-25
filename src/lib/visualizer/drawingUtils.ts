@@ -1,7 +1,7 @@
 // Drawing utility functions for visualizer
 import type { NodePosition, LayerType } from '../types';
 import i18n from '../../i18n';
-import { activationToColor } from '../activationColors';
+import { activationToColor } from './activationColors';
 
 export function drawRoundedRect(
   ctx: CanvasRenderingContext2D,

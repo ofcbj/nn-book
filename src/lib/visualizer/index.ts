@@ -1,13 +1,13 @@
 // Visualizer for React - Canvas-based visualization
 // Modified to work with React refs instead of direct DOM queries
 
-import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage, BackpropSteps } from './types';
-import type { NeuralNetwork } from './network';
-import i18n from '../i18n';
+import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage, BackpropSteps } from '../types';
+import type { NeuralNetwork } from '../core';
+import i18n from '../../i18n';
 import { activationToColor } from './activationColors';
-import { drawBackpropHighlight } from './visualizer/backpropRenderer';
-import { drawNetwork } from './visualizer/networkRenderer';
-import { drawCalculationOverlay as drawCalcOverlay } from './visualizer/calculationOverlay';
+import { drawBackpropHighlight } from './backpropRenderer';
+import { drawNetwork } from './networkRenderer';
+import { drawCalculationOverlay as drawCalcOverlay } from './calculationOverlay';
 
 export class Visualizer {
   private canvas: HTMLCanvasElement;

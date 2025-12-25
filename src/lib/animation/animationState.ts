@@ -5,7 +5,7 @@
  * in a predictable and bug-free manner. All state transitions are explicit.
  */
 
-import type { CalculationStage, BackpropStage, NeuronCalculation, BackpropNeuronData } from './types';
+import type { CalculationStage, BackpropStage, NeuronCalculation, BackpropNeuronData } from '../types';
 
 // ============================================================================
 // State Definitions

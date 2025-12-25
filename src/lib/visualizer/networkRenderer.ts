@@ -1,6 +1,6 @@
 // Network rendering module
 import type { CalculationSteps, NodePosition, AnimationPhase, NeuronCalculation, CalculationStage } from '../types';
-import type { NeuralNetwork } from '../network';
+import type { NeuralNetwork } from '../core';
 import { drawInputVector, drawNeuronVector } from './drawingUtils';
 import i18n from '../../i18n';
 

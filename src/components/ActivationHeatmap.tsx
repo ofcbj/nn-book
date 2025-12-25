@@ -1,6 +1,6 @@
 import { Box, Paper, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { activationToColor, getColorStops } from '../lib/activationColors';
+import { activationToColor, getColorStops } from '../lib/visualizer/activationColors';
 
 export interface ActivationData {
   input: number[];
