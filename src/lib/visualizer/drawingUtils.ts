@@ -1,5 +1,6 @@
 // Drawing utility functions for visualizer
 import type { NodePosition, LayerType } from '../types';
+import type { LayerName } from '../core';
 import i18n from '../../i18n';
 import { activationToColor } from './activationColors';
 import {
@@ -112,7 +113,7 @@ export function drawNeuronVector(
 
   // Get colors from config based on layer type
   // Note: drawNeuronVector is only called for layer1, layer2, output (not input)
-  const colors = LAYER_COLORS[layerType as 'layer1' | 'layer2' | 'output'];
+  const colors = LAYER_COLORS[layerType as LayerName];
   
   let gradient: CanvasGradient;
   let strokeColor: string;
@@ -182,7 +183,7 @@ export function drawNeuronVector(
 
   ctx.fillStyle = '#34d399';
   ctx.font = 'bold 12px monospace';
-  ctx.fillText('→ ' + activation.toFixed(3), centerX + 70, centerY + 68);
+  ctx.fillText('ↁE' + activation.toFixed(3), centerX + 70, centerY + 68);
 
   return { x: centerX, y: centerY, width, height, centerX: x, centerY: y };
 }

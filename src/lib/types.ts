@@ -178,3 +178,37 @@ export interface WeightComparisonData {
   maxWeightChange: number;
   learningRate: number;
 }
+
+/**
+ * Creates a BackpropSummaryData object from BackpropSteps data.
+ * Extracts weights and biases from each layer into a summary format.
+ */
+export function createBackpropSummaryData(
+  backpropData: BackpropSteps,
+  learningRate: number
+): BackpropSummaryData {
+  const layers: Array<'layer1' | 'layer2' | 'output'> = ['layer1', 'layer2', 'output'];
+  
+  const oldWeights: BackpropSummaryData['oldWeights'] = { layer1: [], layer2: [], output: [] };
+  const newWeights: BackpropSummaryData['newWeights'] = { layer1: [], layer2: [], output: [] };
+  const oldBiases: BackpropSummaryData['oldBiases'] = { layer1: [], layer2: [], output: [] };
+  const newBiases: BackpropSummaryData['newBiases'] = { layer1: [], layer2: [], output: [] };
+  let totalWeightsUpdated = 0;
+  
+  for (const layer of layers) {
+    oldWeights[layer] = backpropData[layer].map(n => [...n.oldWeights]);
+    newWeights[layer] = backpropData[layer].map(n => [...n.newWeights]);
+    oldBiases[layer] = backpropData[layer].map(n => n.oldBias);
+    newBiases[layer] = backpropData[layer].map(n => n.newBias);
+    totalWeightsUpdated += backpropData[layer].reduce((sum, n) => sum + n.oldWeights.length, 0);
+  }
+  
+  return {
+    oldWeights,
+    newWeights,
+    oldBiases,
+    newBiases,
+    learningRate,
+    totalWeightsUpdated,
+  };
+}

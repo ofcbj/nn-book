@@ -6,7 +6,7 @@ import type { LayerName } from './networkConfig';
 
 // Activation function derivative
 function dsigmoid(y: number): number {
-  return y * (1 - y);
+  return y*(1-y);
 }
 
 /**

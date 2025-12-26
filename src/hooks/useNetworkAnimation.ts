@@ -9,7 +9,8 @@ import { useCallback, useRef, useEffect, MutableRefObject } from 'react';
 import type { NeuralNetwork } from '../lib/core';
 import { LAYER_SIZES, FORWARD_LAYER_ORDER, BACKWARD_LAYER_ORDER } from '../lib/core';
 import type { Visualizer } from '../lib/visualizer';
-import type { BackpropSummaryData, CalculationStage, BackpropStage } from '../lib/types';
+import type { CalculationStage, BackpropStage } from '../lib/types';
+import { createBackpropSummaryData } from '../lib/types';
 import type { UseNetworkStateReturn } from './useNetworkState';
 import type { AnimationStateMachine } from './useAnimationStateMachine';
 import {
@@ -71,29 +72,16 @@ export function useNetworkAnimation(
       const machineState = animationMachine.state;
 
       if (machineState.type === 'forward_animating') {
-        visualizerRef.current.highlightedNeuron = { layer: machineState.layer, index: machineState.neuronIndex };
-        visualizerRef.current.calculationStage = machineState.stage;
-        visualizerRef.current.currentNeuronData = machineState.neuronData;
-        visualizerRef.current.backpropPhase = null;
-        visualizerRef.current.currentBackpropData = null;
-        visualizerRef.current.backpropStage = null;
-        visualizerRef.current.allBackpropData = null;
+        visualizerRef.current.setForwardAnimationState(
+          machineState.layer, machineState.neuronIndex, machineState.stage, machineState.neuronData
+        );
       } else if (machineState.type === 'backward_animating') {
-        visualizerRef.current.highlightedNeuron = null;
-        visualizerRef.current.calculationStage = null;
-        visualizerRef.current.currentNeuronData = null;
-        visualizerRef.current.backpropPhase = { layer: machineState.layer, index: machineState.neuronIndex };
-        visualizerRef.current.currentBackpropData = machineState.neuronData;
-        visualizerRef.current.backpropStage = machineState.stage;
-        visualizerRef.current.allBackpropData = nn.lastBackpropSteps;
+        visualizerRef.current.setBackwardAnimationState(
+          machineState.layer, machineState.neuronIndex, machineState.stage, 
+          machineState.neuronData, nn.lastBackpropSteps
+        );
       } else {
-        visualizerRef.current.highlightedNeuron = null;
-        visualizerRef.current.calculationStage = null;
-        visualizerRef.current.currentNeuronData = null;
-        visualizerRef.current.backpropPhase = null;
-        visualizerRef.current.currentBackpropData = null;
-        visualizerRef.current.backpropStage = null;
-        visualizerRef.current.allBackpropData = null;
+        visualizerRef.current.clearAnimationState();
       }
 
       visualizerRef.current.update(nn);
@@ -167,16 +155,7 @@ export function useNetworkAnimation(
       },
       onStageComplete: (layer, neuronIndex, stage, data) => {
         if (stage === 'update') {
-          if (layer === 'output') {
-            nn.weightsHidden2Output.data[neuronIndex] = data.newWeights;
-            nn.biasOutput.data[neuronIndex][0] = data.newBias;
-          } else if (layer === 'layer2') {
-            nn.weightsHidden1Hidden2.data[neuronIndex] = data.newWeights;
-            nn.biasHidden2.data[neuronIndex][0] = data.newBias;
-          } else if (layer === 'layer1') {
-            nn.weightsInputHidden1.data[neuronIndex] = data.newWeights;
-            nn.biasHidden1.data[neuronIndex][0] = data.newBias;
-          }
+          nn.updateNeuronWeights(layer, neuronIndex, data.newWeights, data.newBias);
           nn.feedforward(nn.lastInput!.toArray());
           updateVisualization();
         }
@@ -190,35 +169,8 @@ export function useNetworkAnimation(
       speedOverride,
     });
 
-    // Collect summary data
-    const summaryData: BackpropSummaryData = {
-      oldWeights: {
-        layer1: backpropData.layer1.map(n => [...n.oldWeights]),
-        layer2: backpropData.layer2.map(n => [...n.oldWeights]),
-        output: backpropData.output.map(n => [...n.oldWeights]),
-      },
-      newWeights: {
-        layer1: backpropData.layer1.map(n => [...n.newWeights]),
-        layer2: backpropData.layer2.map(n => [...n.newWeights]),
-        output: backpropData.output.map(n => [...n.newWeights]),
-      },
-      oldBiases: {
-        layer1: backpropData.layer1.map(n => n.oldBias),
-        layer2: backpropData.layer2.map(n => n.oldBias),
-        output: backpropData.output.map(n => n.oldBias),
-      },
-      newBiases: {
-        layer1: backpropData.layer1.map(n => n.newBias),
-        layer2: backpropData.layer2.map(n => n.newBias),
-        output: backpropData.output.map(n => n.newBias),
-      },
-      learningRate: state.learningRate,
-      totalWeightsUpdated:
-        backpropData.layer1.reduce((sum, n) => sum + n.oldWeights.length, 0) +
-        backpropData.layer2.reduce((sum, n) => sum + n.oldWeights.length, 0) +
-        backpropData.output.reduce((sum, n) => sum + n.oldWeights.length, 0),
-    };
-
+    // Collect summary data using helper function
+    const summaryData = createBackpropSummaryData(backpropData, state.learningRate);
     state.setBackpropSummaryData(summaryData);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationMachine, sleep, updateVisualization, state.learningRate]);
@@ -309,16 +261,7 @@ export function useNetworkAnimation(
             await sleep(stageDurations[stage]);
 
             if (stage === 'update') {
-              if (layer === 'output') {
-                nn.weightsHidden2Output.data[neuronIndex] = neuronData.newWeights;
-                nn.biasOutput.data[neuronIndex][0] = neuronData.newBias;
-              } else if (layer === 'layer2') {
-                nn.weightsHidden1Hidden2.data[neuronIndex] = neuronData.newWeights;
-                nn.biasHidden2.data[neuronIndex][0] = neuronData.newBias;
-              } else if (layer === 'layer1') {
-                nn.weightsInputHidden1.data[neuronIndex] = neuronData.newWeights;
-                nn.biasHidden1.data[neuronIndex][0] = neuronData.newBias;
-              }
+              nn.updateNeuronWeights(layer, neuronIndex, neuronData.newWeights, neuronData.newBias);
               nn.feedforward(nn.lastInput!.toArray());
               updateVisualization();
             }
@@ -328,34 +271,8 @@ export function useNetworkAnimation(
 
       animationMachine.backwardComplete();
 
-      // Summary data
-      const summaryData: BackpropSummaryData = {
-        oldWeights: {
-          layer1: backpropData.layer1.map(n => [...n.oldWeights]),
-          layer2: backpropData.layer2.map(n => [...n.oldWeights]),
-          output: backpropData.output.map(n => [...n.oldWeights]),
-        },
-        newWeights: {
-          layer1: backpropData.layer1.map(n => [...n.newWeights]),
-          layer2: backpropData.layer2.map(n => [...n.newWeights]),
-          output: backpropData.output.map(n => [...n.newWeights]),
-        },
-        oldBiases: {
-          layer1: backpropData.layer1.map(n => n.oldBias),
-          layer2: backpropData.layer2.map(n => n.oldBias),
-          output: backpropData.output.map(n => n.oldBias),
-        },
-        newBiases: {
-          layer1: backpropData.layer1.map(n => n.newBias),
-          layer2: backpropData.layer2.map(n => n.newBias),
-          output: backpropData.output.map(n => n.newBias),
-        },
-        learningRate: state.learningRate,
-        totalWeightsUpdated:
-          backpropData.layer1.reduce((sum, n) => sum + n.oldWeights.length, 0) +
-          backpropData.layer2.reduce((sum, n) => sum + n.oldWeights.length, 0) +
-          backpropData.output.reduce((sum, n) => sum + n.oldWeights.length, 0),
-      };
+      // Summary data using helper function
+      const summaryData = createBackpropSummaryData(backpropData, state.learningRate);
       state.setBackpropSummaryData(summaryData);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

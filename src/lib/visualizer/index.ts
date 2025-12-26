@@ -2,7 +2,7 @@
 // Modified to work with React refs instead of direct DOM queries
 
 import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage, BackpropSteps } from '../types';
-import type { NeuralNetwork } from '../core';
+import type { NeuralNetwork, LayerName } from '../core';
 import i18n from '../../i18n';
 import { activationToColor } from './activationColors';
 import { drawBackpropHighlight } from './backpropRenderer';
@@ -47,6 +47,56 @@ export class Visualizer {
   resizeCanvas(): void {
     this.canvas.width = this.canvas.offsetWidth;
     this.canvas.height = this.canvas.offsetHeight;
+  }
+
+  /**
+   * Set visualizer state for forward propagation animation.
+   */
+  setForwardAnimationState(
+    layer: AnimationPhase['layer'],
+    index: number,
+    stage: CalculationStage,
+    neuronData: NeuronCalculation | null
+  ): void {
+    this.highlightedNeuron = { layer, index };
+    this.calculationStage = stage;
+    this.currentNeuronData = neuronData;
+    this.backpropPhase = null;
+    this.currentBackpropData = null;
+    this.backpropStage = null;
+    this.allBackpropData = null;
+  }
+
+  /**
+   * Set visualizer state for backward propagation animation.
+   */
+  setBackwardAnimationState(
+    layer: AnimationPhase['layer'],
+    index: number,
+    stage: BackpropStage,
+    neuronData: BackpropNeuronData | null,
+    allBackpropData: BackpropSteps | null
+  ): void {
+    this.highlightedNeuron = null;
+    this.calculationStage = null;
+    this.currentNeuronData = null;
+    this.backpropPhase = { layer, index };
+    this.currentBackpropData = neuronData;
+    this.backpropStage = stage;
+    this.allBackpropData = allBackpropData;
+  }
+
+  /**
+   * Clear all animation state.
+   */
+  clearAnimationState(): void {
+    this.highlightedNeuron = null;
+    this.calculationStage = null;
+    this.currentNeuronData = null;
+    this.backpropPhase = null;
+    this.currentBackpropData = null;
+    this.backpropStage = null;
+    this.allBackpropData = null;
   }
 
   private drawCalculationOverlay(
@@ -249,7 +299,7 @@ export class Visualizer {
 
   // Find neuron at given canvas coordinates
   public findNeuronAtPosition(x: number, y: number): {
-    layer: 'layer1' | 'layer2' | 'output';
+    layer: LayerName;
     index: number;
   } | null {
     for (const [layerIndex, layerNodes] of this.lastNodes.entries()) {
@@ -261,7 +311,7 @@ export class Visualizer {
             y >= node.y && y <= node.y + node.height) {
           
           // Determine layer name
-          let layer: 'layer1' | 'layer2' | 'output';
+          let layer: LayerName;
           if (layerIndex === 1) layer = 'layer1';
           else if (layerIndex === 2) layer = 'layer2';
           else if (layerIndex === 3) layer = 'output';

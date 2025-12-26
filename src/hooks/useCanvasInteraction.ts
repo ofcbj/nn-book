@@ -6,7 +6,7 @@
  */
 
 import { useCallback, RefObject } from 'react';
-import type { NeuralNetwork } from '../lib/core';
+import type { NeuralNetwork, LayerName } from '../lib/core';
 import type { Visualizer } from '../lib/visualizer';
 import type { UseNetworkStateReturn } from './useNetworkState';
 import type { AnimationStateMachine } from './useAnimationStateMachine';
@@ -64,7 +64,7 @@ export function useCanvasInteraction(
               const calcSteps = nn.getCalculationSteps();
               if (calcSteps) {
                 const layerData = { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
-                const nextNeuronData = layerData[nextNeuron.layer as 'layer1' | 'layer2' | 'output'][nextNeuron.index];
+                const nextNeuronData = layerData[nextNeuron.layer as LayerName][nextNeuron.index];
                 animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
                 animationMachine.forwardTick(nextNeuron.layer, nextNeuron.index, 'dotProduct', nextNeuronData);
                 animation.updateVisualization();
@@ -90,7 +90,7 @@ export function useCanvasInteraction(
               const backpropData = nn.lastBackpropSteps;
               if (backpropData) {
                 const layerData = { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
-                const nextNeuronData = layerData[nextNeuron.layer as 'layer1' | 'layer2' | 'output'][nextNeuron.index];
+                const nextNeuronData = layerData[nextNeuron.layer as LayerName][nextNeuron.index];
                 animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
                 animationMachine.backwardTick(nextNeuron.layer, nextNeuron.index, 'error', nextNeuronData);
                 animation.updateVisualization();
@@ -209,7 +209,7 @@ function handleJumpedStateClick(
         const calcSteps = nn.getCalculationSteps();
         if (calcSteps) {
           const layerData = { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
-          const nextNeuronData = layerData[nextNeuron.layer as 'layer1' | 'layer2' | 'output'][nextNeuron.index];
+          const nextNeuronData = layerData[nextNeuron.layer as LayerName][nextNeuron.index];
           animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
           animationMachine.forwardTick(nextNeuron.layer, nextNeuron.index, 'dotProduct', nextNeuronData);
           animation.updateVisualization();
@@ -225,16 +225,7 @@ function handleJumpedStateClick(
       // Apply update if completing 'update' stage
       if (machineState.stage === 'update' && machineState.neuronData) {
         const neuronData = machineState.neuronData;
-        if (machineState.layer === 'output') {
-          nn.weightsHidden2Output.data[machineState.neuronIndex] = neuronData.newWeights;
-          nn.biasOutput.data[machineState.neuronIndex][0] = neuronData.newBias;
-        } else if (machineState.layer === 'layer2') {
-          nn.weightsHidden1Hidden2.data[machineState.neuronIndex] = neuronData.newWeights;
-          nn.biasHidden2.data[machineState.neuronIndex][0] = neuronData.newBias;
-        } else if (machineState.layer === 'layer1') {
-          nn.weightsInputHidden1.data[machineState.neuronIndex] = neuronData.newWeights;
-          nn.biasHidden1.data[machineState.neuronIndex][0] = neuronData.newBias;
-        }
+        nn.updateNeuronWeights(machineState.layer, machineState.neuronIndex, neuronData.newWeights, neuronData.newBias);
         nn.feedforward(nn.lastInput!.toArray());
       }
       animationMachine.backwardTick(machineState.layer, machineState.neuronIndex, nextStage, machineState.neuronData);
@@ -246,7 +237,7 @@ function handleJumpedStateClick(
         const backpropData = nn.lastBackpropSteps;
         if (backpropData) {
           const layerData = { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
-          const nextNeuronData = layerData[nextNeuron.layer as 'layer1' | 'layer2' | 'output'][nextNeuron.index];
+          const nextNeuronData = layerData[nextNeuron.layer as LayerName][nextNeuron.index];
           animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
           animationMachine.backwardTick(nextNeuron.layer, nextNeuron.index, 'error', nextNeuronData);
           animation.updateVisualization();

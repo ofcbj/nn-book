@@ -320,4 +320,30 @@ export class NeuralNetwork {
     
     return steps;
   }
+
+  /**
+   * Update weights and bias for a specific neuron in a layer.
+   * This provides a flexible way to update neuron parameters without hardcoding layer names.
+   */
+  updateNeuronWeights(
+    layer: 'layer1' | 'layer2' | 'output',
+    neuronIndex: number,
+    newWeights: number[],
+    newBias: number
+  ): void {
+    switch (layer) {
+      case 'output':
+        this.weightsHidden2Output.data[neuronIndex] = newWeights;
+        this.biasOutput.data[neuronIndex][0] = newBias;
+        break;
+      case 'layer2':
+        this.weightsHidden1Hidden2.data[neuronIndex] = newWeights;
+        this.biasHidden2.data[neuronIndex][0] = newBias;
+        break;
+      case 'layer1':
+        this.weightsInputHidden1.data[neuronIndex] = newWeights;
+        this.biasHidden1.data[neuronIndex][0] = newBias;
+        break;
+    }
+  }
 }

@@ -25,6 +25,7 @@ import {
   getCurrentNeuronData,
   getCurrentBackpropData,
 } from '../lib/animation';
+import type { LayerName } from '../lib/core';
 import type { NeuronCalculation, BackpropNeuronData, CalculationStage, BackpropStage } from '../lib/types';
 
 export interface UseAnimationStateMachineReturn {
@@ -36,7 +37,7 @@ export interface UseAnimationStateMachineReturn {
   isPaused: boolean;
   isForwardMode: boolean;
   isBackwardMode: boolean;
-  highlightedNeuron: { layer: 'layer1' | 'layer2' | 'output'; index: number } | null;
+  highlightedNeuron: { layer: LayerName; index: number } | null;
   forwardStage: CalculationStage | null;
   backpropStage: BackpropStage | null;
   currentNeuronData: NeuronCalculation | null;
@@ -49,12 +50,12 @@ export interface UseAnimationStateMachineReturn {
   pause: () => void;
   resume: (speed?: number) => void;
   nextStep: () => void;
-  jumpToNeuron: (layer: 'layer1' | 'layer2' | 'output', neuronIndex: number) => void;
+  jumpToNeuron: (layer: LayerName, neuronIndex: number) => void;
   reset: () => void;
   
   // Animation tick callbacks (called by animation loop)
   forwardTick: (
-    layer: 'layer1' | 'layer2' | 'output',
+    layer: LayerName,
     neuronIndex: number,
     stage: CalculationStage,
     neuronData: NeuronCalculation | null
@@ -62,7 +63,7 @@ export interface UseAnimationStateMachineReturn {
   forwardComplete: () => void;
   closeLossModal: () => void;
   backwardTick: (
-    layer: 'layer1' | 'layer2' | 'output',
+    layer: LayerName,
     neuronIndex: number,
     stage: BackpropStage,
     neuronData: BackpropNeuronData | null
@@ -140,7 +141,7 @@ export function useAnimationStateMachine(): UseAnimationStateMachineReturn {
   }, [resolveStep]);
   
   const jumpToNeuron = useCallback((
-    layer: 'layer1' | 'layer2' | 'output',
+    layer: LayerName,
     neuronIndex: number
   ) => {
     dispatch({ type: 'JUMP_TO_NEURON', layer, neuronIndex });
@@ -153,7 +154,7 @@ export function useAnimationStateMachine(): UseAnimationStateMachineReturn {
   
   // Forward animation tick
   const forwardTick = useCallback((
-    layer: 'layer1' | 'layer2' | 'output',
+    layer: LayerName,
     neuronIndex: number,
     stage: CalculationStage,
     neuronData: NeuronCalculation | null
@@ -171,7 +172,7 @@ export function useAnimationStateMachine(): UseAnimationStateMachineReturn {
   
   // Backward animation tick
   const backwardTick = useCallback((
-    layer: 'layer1' | 'layer2' | 'output',
+    layer: LayerName,
     neuronIndex: number,
     stage: BackpropStage,
     neuronData: BackpropNeuronData | null
