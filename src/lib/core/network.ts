@@ -1,9 +1,10 @@
 // Neural Network Implementation with TypeScript
 // Architecture: 3 inputs -> 5 neurons (1차) -> 3 neurons (2차) -> 3 outputs (Softmax)
 
-import type { CalculationSteps, BackpropSteps } from '../types';
+import type { CalculationSteps, BackpropSteps, NeuronCalculation } from '../types';
 import i18n from '../../i18n';
 import { Matrix } from './matrix';
+import { LAYER_SIZES, INPUT_SIZE } from './networkConfig';
 import {
   backpropOutputLayer,
   backpropHiddenLayer,
@@ -76,21 +77,21 @@ export class NeuralNetwork {
   lastBackpropSteps: BackpropSteps | null = null;
 
   constructor() {
-    // Layer 1: 1차 면접관 (5 neurons, each takes 3 inputs)
-    this.weightsInputHidden1 = new Matrix(5, 3);
-    this.biasHidden1 = new Matrix(5, 1);
+    // Layer 1: 1차 면접관 (LAYER_SIZES.layer1 neurons, each takes INPUT_SIZE inputs)
+    this.weightsInputHidden1 = new Matrix(LAYER_SIZES.layer1, INPUT_SIZE);
+    this.biasHidden1 = new Matrix(LAYER_SIZES.layer1, 1);
     this.weightsInputHidden1.randomize();
     this.biasHidden1.randomizeBias();
     
-    // Layer 2: 2차 면접관 (3 neurons, each takes 5 inputs)
-    this.weightsHidden1Hidden2 = new Matrix(3, 5);
-    this.biasHidden2 = new Matrix(3, 1);
+    // Layer 2: 2차 면접관 (LAYER_SIZES.layer2 neurons, each takes LAYER_SIZES.layer1 inputs)
+    this.weightsHidden1Hidden2 = new Matrix(LAYER_SIZES.layer2, LAYER_SIZES.layer1);
+    this.biasHidden2 = new Matrix(LAYER_SIZES.layer2, 1);
     this.weightsHidden1Hidden2.randomize();
     this.biasHidden2.randomizeBias();
     
-    // Output layer: 최종 결정 (3 neurons for softmax: 불합격/보류/합격)
-    this.weightsHidden2Output = new Matrix(3, 3);
-    this.biasOutput = new Matrix(3, 1);
+    // Output layer: 최종 결정 (LAYER_SIZES.output neurons)
+    this.weightsHidden2Output = new Matrix(LAYER_SIZES.output, LAYER_SIZES.layer2);
+    this.biasOutput = new Matrix(LAYER_SIZES.output, 1);
     this.weightsHidden2Output.randomize();
     this.biasOutput.randomizeBias();
     
@@ -259,63 +260,65 @@ export class NeuralNetwork {
       output: []
     };
     
-    // Layer 1 calculations (1차 면접관)
-    for (let i = 0; i < 5; i++) {
-      const weights = this.weightsInputHidden1.data[i];
-      const bias = this.biasHidden1.data[i][0];
-      const rawValue = this.lastHidden1Raw!.data[i][0];
-      const activatedValue = this.lastHidden1!.data[i][0];
-      
-      steps.layer1.push({
-        neuronIndex: i,
-        weights: weights,
-        bias: bias,
-        inputs: this.lastInput.toArray(),
-        dotProduct: rawValue - bias, // Subtract bias to get pure dot product
-        withBias: rawValue,
-        activated: activatedValue,
-        calculation: `(${this.lastInput.toArray().map((v, j) => `${v.toFixed(2)}×${weights[j].toFixed(2)}`).join(' + ')}) + ${bias.toFixed(2)} = ${rawValue.toFixed(3)}`
-      });
-    }
+    // Define layer configurations for iteration
+    const layerConfigs = [
+      {
+        key: 'layer1' as const,
+        count: 5,
+        weights: this.weightsInputHidden1,
+        bias: this.biasHidden1,
+        rawValues: this.lastHidden1Raw!,
+        activatedValues: this.lastHidden1!,
+        inputs: this.lastInput,
+      },
+      {
+        key: 'layer2' as const,
+        count: 3,
+        weights: this.weightsHidden1Hidden2,
+        bias: this.biasHidden2,
+        rawValues: this.lastHidden2Raw!,
+        activatedValues: this.lastHidden2!,
+        inputs: this.lastHidden1!,
+      },
+      {
+        key: 'output' as const,
+        count: 3,
+        weights: this.weightsHidden2Output,
+        bias: this.biasOutput,
+        rawValues: this.lastOutputRaw!,
+        activatedValues: this.lastOutput!,
+        inputs: this.lastHidden2!,
+      },
+    ];
     
-    // Layer 2 calculations (2차 면접관)
-    for (let i = 0; i < 3; i++) {
-      const weights = this.weightsHidden1Hidden2.data[i];
-      const bias = this.biasHidden2.data[i][0];
-      const rawValue = this.lastHidden2Raw!.data[i][0];
-      const activatedValue = this.lastHidden2!.data[i][0];
-      
-      steps.layer2.push({
-        neuronIndex: i,
-        weights: weights,
-        bias: bias,
-        inputs: this.lastHidden1!.toArray(),
-        dotProduct: rawValue - bias,
-        withBias: rawValue,
-        activated: activatedValue,
-        calculation: `(${this.lastHidden1!.toArray().map((v, j) => `${v.toFixed(2)}×${weights[j].toFixed(2)}`).join(' + ')}) + ${bias.toFixed(2)} = ${rawValue.toFixed(3)}`
-      });
-    }
-    
-    // Output calculation (3 neurons with softmax)
     const classNames = [i18n.t('classes.fail'), i18n.t('classes.pending'), i18n.t('classes.pass')];
-    for (let i = 0; i < 3; i++) {
-      const weights = this.weightsHidden2Output.data[i];
-      const bias = this.biasOutput.data[i][0];
-      const rawValue = this.lastOutputRaw!.data[i][0];
-      const activatedValue = this.lastOutput!.data[i][0];
-      
-      steps.output.push({
-        neuronIndex: i,
-        className: classNames[i],
-        weights: weights,
-        bias: bias,
-        inputs: this.lastHidden2!.toArray(),
-        dotProduct: rawValue - bias,
-        withBias: rawValue,
-        activated: activatedValue,
-        calculation: `(${this.lastHidden2!.toArray().map((v, j) => `${v.toFixed(2)}×${weights[j].toFixed(2)}`).join(' + ')}) + ${bias.toFixed(2)} = ${rawValue.toFixed(3)}`
-      });
+    
+    for (const config of layerConfigs) {
+      for (let i = 0; i < config.count; i++) {
+        const weights = config.weights.data[i];
+        const bias = config.bias.data[i][0];
+        const rawValue = config.rawValues.data[i][0];
+        const activatedValue = config.activatedValues.data[i][0];
+        const inputArray = config.inputs.toArray();
+        
+        const neuronData: NeuronCalculation = {
+          neuronIndex: i,
+          weights,
+          bias,
+          inputs: inputArray,
+          dotProduct: rawValue - bias,
+          withBias: rawValue,
+          activated: activatedValue,
+          calculation: `(${inputArray.map((v, j) => `${v.toFixed(2)}×${weights[j].toFixed(2)}`).join(' + ')}) + ${bias.toFixed(2)} = ${rawValue.toFixed(3)}`
+        };
+        
+        // Add className only for output layer
+        if (config.key === 'output') {
+          neuronData.className = classNames[i];
+        }
+        
+        steps[config.key].push(neuronData);
+      }
     }
     
     return steps;
