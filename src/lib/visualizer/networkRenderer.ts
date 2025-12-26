@@ -3,6 +3,7 @@ import type { CalculationSteps, NodePosition, AnimationPhase, NeuronCalculation,
 import type { NeuralNetwork } from '../core';
 import { LAYER_SIZES } from '../core';
 import { drawInputVector, drawNeuronVector } from './drawingUtils';
+import { CANVAS_BACKGROUND, CANVAS_PADDING, VERTICAL_SPACING } from './uiConfig';
 import i18n from '../../i18n';
 
 // =============================================================================
@@ -100,7 +101,7 @@ export function drawNetwork(
   const height = canvas.height;
 
   // Clear canvas
-  ctx.fillStyle = '#0a0a0a';
+  ctx.fillStyle = CANVAS_BACKGROUND;
   ctx.fillRect(0, 0, width, height);
 
   if (!steps) return [];
@@ -108,8 +109,8 @@ export function drawNetwork(
   const nodes: NodePosition[][] = [];
 
   // Calculate dynamic positions based on canvas width
-  const paddingLeft = 60;
-  const paddingRight = 80;
+  const paddingLeft = CANVAS_PADDING.left;
+  const paddingRight = CANVAS_PADDING.right;
   const usableWidth = width - paddingLeft - paddingRight;
 
   const inputX = paddingLeft + 30;
@@ -139,7 +140,7 @@ export function drawNetwork(
     neurons: steps.layer1,
     x: layer1X,
     neuronCount: LAYER_SIZES.layer1,
-    verticalSpacing: 105,
+    verticalSpacing: VERTICAL_SPACING.layer1,
     getLabel: (i) => `${i18n.t('layers.layer1Prefix')} #${i + 1}`,
   }, drawContext);
   nodes.push(layer1Nodes);
@@ -150,7 +151,7 @@ export function drawNetwork(
     neurons: steps.layer2,
     x: layer2X,
     neuronCount: LAYER_SIZES.layer2,
-    verticalSpacing: 125,
+    verticalSpacing: VERTICAL_SPACING.layer2,
     getLabel: (i) => `${i18n.t('layers.layer2Prefix')} #${i + 1}`,
   }, drawContext);
   nodes.push(layer2Nodes);
@@ -162,7 +163,7 @@ export function drawNetwork(
     neurons: steps.output,
     x: outputX,
     neuronCount: LAYER_SIZES.output,
-    verticalSpacing: 125,
+    verticalSpacing: VERTICAL_SPACING.output,
     getLabel: (i) => classNames[i],
   }, drawContext);
   nodes.push(outputNodes);

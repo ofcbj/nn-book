@@ -135,7 +135,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   // =========================================================================
   const handleLearningRateChange = (v: number) => {
     state.setLearningRate(v);
-    nnRef.current.learning_rate = v;
+    nnRef.current.learningRate = v;
   };
 
   // =========================================================================

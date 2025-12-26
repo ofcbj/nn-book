@@ -1,7 +1,10 @@
 // Type definitions for Neural Network Visualization
 // Core interfaces and types used across the application
 
-export type LayerType = 'input' | 'layer1' | 'layer2' | 'output';
+import type { LayerName } from './core/networkConfig';
+
+// LayerType includes input layer, LayerName is for processing layers only
+export type LayerType = 'input' | LayerName;
 
 /**
  * Matrix class representation

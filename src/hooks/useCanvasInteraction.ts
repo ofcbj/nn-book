@@ -160,14 +160,14 @@ function completeForwardPass(
 
   // Backup old weights
   const oldWeights = {
-    layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
-    layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
-    output: JSON.parse(JSON.stringify(nn.weights_hidden2_output.data))
+    layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
+    layer2: JSON.parse(JSON.stringify(nn.weightsHidden1Hidden2.data)),
+    output: JSON.parse(JSON.stringify(nn.weightsHidden2Output.data))
   };
   const oldBiases = {
-    layer1: JSON.parse(JSON.stringify(nn.bias_hidden1.data)),
-    layer2: JSON.parse(JSON.stringify(nn.bias_hidden2.data)),
-    output: JSON.parse(JSON.stringify(nn.bias_output.data))
+    layer1: JSON.parse(JSON.stringify(nn.biasHidden1.data)),
+    layer2: JSON.parse(JSON.stringify(nn.biasHidden2.data)),
+    output: JSON.parse(JSON.stringify(nn.biasOutput.data))
   };
 
   // Train to prepare backprop data
@@ -176,12 +176,12 @@ function completeForwardPass(
   const currentLoss = nn.lastLoss;
 
   // Restore old weights for backprop visualization
-  nn.weights_input_hidden1.data = oldWeights.layer1;
-  nn.weights_hidden1_hidden2.data = oldWeights.layer2;
-  nn.weights_hidden2_output.data = oldWeights.output;
-  nn.bias_hidden1.data = oldBiases.layer1;
-  nn.bias_hidden2.data = oldBiases.layer2;
-  nn.bias_output.data = oldBiases.output;
+  nn.weightsInputHidden1.data = oldWeights.layer1;
+  nn.weightsHidden1Hidden2.data = oldWeights.layer2;
+  nn.weightsHidden2Output.data = oldWeights.output;
+  nn.biasHidden1.data = oldBiases.layer1;
+  nn.biasHidden2.data = oldBiases.layer2;
+  nn.biasOutput.data = oldBiases.output;
   nn.feedforward(inputs);
 
   // Show loss modal
@@ -226,14 +226,14 @@ function handleJumpedStateClick(
       if (machineState.stage === 'update' && machineState.neuronData) {
         const neuronData = machineState.neuronData;
         if (machineState.layer === 'output') {
-          nn.weights_hidden2_output.data[machineState.neuronIndex] = neuronData.newWeights;
-          nn.bias_output.data[machineState.neuronIndex][0] = neuronData.newBias;
+          nn.weightsHidden2Output.data[machineState.neuronIndex] = neuronData.newWeights;
+          nn.biasOutput.data[machineState.neuronIndex][0] = neuronData.newBias;
         } else if (machineState.layer === 'layer2') {
-          nn.weights_hidden1_hidden2.data[machineState.neuronIndex] = neuronData.newWeights;
-          nn.bias_hidden2.data[machineState.neuronIndex][0] = neuronData.newBias;
+          nn.weightsHidden1Hidden2.data[machineState.neuronIndex] = neuronData.newWeights;
+          nn.biasHidden2.data[machineState.neuronIndex][0] = neuronData.newBias;
         } else if (machineState.layer === 'layer1') {
-          nn.weights_input_hidden1.data[machineState.neuronIndex] = neuronData.newWeights;
-          nn.bias_hidden1.data[machineState.neuronIndex][0] = neuronData.newBias;
+          nn.weightsInputHidden1.data[machineState.neuronIndex] = neuronData.newWeights;
+          nn.biasHidden1.data[machineState.neuronIndex][0] = neuronData.newBias;
         }
         nn.feedforward(nn.lastInput!.toArray());
       }

@@ -168,14 +168,14 @@ export function useNetworkAnimation(
       onStageComplete: (layer, neuronIndex, stage, data) => {
         if (stage === 'update') {
           if (layer === 'output') {
-            nn.weights_hidden2_output.data[neuronIndex] = data.newWeights;
-            nn.bias_output.data[neuronIndex][0] = data.newBias;
+            nn.weightsHidden2Output.data[neuronIndex] = data.newWeights;
+            nn.biasOutput.data[neuronIndex][0] = data.newBias;
           } else if (layer === 'layer2') {
-            nn.weights_hidden1_hidden2.data[neuronIndex] = data.newWeights;
-            nn.bias_hidden2.data[neuronIndex][0] = data.newBias;
+            nn.weightsHidden1Hidden2.data[neuronIndex] = data.newWeights;
+            nn.biasHidden2.data[neuronIndex][0] = data.newBias;
           } else if (layer === 'layer1') {
-            nn.weights_input_hidden1.data[neuronIndex] = data.newWeights;
-            nn.bias_hidden1.data[neuronIndex][0] = data.newBias;
+            nn.weightsInputHidden1.data[neuronIndex] = data.newWeights;
+            nn.biasHidden1.data[neuronIndex][0] = data.newBias;
           }
           nn.feedforward(nn.lastInput!.toArray());
           updateVisualization();
@@ -310,14 +310,14 @@ export function useNetworkAnimation(
 
             if (stage === 'update') {
               if (layer === 'output') {
-                nn.weights_hidden2_output.data[neuronIndex] = neuronData.newWeights;
-                nn.bias_output.data[neuronIndex][0] = neuronData.newBias;
+                nn.weightsHidden2Output.data[neuronIndex] = neuronData.newWeights;
+                nn.biasOutput.data[neuronIndex][0] = neuronData.newBias;
               } else if (layer === 'layer2') {
-                nn.weights_hidden1_hidden2.data[neuronIndex] = neuronData.newWeights;
-                nn.bias_hidden2.data[neuronIndex][0] = neuronData.newBias;
+                nn.weightsHidden1Hidden2.data[neuronIndex] = neuronData.newWeights;
+                nn.biasHidden2.data[neuronIndex][0] = neuronData.newBias;
               } else if (layer === 'layer1') {
-                nn.weights_input_hidden1.data[neuronIndex] = neuronData.newWeights;
-                nn.bias_hidden1.data[neuronIndex][0] = neuronData.newBias;
+                nn.weightsInputHidden1.data[neuronIndex] = neuronData.newWeights;
+                nn.biasHidden1.data[neuronIndex][0] = neuronData.newBias;
               }
               nn.feedforward(nn.lastInput!.toArray());
               updateVisualization();

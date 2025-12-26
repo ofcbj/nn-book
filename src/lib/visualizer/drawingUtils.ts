@@ -2,6 +2,11 @@
 import type { NodePosition, LayerType } from '../types';
 import i18n from '../../i18n';
 import { activationToColor } from './activationColors';
+import {
+  INPUT_BOX,
+  NEURON_BOX,
+  LAYER_COLORS,
+} from './uiConfig';
 
 export function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
@@ -31,20 +36,20 @@ export function drawInputVector(
   values: number[],
   inputLabels: string[]
 ): NodePosition {
-  const width = 140;
-  const height = 100;
+  const { width, height, cornerRadius } = INPUT_BOX;
   const centerX = x - width / 2;
   const centerY = y - height / 2;
 
-  drawRoundedRect(ctx, centerX, centerY, width, height, 15);
+  drawRoundedRect(ctx, centerX, centerY, width, height, cornerRadius);
 
+  const colors = LAYER_COLORS.input;
   const gradient = ctx.createLinearGradient(centerX, centerY, centerX, centerY + height);
-  gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
-  gradient.addColorStop(1, 'rgba(37, 99, 235, 0.2)');
+  gradient.addColorStop(0, colors.gradientStart);
+  gradient.addColorStop(1, colors.gradientEnd);
   ctx.fillStyle = gradient;
   ctx.fill();
 
-  ctx.strokeStyle = '#3b82f6';
+  ctx.strokeStyle = colors.stroke;
   ctx.lineWidth = 2;
   ctx.stroke();
 
@@ -82,59 +87,47 @@ export function drawNeuronVector(
   isBackpropHighlighted: boolean = false,
   heatmapMode: boolean = false
 ): NodePosition {
-  const baseWidth = weights.length * 25;
-  let width = Math.max(130, baseWidth + 40);
+  // Calculate width based on weights and layer type
+  const baseWidth = weights.length * NEURON_BOX.weightMultiplier;
+  let width = Math.max(NEURON_BOX.minWidth, baseWidth + 40);
+  
+  // Add extra width based on layer type
   if (layerType === 'layer1') {
-    width += 30;
+    width += NEURON_BOX.extraWidth.layer1;
   } else if (layerType === 'layer2') {
-    width += 60;
+    width += NEURON_BOX.extraWidth.layer2;
   } else if (layerType === 'output') {
-    width += 20;
+    width += NEURON_BOX.extraWidth.output;
   }
-  // Layer1 has reduced height to make room for error labels
-  const height = layerType === 'layer1' ? 80 : 90;
+  
+  // Get height based on layer type
+  const height = layerType === 'layer1' 
+    ? NEURON_BOX.height.layer1 
+    : (layerType === 'layer2' ? NEURON_BOX.height.layer2 : NEURON_BOX.height.output);
+  
   const centerX = x - width / 2;
   const centerY = y - height / 2;
 
-  drawRoundedRect(ctx, centerX, centerY, width, height, 12);
+  drawRoundedRect(ctx, centerX, centerY, width, height, NEURON_BOX.cornerRadius);
 
+  // Get colors from config based on layer type
+  // Note: drawNeuronVector is only called for layer1, layer2, output (not input)
+  const colors = LAYER_COLORS[layerType as 'layer1' | 'layer2' | 'output'];
+  
   let gradient: CanvasGradient;
   let strokeColor: string;
 
-  if (layerType === 'layer1') {
-    gradient = ctx.createLinearGradient(centerX, centerY, centerX, centerY + height);
-    if (isHighlighted) {
-      gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)');
-      gradient.addColorStop(1, 'rgba(22, 163, 74, 0.7)');
-    } else {
-      gradient.addColorStop(0, 'rgba(34, 197, 94, 0.3)');
-      gradient.addColorStop(1, 'rgba(22, 163, 74, 0.2)');
-    }
-    ctx.fillStyle = gradient;
-    strokeColor = isHighlighted ? '#4ade80' : '#22c55e';
-  } else if (layerType === 'layer2') {
-    gradient = ctx.createLinearGradient(centerX, centerY, centerX, centerY + height);
-    if (isHighlighted) {
-      gradient.addColorStop(0, 'rgba(249, 115, 22, 0.9)');
-      gradient.addColorStop(1, 'rgba(234, 88, 12, 0.7)');
-    } else {
-      gradient.addColorStop(0, 'rgba(249, 115, 22, 0.3)');
-      gradient.addColorStop(1, 'rgba(234, 88, 12, 0.2)');
-    }
-    ctx.fillStyle = gradient;
-    strokeColor = isHighlighted ? '#fb923c' : '#f97316';
+  gradient = ctx.createLinearGradient(centerX, centerY, centerX, centerY + height);
+  if (isHighlighted) {
+    gradient.addColorStop(0, colors.highlightGradientStart);
+    gradient.addColorStop(1, colors.highlightGradientEnd);
+    strokeColor = colors.highlightStroke;
   } else {
-    gradient = ctx.createLinearGradient(centerX, centerY, centerX, centerY + height);
-    if (isHighlighted) {
-      gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)');
-      gradient.addColorStop(1, 'rgba(220, 38, 38, 0.7)');
-    } else {
-      gradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
-      gradient.addColorStop(1, 'rgba(220, 38, 38, 0.2)');
-    }
-    ctx.fillStyle = gradient;
-    strokeColor = isHighlighted ? '#f87171' : '#ef4444';
+    gradient.addColorStop(0, colors.gradientStart);
+    gradient.addColorStop(1, colors.gradientEnd);
+    strokeColor = colors.stroke;
   }
+  ctx.fillStyle = gradient;
 
   // Use heatmap color if in heatmap mode (unless highlighted)
   if (heatmapMode && !isHighlighted && !isBackpropHighlighted) {

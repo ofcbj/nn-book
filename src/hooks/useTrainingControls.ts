@@ -83,14 +83,14 @@ export function useTrainingControls(
 
     // Backup old weights
     const oldWeights = {
-      layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
-      layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
-      output: JSON.parse(JSON.stringify(nn.weights_hidden2_output.data))
+      layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
+      layer2: JSON.parse(JSON.stringify(nn.weightsHidden1Hidden2.data)),
+      output: JSON.parse(JSON.stringify(nn.weightsHidden2Output.data))
     };
     const oldBiases = {
-      layer1: JSON.parse(JSON.stringify(nn.bias_hidden1.data)),
-      layer2: JSON.parse(JSON.stringify(nn.bias_hidden2.data)),
-      output: JSON.parse(JSON.stringify(nn.bias_output.data))
+      layer1: JSON.parse(JSON.stringify(nn.biasHidden1.data)),
+      layer2: JSON.parse(JSON.stringify(nn.biasHidden2.data)),
+      output: JSON.parse(JSON.stringify(nn.biasOutput.data))
     };
 
     // Train
@@ -99,12 +99,12 @@ export function useTrainingControls(
     const currentLoss = nn.lastLoss;
 
     // Restore old weights for backprop visualization
-    nn.weights_input_hidden1.data = oldWeights.layer1;
-    nn.weights_hidden1_hidden2.data = oldWeights.layer2;
-    nn.weights_hidden2_output.data = oldWeights.output;
-    nn.bias_hidden1.data = oldBiases.layer1;
-    nn.bias_hidden2.data = oldBiases.layer2;
-    nn.bias_output.data = oldBiases.output;
+    nn.weightsInputHidden1.data = oldWeights.layer1;
+    nn.weightsHidden1Hidden2.data = oldWeights.layer2;
+    nn.weightsHidden2Output.data = oldWeights.output;
+    nn.biasHidden1.data = oldBiases.layer1;
+    nn.biasHidden2.data = oldBiases.layer2;
+    nn.biasOutput.data = oldBiases.output;
     nn.feedforward(inputs);
 
     state.setLossModalData({ targetClass: state.targetValue, predictions, loss: currentLoss });
@@ -128,14 +128,14 @@ export function useTrainingControls(
 
     // Store old weights for comparison
     const oldWeights = {
-      layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
-      layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
-      output: JSON.parse(JSON.stringify(nn.weights_hidden2_output.data))
+      layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
+      layer2: JSON.parse(JSON.stringify(nn.weightsHidden1Hidden2.data)),
+      output: JSON.parse(JSON.stringify(nn.weightsHidden2Output.data))
     };
     const oldBiases = {
-      layer1: nn.bias_hidden1.data.map(row => row[0]),
-      layer2: nn.bias_hidden2.data.map(row => row[0]),
-      output: nn.bias_output.data.map(row => row[0])
+      layer1: nn.biasHidden1.data.map(row => row[0]),
+      layer2: nn.biasHidden2.data.map(row => row[0]),
+      output: nn.biasOutput.data.map(row => row[0])
     };
 
     // Use speed of 1.0 if current speed is 0
@@ -145,14 +145,14 @@ export function useTrainingControls(
 
     // Collect new weights
     const newWeights = {
-      layer1: JSON.parse(JSON.stringify(nn.weights_input_hidden1.data)),
-      layer2: JSON.parse(JSON.stringify(nn.weights_hidden1_hidden2.data)),
-      output: JSON.parse(JSON.stringify(nn.weights_hidden2_output.data))
+      layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
+      layer2: JSON.parse(JSON.stringify(nn.weightsHidden1Hidden2.data)),
+      output: JSON.parse(JSON.stringify(nn.weightsHidden2Output.data))
     };
     const newBiases = {
-      layer1: nn.bias_hidden1.data.map(row => row[0]),
-      layer2: nn.bias_hidden2.data.map(row => row[0]),
-      output: nn.bias_output.data.map(row => row[0])
+      layer1: nn.biasHidden1.data.map(row => row[0]),
+      layer2: nn.biasHidden2.data.map(row => row[0]),
+      output: nn.biasOutput.data.map(row => row[0])
     };
 
     const comparisonData = createWeightComparisonData(oldWeights, newWeights, oldBiases, newBiases, state.learningRate);
@@ -234,7 +234,7 @@ export function useTrainingControls(
   // =========================================================================
   const handleLearningRateChange = useCallback((v: number) => {
     state.setLearningRate(v);
-    nnRef.current.learning_rate = v;
+    nnRef.current.learningRate = v;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
