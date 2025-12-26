@@ -171,12 +171,12 @@ export class NeuralNetwork {
     );
 
     // Adjust output weights and bias
-    this.weights_hidden2_output.add(outputLayerResult.weight_ho_deltas);
-    this.bias_output.add(outputLayerResult.bias_output_deltas);
+    this.weights_hidden2_output.add(outputLayerResult.weightHoDeltas);
+    this.bias_output.add(outputLayerResult.biasOutputDeltas);
 
     // Layer 2 (Hidden2)
     const layer2Result = backpropHiddenLayer(
-      outputLayerResult.output_errors,
+      outputLayerResult.outputErrors,
       hidden2,
       hidden1,
       this.weights_hidden2_output,
@@ -184,12 +184,12 @@ export class NeuralNetwork {
     );
 
     // Adjust hidden2 weights and bias
-    this.weights_hidden1_hidden2.add(layer2Result.weight_deltas);
-    this.bias_hidden2.add(layer2Result.bias_deltas);
+    this.weights_hidden1_hidden2.add(layer2Result.weightDeltas);
+    this.bias_hidden2.add(layer2Result.biasDeltas);
 
     // Layer 1 (Hidden1)
     const layer1Result = backpropHiddenLayer(
-      layer2Result.current_errors,
+      layer2Result.currentErrors,
       hidden1,
       inputs,
       this.weights_hidden1_hidden2,
@@ -197,17 +197,17 @@ export class NeuralNetwork {
     );
 
     // Adjust hidden1 weights and bias
-    this.weights_input_hidden1.add(layer1Result.weight_deltas);
-    this.bias_hidden1.add(layer1Result.bias_deltas);
+    this.weights_input_hidden1.add(layer1Result.weightDeltas);
+    this.bias_hidden1.add(layer1Result.biasDeltas);
 
     // === STORE FOR VISUALIZATION ===
-    this.lastGradients.output = outputLayerResult.output_errors;
-    this.lastGradients.layer2 = layer2Result.current_errors;
-    this.lastGradients.layer1 = layer1Result.current_errors;
+    this.lastGradients.output = outputLayerResult.outputErrors;
+    this.lastGradients.layer2 = layer2Result.currentErrors;
+    this.lastGradients.layer1 = layer1Result.currentErrors;
 
-    this.lastWeightDeltas.output_layer2 = outputLayerResult.weight_ho_deltas;
-    this.lastWeightDeltas.layer2_layer1 = layer2Result.weight_deltas;
-    this.lastWeightDeltas.layer1_input = layer1Result.weight_deltas;
+    this.lastWeightDeltas.output_layer2 = outputLayerResult.weightHoDeltas;
+    this.lastWeightDeltas.layer2_layer1 = layer2Result.weightDeltas;
+    this.lastWeightDeltas.layer1_input = layer1Result.weightDeltas;
 
     // Calculate loss (cross-entropy for softmax)
     const targetOneHot = target_array;
@@ -222,15 +222,15 @@ export class NeuralNetwork {
       hidden2,
       outputs,
       target_array,
-      outputLayerResult.output_errors,
-      layer2Result.current_errors,
-      layer1Result.current_errors,
-      outputLayerResult.gradients_output,
-      layer2Result.current_gradients,
-      layer1Result.current_gradients,
-      outputLayerResult.weight_ho_deltas,
-      layer2Result.weight_deltas,
-      layer1Result.weight_deltas,
+      outputLayerResult.outputErrors,
+      layer2Result.currentErrors,
+      layer1Result.currentErrors,
+      outputLayerResult.gradientsOutput,
+      layer2Result.currentGradients,
+      layer1Result.currentGradients,
+      outputLayerResult.weightHoDeltas,
+      layer2Result.weightDeltas,
+      layer1Result.weightDeltas,
       oldWeights_ho,
       oldBias_o,
       oldWeights_h1h2,

@@ -1,10 +1,84 @@
 // Network rendering module
-import type { CalculationSteps, NodePosition, AnimationPhase, NeuronCalculation, CalculationStage } from '../types';
+import type { CalculationSteps, NodePosition, AnimationPhase, NeuronCalculation, CalculationStage, LayerType } from '../types';
 import type { NeuralNetwork } from '../core';
+import { LAYER_SIZES } from '../core';
 import { drawInputVector, drawNeuronVector } from './drawingUtils';
 import i18n from '../../i18n';
 
+// =============================================================================
+// Types
+// =============================================================================
 
+interface LayerConfig {
+  layerName: LayerType;
+  neurons: NeuronCalculation[];
+  x: number;
+  neuronCount: number;
+  verticalSpacing: number;
+  getLabel: (index: number) => string;
+}
+
+interface DrawContext {
+  ctx: CanvasRenderingContext2D;
+  height: number;
+  highlightedNeuron: AnimationPhase | null;
+  backpropPhase: AnimationPhase | null;
+  calculationStage: CalculationStage | null;
+  currentNeuronData: NeuronCalculation | null;
+  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: CalculationStage, neuronData: NeuronCalculation | null) => void) | null;
+  heatmapMode: boolean;
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Draw a layer of neurons with common logic
+ */
+function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePosition[] {
+  const { layerName, neurons, x, neuronCount, verticalSpacing, getLabel } = config;
+  const { ctx, height, highlightedNeuron, backpropPhase, calculationStage, currentNeuronData, drawCalculationOverlay, heatmapMode } = context;
+
+  const nodes: NodePosition[] = [];
+  const totalHeight = (neuronCount - 1) * verticalSpacing;
+  const startY = (height - totalHeight) / 2;
+
+  for (let i = 0; i < neuronCount; i++) {
+    const neuron = neurons[i];
+    const y = startY + i * verticalSpacing;
+
+    const isHighlighted = highlightedNeuron?.layer === layerName && highlightedNeuron.index === i;
+    const isBackpropHighlighted = backpropPhase?.layer === layerName && backpropPhase.index === i;
+
+    const node = drawNeuronVector(
+      ctx,
+      x,
+      y,
+      neuron.weights,
+      neuron.bias,
+      neuron.activated,
+      getLabel(i),
+      layerName,
+      isHighlighted || false,
+      isBackpropHighlighted || false,
+      heatmapMode
+    );
+
+    // Show calculation overlay for highlighted neuron
+    if (isHighlighted && calculationStage && currentNeuronData && drawCalculationOverlay) {
+      drawCalculationOverlay(ctx, x, y, calculationStage, currentNeuronData);
+    }
+
+    nodes.push(node);
+  }
+
+  return nodes;
+}
+
+// =============================================================================
+// Main Export
+// =============================================================================
 
 export function drawNetwork(
   ctx: CanvasRenderingContext2D,
@@ -18,13 +92,14 @@ export function drawNetwork(
   drawConnectionsVector: (ctx: CanvasRenderingContext2D, nodes: NodePosition[][], nn: NeuralNetwork) => void,
   drawLossOverlay: ((ctx: CanvasRenderingContext2D, width: number, height: number) => void) | null,
   drawBackpropHighlight: ((ctx: CanvasRenderingContext2D, nodes: NodePosition[][]) => void) | null,
-  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: any, neuronData: NeuronCalculation | null) => void) | null,
+  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: CalculationStage, neuronData: NeuronCalculation | null) => void) | null,
   currentNeuronData: NeuronCalculation | null,
   heatmapMode: boolean = false
 ): NodePosition[][] {
   const width = canvas.width;
   const height = canvas.height;
 
+  // Clear canvas
   ctx.fillStyle = '#0a0a0a';
   ctx.fillRect(0, 0, width, height);
 
@@ -33,135 +108,69 @@ export function drawNetwork(
   const nodes: NodePosition[][] = [];
 
   // Calculate dynamic positions based on canvas width
-  // We have 4 layers: input, layer1, layer2, output
   const paddingLeft = 60;
   const paddingRight = 80;
   const usableWidth = width - paddingLeft - paddingRight;
 
-  // Position layers with better spacing
   const inputX = paddingLeft + 30;
   const layer1X = paddingLeft + usableWidth * 0.32;
   const layer2X = paddingLeft + usableWidth * 0.65;
   const outputX = width - paddingRight - 10;
 
+  // Shared drawing context
+  const drawContext: DrawContext = {
+    ctx,
+    height,
+    highlightedNeuron,
+    backpropPhase,
+    calculationStage,
+    currentNeuronData,
+    drawCalculationOverlay,
+    heatmapMode,
+  };
+
+  // Input layer
   const inputNode = drawInputVector(ctx, inputX, height / 2, steps.input, inputLabels);
   nodes.push([inputNode]);
 
-  // Layer 1 - 5 neurons with tighter spacing
-  const layer1Nodes: NodePosition[] = [];
-  const layer1VerticalSpacing = 105;
-  const layer1TotalHeight = (5 - 1) * layer1VerticalSpacing;
-  const layer1StartY = (height - layer1TotalHeight) / 2;
-  for (let i = 0; i < 5; i++) {
-    const neuron = steps.layer1[i];
-    const isHighlighted = highlightedNeuron &&
-                          highlightedNeuron.layer === 'layer1' &&
-                          highlightedNeuron.index === i;
-    const isBackpropHighlighted = backpropPhase &&
-                                   backpropPhase.layer === 'layer1' &&
-                                   backpropPhase.index === i;
-    const node = drawNeuronVector(
-      ctx,
-      layer1X,
-      layer1StartY + i * layer1VerticalSpacing,
-      neuron.weights,
-      neuron.bias,
-      neuron.activated,
-      `${i18n.t('layers.layer1Prefix')} #${i + 1}`,
-      'layer1',
-      isHighlighted || false,
-      isBackpropHighlighted || false,
-      heatmapMode
-    );
-    
-    // Show calculation overlay for highlighted neuron
-    if (highlightedNeuron && highlightedNeuron.layer === 'layer1' && highlightedNeuron.index === i && 
-        calculationStage && currentNeuronData && drawCalculationOverlay) {
-      drawCalculationOverlay(ctx, layer1X, layer1StartY + i * layer1VerticalSpacing, calculationStage as any, currentNeuronData);
-    }
-    
-    layer1Nodes.push(node);
-  }
+  // Layer 1 - 5 neurons
+  const layer1Nodes = drawLayerNeurons({
+    layerName: 'layer1',
+    neurons: steps.layer1,
+    x: layer1X,
+    neuronCount: LAYER_SIZES.layer1,
+    verticalSpacing: 105,
+    getLabel: (i) => `${i18n.t('layers.layer1Prefix')} #${i + 1}`,
+  }, drawContext);
   nodes.push(layer1Nodes);
 
-  // Layer 2 - 3 neurons with better spacing
-  const layer2Nodes: NodePosition[] = [];
-  const layer2VerticalSpacing = 125;
-  const layer2TotalHeight = (3 - 1) * layer2VerticalSpacing;
-  const layer2StartY = (height - layer2TotalHeight) / 2;
-  for (let i = 0; i < 3; i++) {
-    const neuron = steps.layer2[i];
-    const isHighlighted = highlightedNeuron &&
-                          highlightedNeuron.layer === 'layer2' &&
-                          highlightedNeuron.index === i;
-    const isBackpropHighlighted = backpropPhase &&
-                                   backpropPhase.layer === 'layer2' &&
-                                   backpropPhase.index === i;
-    const node = drawNeuronVector(
-      ctx,
-      layer2X,
-      layer2StartY + i * layer2VerticalSpacing,
-      neuron.weights,
-      neuron.bias,
-      neuron.activated,
-      `${i18n.t('layers.layer2Prefix')} #${i + 1}`,
-      'layer2',
-      isHighlighted || false,
-      isBackpropHighlighted || false,
-      heatmapMode
-    );
-    
-    // Show calculation overlay for highlighted neuron
-    if (highlightedNeuron && highlightedNeuron.layer === 'layer2' && highlightedNeuron.index === i && 
-        calculationStage && currentNeuronData && drawCalculationOverlay) {
-      drawCalculationOverlay(ctx, layer2X, layer2StartY + i * layer2VerticalSpacing, calculationStage as any, currentNeuronData);
-    }
-    
-    layer2Nodes.push(node);
-  }
+  // Layer 2 - 3 neurons
+  const layer2Nodes = drawLayerNeurons({
+    layerName: 'layer2',
+    neurons: steps.layer2,
+    x: layer2X,
+    neuronCount: LAYER_SIZES.layer2,
+    verticalSpacing: 125,
+    getLabel: (i) => `${i18n.t('layers.layer2Prefix')} #${i + 1}`,
+  }, drawContext);
   nodes.push(layer2Nodes);
 
-  // Output layer - 3 neurons with better spacing
-  const outputNodes: NodePosition[] = [];
+  // Output layer - 3 neurons
   const classNames = [i18n.t('classes.fail'), i18n.t('classes.pending'), i18n.t('classes.pass')];
-  const outputVerticalSpacing = 125;
-  const outputTotalHeight = (3 - 1) * outputVerticalSpacing;
-  const outputStartY = (height - outputTotalHeight) / 2;
-
-  for (let i = 0; i < 3; i++) {
-    const output = steps.output[i];
-    const isHighlighted = highlightedNeuron &&
-                          highlightedNeuron.layer === 'output' &&
-                          highlightedNeuron.index === i;
-    const isBackpropHighlighted = backpropPhase &&
-                                   backpropPhase.layer === 'output' &&
-                                   backpropPhase.index === i;
-    const outputNode = drawNeuronVector(
-      ctx,
-      outputX,
-      outputStartY + i * outputVerticalSpacing,
-      output.weights,
-      output.bias,
-      output.activated,
-      classNames[i],
-      'output',
-      isHighlighted || false,
-      isBackpropHighlighted || false,
-      heatmapMode
-    );
-    
-    // Show calculation overlay for highlighted neuron
-    if (highlightedNeuron && highlightedNeuron.layer === 'output' && highlightedNeuron.index === i && 
-        calculationStage && currentNeuronData && drawCalculationOverlay) {
-      drawCalculationOverlay(ctx, outputX, outputStartY + i * outputVerticalSpacing, calculationStage as any, currentNeuronData);
-    }
-    
-    outputNodes.push(outputNode);
-  }
+  const outputNodes = drawLayerNeurons({
+    layerName: 'output',
+    neurons: steps.output,
+    x: outputX,
+    neuronCount: LAYER_SIZES.output,
+    verticalSpacing: 125,
+    getLabel: (i) => classNames[i],
+  }, drawContext);
   nodes.push(outputNodes);
 
+  // Draw connections between layers
   drawConnectionsVector(ctx, nodes, nn);
 
+  // Draw overlays
   if (drawLossOverlay) {
     drawLossOverlay(ctx, width, height);
   }

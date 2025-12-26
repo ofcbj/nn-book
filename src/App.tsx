@@ -119,7 +119,6 @@ export default function App() {
               <StatsDisplay epoch={epoch} loss={loss} output={output} />
             </Stack>
           </Box>
-
           {/* Center: Network Visualization */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Stack spacing={2.5}>
@@ -129,7 +128,6 @@ export default function App() {
               {showGridHeatmap && <ActivationHeatmap activations={activations} />}
             </Stack>
           </Box>
-
           {/* Right Panel: Calculation Display */}
           <Box sx={{ width: { xs: '100%', lg: 280 }, flexShrink: 0 }}>
             <CalculationPanel steps={steps} />
@@ -137,8 +135,6 @@ export default function App() {
         </Box>
 
         <Footer />
-
-
         {/* Loss Modal */}
         {lossModalData && (
           <LossModal

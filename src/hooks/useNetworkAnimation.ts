@@ -7,6 +7,7 @@
 
 import { useCallback, useRef, useEffect, MutableRefObject } from 'react';
 import type { NeuralNetwork } from '../lib/core';
+import { LAYER_SIZES, FORWARD_LAYER_ORDER, BACKWARD_LAYER_ORDER } from '../lib/core';
 import type { Visualizer } from '../lib/visualizer';
 import type { BackpropSummaryData, CalculationStage, BackpropStage } from '../lib/types';
 import type { UseNetworkStateReturn } from './useNetworkState';
@@ -235,8 +236,7 @@ export function useNetworkAnimation(
       const calcSteps = nn.getCalculationSteps();
       if (!calcSteps) return;
 
-      const layers: Array<'layer1' | 'layer2' | 'output'> = ['layer1', 'layer2', 'output'];
-      const layerSizes = { layer1: 5, layer2: 3, output: 3 };
+      const layers = FORWARD_LAYER_ORDER;
       const layerData = { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
 
       const baseDelay = 400;
@@ -255,7 +255,7 @@ export function useNetworkAnimation(
         const layer = layers[layerIdx];
         const startIdx = layerIdx === startLayerIdx ? startNeuronIdx : 0;
 
-        for (let neuronIndex = startIdx; neuronIndex < layerSizes[layer]; neuronIndex++) {
+        for (let neuronIndex = startIdx; neuronIndex < LAYER_SIZES[layer]; neuronIndex++) {
           if (shouldStopRef.current) return;
 
           const neuronData = layerData[layer][neuronIndex];
@@ -276,8 +276,8 @@ export function useNetworkAnimation(
       const backpropData = nn.lastBackpropSteps;
       if (!backpropData) return;
 
-      const layers: Array<'layer1' | 'layer2' | 'output'> = ['output', 'layer2', 'layer1'];
-      const layerStartIndices = { output: 2, layer2: 2, layer1: 4 };
+      const layers = BACKWARD_LAYER_ORDER;
+      const layerStartIndices = { output: LAYER_SIZES.output - 1, layer2: LAYER_SIZES.layer2 - 1, layer1: LAYER_SIZES.layer1 - 1 };
       const layerData = { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
 
       const stageDurations: Record<BackpropStage, number> = {

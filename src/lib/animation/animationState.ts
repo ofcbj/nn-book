@@ -6,6 +6,7 @@
  */
 
 import type { CalculationStage, BackpropStage, NeuronCalculation, BackpropNeuronData } from '../types';
+import { type LayerName } from '../core';
 
 // ============================================================================
 // State Definitions
@@ -29,7 +30,7 @@ export interface IdleState extends BaseAnimationState {
 /** Forward propagation animation */
 export interface ForwardAnimatingState extends BaseAnimationState {
   type: 'forward_animating';
-  layer: 'layer1' | 'layer2' | 'output';
+  layer: LayerName;
   neuronIndex: number;
   stage: CalculationStage;
   neuronData: NeuronCalculation | null;
@@ -43,7 +44,7 @@ export interface ShowingLossModalState extends BaseAnimationState {
 /** Backward propagation animation */
 export interface BackwardAnimatingState extends BaseAnimationState {
   type: 'backward_animating';
-  layer: 'layer1' | 'layer2' | 'output';
+  layer: LayerName;
   neuronIndex: number;
   stage: BackpropStage;
   neuronData: BackpropNeuronData | null;
@@ -73,12 +74,12 @@ export type AnimationAction =
   | { type: 'NEXT_STEP' }
   | { 
       type: 'JUMP_TO_NEURON'; 
-      layer: 'layer1' | 'layer2' | 'output'; 
+      layer: LayerName; 
       neuronIndex: number;
     }
   | { 
       type: 'FORWARD_TICK'; 
-      layer: 'layer1' | 'layer2' | 'output'; 
+      layer: LayerName; 
       neuronIndex: number; 
       stage: CalculationStage;
       neuronData: NeuronCalculation | null;
@@ -87,7 +88,7 @@ export type AnimationAction =
   | { type: 'CLOSE_LOSS_MODAL' }
   | { 
       type: 'BACKWARD_TICK'; 
-      layer: 'layer1' | 'layer2' | 'output'; 
+      layer: LayerName; 
       neuronIndex: number; 
       stage: BackpropStage;
       neuronData: BackpropNeuronData | null;
@@ -273,7 +274,7 @@ export function isBackwardMode(state: AnimationState): boolean {
 
 /** Get current highlighted neuron info for visualization */
 export function getHighlightedNeuron(state: AnimationState): {
-  layer: 'layer1' | 'layer2' | 'output';
+  layer: LayerName;
   index: number;
 } | null {
   if (state.type === 'forward_animating' || state.type === 'backward_animating') {
@@ -315,65 +316,15 @@ export function getCurrentBackpropData(state: AnimationState): BackpropNeuronDat
 }
 
 // ============================================================================
-// Forward Propagation Stage Sequences
+// Re-exports from core/networkConfig
+// (Centralized configuration for layers, stages, and navigation)
 // ============================================================================
 
-export const FORWARD_STAGES: CalculationStage[] = [
-  'connections', 'dotProduct', 'bias', 'activation'
-];
-
-export const BACKPROP_STAGES: BackpropStage[] = [
-  'error', 'derivative', 'gradient', 'weightDelta', 'allWeightDeltas', 'update'
-];
-
-/** Get next forward stage, or null if at the last stage */
-export function getNextForwardStage(current: CalculationStage): CalculationStage | null {
-  const idx = FORWARD_STAGES.indexOf(current);
-  if (idx >= 0 && idx < FORWARD_STAGES.length - 1) {
-    return FORWARD_STAGES[idx + 1];
-  }
-  return null;
-}
-
-/** Get next backprop stage, or null if at the last stage */
-export function getNextBackpropStage(current: BackpropStage): BackpropStage | null {
-  const idx = BACKPROP_STAGES.indexOf(current);
-  if (idx >= 0 && idx < BACKPROP_STAGES.length - 1) {
-    return BACKPROP_STAGES[idx + 1];
-  }
-  return null;
-}
-
-/** Get next neuron in forward propagation order */
-export function getNextForwardNeuron(
-  layer: 'layer1' | 'layer2' | 'output',
-  index: number
-): { layer: 'layer1' | 'layer2' | 'output'; index: number } | null {
-  const layerSizes = { layer1: 5, layer2: 3, output: 3 };
-  
-  if (index < layerSizes[layer] - 1) {
-    return { layer, index: index + 1 };
-  }
-  
-  // Move to next layer
-  if (layer === 'layer1') return { layer: 'layer2', index: 0 };
-  if (layer === 'layer2') return { layer: 'output', index: 0 };
-  
-  return null; // Last neuron in output layer
-}
-
-/** Get next neuron in backward propagation order (reverse) */
-export function getNextBackwardNeuron(
-  layer: 'layer1' | 'layer2' | 'output',
-  index: number
-): { layer: 'layer1' | 'layer2' | 'output'; index: number } | null {
-  if (index > 0) {
-    return { layer, index: index - 1 };
-  }
-  
-  // Move to previous layer
-  if (layer === 'output') return { layer: 'layer2', index: 2 };
-  if (layer === 'layer2') return { layer: 'layer1', index: 4 };
-  
-  return null; // First neuron in layer1
-}
+export {
+  FORWARD_STAGES,
+  BACKPROP_STAGES,
+  getNextForwardStage,
+  getNextBackpropStage,
+  getNextForwardNeuron,
+  getNextBackwardNeuron,
+} from '../core';

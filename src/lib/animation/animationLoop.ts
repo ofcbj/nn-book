@@ -11,7 +11,7 @@ import type { CalculationStage, BackpropStage } from '../types';
 // Types
 // ============================================================================
 
-type LayerName = 'layer1' | 'layer2' | 'output';
+import type { LayerName } from '../core';
 
 export interface AnimationLoopConfig<TStage extends string, TData> {
   /** Mode identifier */
@@ -103,30 +103,12 @@ export async function runAnimationLoop<TStage extends string, TData>(
 }
 
 // ============================================================================
-// Configuration Factories
+// Configuration - imported from core/networkConfig
 // ============================================================================
 
-const LAYER_SIZES: Record<LayerName, number> = {
-  layer1: 5,
-  layer2: 3,
-  output: 3,
-};
+import { getForwardNeuronIndices, getBackwardNeuronIndices } from '../core';
 
-/**
- * Creates neuron indices for forward propagation (0 to max)
- */
-export function forwardNeuronIndices(layer: LayerName): number[] {
-  const size = LAYER_SIZES[layer];
-  return Array.from({ length: size }, (_, i) => i);
-}
-
-/**
- * Creates neuron indices for backward propagation (max to 0)
- */
-export function backwardNeuronIndices(layer: LayerName): number[] {
-  const size = LAYER_SIZES[layer];
-  return Array.from({ length: size }, (_, i) => size - 1 - i);
-}
+export { getForwardNeuronIndices as forwardNeuronIndices, getBackwardNeuronIndices as backwardNeuronIndices };
 
 // ============================================================================
 // Stage Durations
