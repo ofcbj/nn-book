@@ -14,60 +14,25 @@ import { useNeuralNetwork } from './hooks/useNeuralNetwork';
 
 export default function App() {
   const {
-    nn,
-    setVisualizer,
-    grade,
-    attitude,
-    response,
-    targetValue,
-    learningRate,
-    animationSpeed,
-    isManualMode,
-    setGrade,
-    setAttitude,
-    setResponse,
-    setTargetValue,
-    setLearningRate,
-    setAnimationSpeed,
-    setIsManualMode,
-    nextStep,
-    epoch,
-    loss,
-    output,
-    steps,
-    isTraining,
-    isAnimating,
-    showLossModal,
-    lossModalData,
-    showBackpropModal,
-    backpropSummaryData,
-    trainOneStepWithAnimation,
-    toggleTraining,
-    reset,
-    closeLossModal,
-    closeBackpropModal,
-    updateVisualization,
-    handleCanvasClick,
-    showCanvasHeatmap,
-    showGridHeatmap,
-    activations,
-    toggleCanvasHeatmap,
-    toggleGridHeatmap,
-    showComparisonModal,
-    weightComparisonData,
-    openComparisonModal,
-    closeComparisonModal,
+    network,
+    inputs,
+    controls,
+    stats,
+    training,
+    modals,
+    visualization,
+    actions,
   } = useNeuralNetwork();
 
   // Initial visualization
   useEffect(() => {
-    updateVisualization();
-  }, [updateVisualization]);
+    actions.updateVisualization();
+  }, [actions.updateVisualization]);
 
   // Update visualization when inputs change
   useEffect(() => {
-    updateVisualization();
-  }, [grade, attitude, response, updateVisualization]);
+    actions.updateVisualization();
+  }, [inputs.grade, inputs.attitude, inputs.response, actions.updateVisualization]);
 
   // Help modal state
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -89,68 +54,68 @@ export default function App() {
           <Box sx={{ width: { xs: '100%', lg: 220 }, flexShrink: 0 }}>
             <Stack spacing={2.5}>
               <ControlPanel
-                grade={grade}
-                attitude={attitude}
-                response={response}
-                targetValue={targetValue}
-                learningRate={learningRate}
-                animationSpeed={animationSpeed}
-                isManualMode={isManualMode}
-                onGradeChange={setGrade}
-                onAttitudeChange={setAttitude}
-                onResponseChange={setResponse}
-                onTargetChange={setTargetValue}
-                onLearningRateChange={setLearningRate}
-                onAnimationSpeedChange={setAnimationSpeed}
-                onManualModeChange={setIsManualMode}
-                onNextStep={nextStep}
-                onStep={trainOneStepWithAnimation}
-                onTrainToggle={toggleTraining}
-                onReset={reset}
-                isTraining={isTraining}
-                isAnimating={isAnimating}
-                showCanvasHeatmap={showCanvasHeatmap}
-                showGridHeatmap={showGridHeatmap}
-                onToggleCanvasHeatmap={toggleCanvasHeatmap}
-                onToggleGridHeatmap={toggleGridHeatmap}
-                hasComparisonData={weightComparisonData !== null}
-                onViewComparison={openComparisonModal}
+                grade={inputs.grade}
+                attitude={inputs.attitude}
+                response={inputs.response}
+                targetValue={inputs.targetValue}
+                learningRate={inputs.learningRate}
+                animationSpeed={inputs.animationSpeed}
+                isManualMode={inputs.isManualMode}
+                onGradeChange={controls.setGrade}
+                onAttitudeChange={controls.setAttitude}
+                onResponseChange={controls.setResponse}
+                onTargetChange={controls.setTargetValue}
+                onLearningRateChange={controls.setLearningRate}
+                onAnimationSpeedChange={controls.setAnimationSpeed}
+                onManualModeChange={controls.setIsManualMode}
+                onNextStep={controls.nextStep}
+                onStep={actions.trainOneStep}
+                onTrainToggle={actions.toggleTraining}
+                onReset={actions.reset}
+                isTraining={training.isTraining}
+                isAnimating={training.isAnimating}
+                showCanvasHeatmap={visualization.showCanvasHeatmap}
+                showGridHeatmap={visualization.showGridHeatmap}
+                onToggleCanvasHeatmap={visualization.toggleCanvasHeatmap}
+                onToggleGridHeatmap={visualization.toggleGridHeatmap}
+                hasComparisonData={modals.comparison.data !== null}
+                onViewComparison={modals.comparison.open}
               />
-              <StatsDisplay epoch={epoch} loss={loss} output={output} />
+              <StatsDisplay epoch={stats.epoch} loss={stats.loss} output={stats.output} />
             </Stack>
           </Box>
           {/* Center: Network Visualization */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Stack spacing={2.5}>
-              <NetworkCanvas nn={nn} onVisualizerReady={setVisualizer} onCanvasClick={handleCanvasClick} />
+              <NetworkCanvas nn={network.nn} onVisualizerReady={network.setVisualizer} onCanvasClick={actions.handleCanvasClick} />
               
               {/* Activation Heatmap */}
-              {showGridHeatmap && <ActivationHeatmap activations={activations} />}
+              {visualization.showGridHeatmap && <ActivationHeatmap activations={visualization.activations} />}
             </Stack>
           </Box>
           {/* Right Panel: Calculation Display */}
           <Box sx={{ width: { xs: '100%', lg: 280 }, flexShrink: 0 }}>
-            <CalculationPanel steps={steps} />
+            <CalculationPanel steps={stats.steps} />
           </Box>
         </Box>
 
         <Footer />
         {/* Loss Modal */}
-        {lossModalData && (
+        {modals.loss.data && (
           <LossModal
-            open={showLossModal}
-            targetClass={lossModalData.targetClass}
-            predictions={lossModalData.predictions}
-            loss={lossModalData.loss}
-            onClose={closeLossModal}
+            open={modals.loss.show}
+            targetClass={modals.loss.data.targetClass}
+            predictions={modals.loss.data.predictions}
+            loss={modals.loss.data.loss}
+            onClose={modals.loss.close}
           />
         )}
 
         {/* Backprop Summary Modal */}
         <BackpropModal
-          open={showBackpropModal}
-          data={backpropSummaryData}
-          onClose={closeBackpropModal}
+          open={modals.backprop.show}
+          data={modals.backprop.data}
+          onClose={modals.backprop.close}
         />
 
         {/* Help Modal */}
@@ -161,9 +126,9 @@ export default function App() {
 
         {/* Weight Comparison Modal */}
         <WeightComparisonModal
-          open={showComparisonModal}
-          data={weightComparisonData}
-          onClose={closeComparisonModal}
+          open={modals.comparison.show}
+          data={modals.comparison.data}
+          onClose={modals.comparison.close}
         />
       </Container>
     </Box>

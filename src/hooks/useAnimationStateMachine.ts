@@ -224,7 +224,7 @@ export function useAnimationStateMachine(): UseAnimationStateMachineReturn {
   };
 }
 
-// Export helper functions for external use
+// Export helper functions and types for external use
 export {
   getNextForwardStage,
   getNextBackpropStage,
@@ -233,3 +233,4 @@ export {
   FORWARD_STAGES,
   BACKPROP_STAGES,
 };
+export type { AnimationState };

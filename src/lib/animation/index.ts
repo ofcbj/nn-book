@@ -23,7 +23,12 @@ export {
   getCurrentNeuronData,
   getCurrentBackpropData,
 } from './animationState';
-export type { AnimationState, AnimationAction } from './animationState';
+export type { 
+  AnimationState, 
+  AnimationAction,
+  ForwardAnimatingState,
+  BackwardAnimatingState,
+} from './animationState';
 
 export {
   runAnimationLoop,

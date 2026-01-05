@@ -5,7 +5,7 @@
  * Extracted from useNeuralNetwork for better separation of concerns.
  */
 
-import { useCallback, useRef, useEffect, MutableRefObject } from 'react';
+import { useCallback, useRef, useEffect, RefObject } from 'react';
 import type { NeuralNetwork } from '../lib/core';
 import { LAYER_SIZES, FORWARD_LAYER_ORDER, BACKWARD_LAYER_ORDER } from '../lib/core';
 import type { Visualizer } from '../lib/visualizer';
@@ -30,13 +30,13 @@ export interface UseNetworkAnimationReturn {
   animateBackwardPropagation: (speedOverride?: number) => Promise<void>;
   continueFromJumpedPosition: () => Promise<void>;
   sleep: (ms: number, overrideSpeed?: number) => Promise<void>;
-  shouldStopRef: MutableRefObject<boolean>;
+  shouldStopRef: RefObject<boolean>;
   updateVisualization: () => void;
 }
 
 export function useNetworkAnimation(
-  nnRef: MutableRefObject<NeuralNetwork>,
-  visualizerRef: MutableRefObject<Visualizer | null>,
+  nnRef: RefObject<NeuralNetwork>,
+  visualizerRef: RefObject<Visualizer | null>,
   state: UseNetworkStateReturn,
   animationMachine: AnimationStateMachine
 ): UseNetworkAnimationReturn {

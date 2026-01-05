@@ -90,14 +90,14 @@ export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: 
     const rect = canvas.getBoundingClientRect();
     
     // Get click position relative to canvas
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const x = event.clientX-rect.left;
+    const y = event.clientY-rect.top;
     
     // Scale for high DPI
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const canvasX = x * scaleX;
-    const canvasY = y * scaleY;
+    const scaleX = canvas.width/rect.width;
+    const scaleY = canvas.height/rect.height;
+    const canvasX = x*scaleX;
+    const canvasY = y*scaleY;
     
     onCanvasClick(canvasX, canvasY);
   }, [onCanvasClick]);
