@@ -113,32 +113,60 @@ export class NeuralNetwork {
     const inputs = Matrix.fromArray(inputArray);
     this.lastInput = inputs;
     
-    // Layer 1: 1차 면접관
-    const hidden1Raw = Matrix.multiply(this.weightsInputHidden1, inputs);
-    hidden1Raw.add(this.biasHidden1);
-    this.lastHidden1Raw = hidden1Raw;
-    const hidden1 = Matrix.map(hidden1Raw, sigmoid);
-    this.lastHidden1 = hidden1;
+    // Define layer configurations - all layers follow the same pattern:
+    // 1. Weighted sum: raw = weights × input + bias
+    // 2. Activation: activated = activation_function(raw)
+    const layerConfigs = [
+      {
+        name: 'Layer 1: 1차 면접관',
+        weights: this.weightsInputHidden1,
+        bias: this.biasHidden1,
+        activationType: 'sigmoid' as const,
+        storeRaw: (m: Matrix) => { this.lastHidden1Raw = m; },
+        storeActivated: (m: Matrix) => { this.lastHidden1 = m; }
+      },
+      {
+        name: 'Layer 2: 2차 면접관',
+        weights: this.weightsHidden1Hidden2,
+        bias: this.biasHidden2,
+        activationType: 'sigmoid' as const,
+        storeRaw: (m: Matrix) => { this.lastHidden2Raw = m; },
+        storeActivated: (m: Matrix) => { this.lastHidden2 = m; }
+      },
+      {
+        name: 'Output layer: 최종 결정',
+        weights: this.weightsHidden2Output,
+        bias: this.biasOutput,
+        activationType: 'softmax' as const,
+        storeRaw: (m: Matrix) => { this.lastOutputRaw = m; },
+        storeActivated: (m: Matrix) => { this.lastOutput = m; }
+      }
+    ];
+
+    // Process all layers with the same pattern
+    let currentInput = inputs;
+    for (const config of layerConfigs) {
+      // Step 1: Weighted sum (raw = weights × input + bias)
+      const raw = Matrix.multiply(config.weights, currentInput);
+      raw.add(config.bias);
+      config.storeRaw(raw);
+      
+      // Step 2: Activation function
+      let activated: Matrix;
+      if (config.activationType === 'sigmoid') {
+        activated = Matrix.map(raw, sigmoid);
+      } else {
+        // Softmax for output layer
+        const logits = raw.toArray();
+        const probs = softmax(logits);
+        activated = Matrix.fromArray(probs);
+      }
+      
+      config.storeActivated(activated);
+      currentInput = activated; // Output becomes input for next layer
+    }
     
-    // Layer 2: 2차 면접관
-    const hidden2Raw = Matrix.multiply(this.weightsHidden1Hidden2, hidden1);
-    hidden2Raw.add(this.biasHidden2);
-    this.lastHidden2Raw = hidden2Raw;
-    const hidden2 = Matrix.map(hidden2Raw, sigmoid);
-    this.lastHidden2 = hidden2;
-    
-    // Output layer: 최종 결정 (Softmax for 3-class classification)
-    const outputRaw = Matrix.multiply(this.weightsHidden2Output, hidden2);
-    outputRaw.add(this.biasOutput);
-    this.lastOutputRaw = outputRaw;
-    
-    // Apply softmax activation
-    const outputLogits = outputRaw.toArray();
-    const outputProbs = softmax(outputLogits);
-    const outputs = Matrix.fromArray(outputProbs);
-    this.lastOutput = outputs;
-    
-    return outputProbs;
+    return this.lastOutput!.toArray();
   }
 
   train(inputArray: number[], targetArray: number[]): void {
@@ -162,53 +190,107 @@ export class NeuralNetwork {
     const oldBiasH1 = JSON.parse(JSON.stringify(this.biasHidden1.data));
 
     // === BACKPROPAGATION ===
+    // All layers follow the same pattern in reverse:
+    // 1. Calculate error (output layer: target-output, hidden: backprop from next layer)
+    // 2. Calculate gradients (error × derivative × learning_rate)
+    // 3. Calculate weight deltas (gradients × previous_layer_activations^T)
+    // 4. Update weights and biases
     
-    // Output layer
-    const outputLayerResult = backpropOutputLayer(
-      outputs,
-      targets,
-      hidden2,
-      this.learningRate
-    );
+    // Define layer configurations for backprop (processed in reverse order)
+    const backpropConfigs = [
+      {
+        name: 'output',
+        isOutputLayer: true,
+        currentLayerActivations: outputs,
+        previousLayerActivations: hidden2,
+        weights: this.weightsHidden2Output,
+        bias: this.biasOutput,
+        nextLayerWeights: null // No next layer for output
+      },
+      {
+        name: 'layer2',
+        isOutputLayer: false,
+        currentLayerActivations: hidden2,
+        previousLayerActivations: hidden1,
+        weights: this.weightsHidden1Hidden2,
+        bias: this.biasHidden2,
+        nextLayerWeights: this.weightsHidden2Output
+      },
+      {
+        name: 'layer1',
+        isOutputLayer: false,
+        currentLayerActivations: hidden1,
+        previousLayerActivations: inputs,
+        weights: this.weightsInputHidden1,
+        bias: this.biasHidden1,
+        nextLayerWeights: this.weightsHidden1Hidden2
+      }
+    ];
 
-    // Adjust output weights and bias
-    this.weightsHidden2Output.add(outputLayerResult.weightHoDeltas);
-    this.biasOutput.add(outputLayerResult.biasOutputDeltas);
+    // Store results for visualization
+    const layerErrors: Record<string, Matrix> = {};
+    const layerGradients: Record<string, Matrix> = {};
+    const layerWeightDeltas: Record<string, Matrix> = {};
 
-    // Layer 2 (Hidden2)
-    const layer2Result = backpropHiddenLayer(
-      outputLayerResult.outputErrors,
-      hidden2,
-      hidden1,
-      this.weightsHidden2Output,
-      this.learningRate
-    );
+    let currentError: Matrix | null = null;
 
-    // Adjust hidden2 weights and bias
-    this.weightsHidden1Hidden2.add(layer2Result.weightDeltas);
-    this.biasHidden2.add(layer2Result.biasDeltas);
+    // Process each layer with unified backprop logic
+    for (const config of backpropConfigs) {
+      let errors: Matrix;
+      let gradients: Matrix;
+      let weightDeltas: Matrix;
+      let biasDeltas: Matrix;
 
-    // Layer 1 (Hidden1)
-    const layer1Result = backpropHiddenLayer(
-      layer2Result.currentErrors,
-      hidden1,
-      inputs,
-      this.weightsHidden1Hidden2,
-      this.learningRate
-    );
+      if (config.isOutputLayer) {
+        // Output layer: error = target - output
+        const result = backpropOutputLayer(
+          config.currentLayerActivations,
+          targets,
+          config.previousLayerActivations,
+          this.learningRate
+        );
+        
+        errors = result.outputErrors;
+        gradients = result.gradientsOutput;
+        weightDeltas = result.weightHoDeltas;
+        biasDeltas = result.biasOutputDeltas;
+      } else {
+        // Hidden layers: error propagated from next layer
+        const result = backpropHiddenLayer(
+          currentError!,
+          config.currentLayerActivations,
+          config.previousLayerActivations,
+          config.nextLayerWeights!,
+          this.learningRate
+        );
+        
+        errors = result.currentErrors;
+        gradients = result.currentGradients;
+        weightDeltas = result.weightDeltas;
+        biasDeltas = result.biasDeltas;
+      }
 
-    // Adjust hidden1 weights and bias
-    this.weightsInputHidden1.add(layer1Result.weightDeltas);
-    this.biasHidden1.add(layer1Result.biasDeltas);
+      // Update weights and biases
+      config.weights.add(weightDeltas);
+      config.bias.add(biasDeltas);
+
+      // Store for visualization
+      layerErrors[config.name] = errors;
+      layerGradients[config.name] = gradients;
+      layerWeightDeltas[config.name] = weightDeltas;
+
+      // Propagate error to previous layer
+      currentError = errors;
+    }
 
     // === STORE FOR VISUALIZATION ===
-    this.lastGradients.output = outputLayerResult.outputErrors;
-    this.lastGradients.layer2 = layer2Result.currentErrors;
-    this.lastGradients.layer1 = layer1Result.currentErrors;
+    this.lastGradients.output = layerErrors.output;
+    this.lastGradients.layer2 = layerErrors.layer2;
+    this.lastGradients.layer1 = layerErrors.layer1;
 
-    this.lastWeightDeltas.outputToLayer2 = outputLayerResult.weightHoDeltas;
-    this.lastWeightDeltas.layer2ToLayer1 = layer2Result.weightDeltas;
-    this.lastWeightDeltas.layer1ToInput = layer1Result.weightDeltas;
+    this.lastWeightDeltas.outputToLayer2 = layerWeightDeltas.output;
+    this.lastWeightDeltas.layer2ToLayer1 = layerWeightDeltas.layer2;
+    this.lastWeightDeltas.layer1ToInput = layerWeightDeltas.layer1;
 
     // Calculate loss (cross-entropy for softmax)
     const targetOneHot = targetArray;
@@ -223,15 +305,15 @@ export class NeuralNetwork {
       hidden2,
       outputs,
       targetArray,
-      outputLayerResult.outputErrors,
-      layer2Result.currentErrors,
-      layer1Result.currentErrors,
-      outputLayerResult.gradientsOutput,
-      layer2Result.currentGradients,
-      layer1Result.currentGradients,
-      outputLayerResult.weightHoDeltas,
-      layer2Result.weightDeltas,
-      layer1Result.weightDeltas,
+      layerErrors.output,
+      layerErrors.layer2,
+      layerErrors.layer1,
+      layerGradients.output,
+      layerGradients.layer2,
+      layerGradients.layer1,
+      layerWeightDeltas.output,
+      layerWeightDeltas.layer2,
+      layerWeightDeltas.layer1,
       oldWeightsHo,
       oldBiasO,
       oldWeightsH1h2,

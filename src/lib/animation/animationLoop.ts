@@ -50,8 +50,8 @@ export interface AnimationLoopConfig<TStage extends string, TData> {
   /** Sleep function (respects pause state) */
   sleep: (ms: number, speedOverride?: number) => Promise<void>;
   
-  /** Update visualization */
-  updateVisualization: () => void;
+  /** Compute network and refresh display */
+  computeAndRefreshDisplay: () => void;
   
   /** Speed override for sleep (optional) */
   speedOverride?: number;
@@ -85,8 +85,8 @@ export async function runAnimationLoop<TStage extends string, TData>(
         // Update state machine
         config.onTick(layer, neuronIndex, stage, neuronData);
         
-        // Update visualization
-        config.updateVisualization();
+        // Compute network and refresh display
+        config.computeAndRefreshDisplay();
         config.onAfterVisualization?.();
         
         // Wait for appropriate duration

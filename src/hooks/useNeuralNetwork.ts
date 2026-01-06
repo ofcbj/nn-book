@@ -94,7 +94,7 @@ export interface TrainingActions {
   trainOneStep: () => Promise<void>;
   toggleTraining: () => void;
   reset: () => void;
-  updateVisualization: () => void;
+  computeAndRefreshDisplay: () => void;
   handleCanvasClick: (x?: number, y?: number) => void;
 }
 
@@ -235,7 +235,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
       trainOneStep: trainingControls.trainOneStepWithAnimation,
       toggleTraining: trainingControls.toggleTraining,
       reset: trainingControls.reset,
-      updateVisualization: animation.updateVisualization,
+      computeAndRefreshDisplay: animation.computeAndRefreshDisplay,
       handleCanvasClick: canvasInteraction.handleCanvasClick,
     },
   };

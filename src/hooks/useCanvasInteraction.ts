@@ -69,7 +69,7 @@ function transitionToNextForwardNeuron(
   
   ctx.animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
   ctx.animationMachine.forwardTick(nextNeuron.layer, nextNeuron.index, 'dotProduct', neuronData);
-  ctx.animation.updateVisualization();
+  ctx.animation.computeAndRefreshDisplay();
   return true;
 }
 
@@ -82,7 +82,7 @@ function transitionToNextBackwardNeuron(
   
   ctx.animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
   ctx.animationMachine.backwardTick(nextNeuron.layer, nextNeuron.index, 'error', neuronData);
-  ctx.animation.updateVisualization();
+  ctx.animation.computeAndRefreshDisplay();
   return true;
 }
 
@@ -99,7 +99,7 @@ function handleForwardSameNeuronClick(
   
   if (nextStage) {
     ctx.animationMachine.forwardTick(neuron.layer, neuron.index, nextStage, machineState.neuronData);
-    ctx.animation.updateVisualization();
+    ctx.animation.computeAndRefreshDisplay();
     return;
   }
   
@@ -121,7 +121,7 @@ function handleBackwardSameNeuronClick(
   
   if (nextStage) {
     ctx.animationMachine.backwardTick(neuron.layer, neuron.index, nextStage, machineState.neuronData);
-    ctx.animation.updateVisualization();
+    ctx.animation.computeAndRefreshDisplay();
     return;
   }
   
@@ -154,7 +154,7 @@ function handleJumpToDifferentNeuron(
     }
   }
 
-  ctx.animation.updateVisualization();
+  ctx.animation.computeAndRefreshDisplay();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -169,7 +169,7 @@ function handleForwardJumpedClick(
   
   if (nextStage) {
     ctx.animationMachine.forwardTick(machineState.layer, machineState.neuronIndex, nextStage, machineState.neuronData);
-    ctx.animation.updateVisualization();
+    ctx.animation.computeAndRefreshDisplay();
     return;
   }
   
@@ -196,7 +196,7 @@ function handleBackwardJumpedClick(
       ctx.nn.feedforward(ctx.nn.lastInput!.toArray());
     }
     ctx.animationMachine.backwardTick(machineState.layer, machineState.neuronIndex, nextStage, machineState.neuronData);
-    ctx.animation.updateVisualization();
+    ctx.animation.computeAndRefreshDisplay();
     return;
   }
   

@@ -31,7 +31,7 @@ export interface UseNetworkAnimationReturn {
   continueFromJumpedPosition: () => Promise<void>;
   sleep: (ms: number, overrideSpeed?: number) => Promise<void>;
   shouldStopRef: RefObject<boolean>;
-  updateVisualization: () => void;
+  computeAndRefreshDisplay: () => void;
 }
 
 export function useNetworkAnimation(
@@ -45,9 +45,10 @@ export function useNetworkAnimation(
   const prevSpeedRef = useRef(animationMachine.state.speed);
 
   // =========================================================================
-  // Update Visualization
+  // Compute Network and Refresh Display
+  // Recalculates the network with current inputs and updates both UI state and canvas
   // =========================================================================
-  const updateVisualization = useCallback(() => {
+  const computeAndRefreshDisplay = useCallback(() => {
     const nn = nnRef.current;
     const inputs = [state.grade, state.attitude, state.response];
     nn.feedforward(inputs);
@@ -128,10 +129,10 @@ export function useNetworkAnimation(
       },
       shouldStop: () => shouldStopRef.current,
       sleep,
-      updateVisualization,
+      computeAndRefreshDisplay,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMachine, sleep, updateVisualization]);
+  }, [animationMachine, sleep, computeAndRefreshDisplay]);
 
   // =========================================================================
   // Backward Propagation Animation
@@ -157,7 +158,7 @@ export function useNetworkAnimation(
         if (stage === 'update') {
           nn.updateNeuronWeights(layer, neuronIndex, data.newWeights, data.newBias);
           nn.feedforward(nn.lastInput!.toArray());
-          updateVisualization();
+          computeAndRefreshDisplay();
         }
       },
       onComplete: () => {
@@ -165,7 +166,7 @@ export function useNetworkAnimation(
       },
       shouldStop: () => shouldStopRef.current,
       sleep,
-      updateVisualization,
+      computeAndRefreshDisplay,
       speedOverride,
     });
 
@@ -173,7 +174,7 @@ export function useNetworkAnimation(
     const summaryData = createBackpropSummaryData(backpropData, state.learningRate);
     state.setBackpropSummaryData(summaryData);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMachine, sleep, updateVisualization, state.learningRate]);
+  }, [animationMachine, sleep, computeAndRefreshDisplay, state.learningRate]);
 
   // =========================================================================
   // Continue Animation from Jumped Position
@@ -216,7 +217,7 @@ export function useNetworkAnimation(
             if (shouldStopRef.current) return;
 
             animationMachine.forwardTick(layer, neuronIndex, stage, neuronData);
-            updateVisualization();
+            computeAndRefreshDisplay();
             await sleep(stageDurations[stage]);
           }
         }
@@ -257,13 +258,13 @@ export function useNetworkAnimation(
             if (shouldStopRef.current) return;
 
             animationMachine.backwardTick(layer, neuronIndex, stage, neuronData);
-            updateVisualization();
+            computeAndRefreshDisplay();
             await sleep(stageDurations[stage]);
 
             if (stage === 'update') {
               nn.updateNeuronWeights(layer, neuronIndex, neuronData.newWeights, neuronData.newBias);
               nn.feedforward(nn.lastInput!.toArray());
-              updateVisualization();
+              computeAndRefreshDisplay();
             }
           }
         }
@@ -276,7 +277,7 @@ export function useNetworkAnimation(
       state.setBackpropSummaryData(summaryData);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMachine, sleep, updateVisualization, state.learningRate]);
+  }, [animationMachine, sleep, computeAndRefreshDisplay, state.learningRate]);
 
   // Store reference for useEffect
   continueFromJumpedPositionRef.current = continueFromJumpedPosition;
@@ -306,6 +307,6 @@ export function useNetworkAnimation(
     continueFromJumpedPosition,
     sleep,
     shouldStopRef,
-    updateVisualization,
+    computeAndRefreshDisplay,
   };
 }

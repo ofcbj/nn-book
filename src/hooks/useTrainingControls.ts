@@ -54,7 +54,7 @@ export function useTrainingControls(
     nn.train(inputs, targetOneHot);
     state.setLoss(nn.lastLoss);
     state.setEpoch(prev => prev + 1);
-    animation.updateVisualization();
+    animation.computeAndRefreshDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.grade, state.attitude, state.response, state.targetValue, animation]);
 
@@ -160,7 +160,7 @@ export function useTrainingControls(
 
     state.setEpoch(prev => prev + 1);
     state.setLoss(nn.lastLoss);
-    animation.updateVisualization();
+    animation.computeAndRefreshDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationMachine, animation, state.learningRate, state.animationSpeed]);
 
@@ -170,7 +170,7 @@ export function useTrainingControls(
   const closeBackpropModal = useCallback(() => {
     state.setBackpropSummaryData(null);
     animationMachine.closeBackpropModal();
-    animation.updateVisualization();
+    animation.computeAndRefreshDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationMachine, animation]);
 
@@ -218,7 +218,7 @@ export function useTrainingControls(
     state.setBackpropSummaryData(null);
 
     animationMachine.reset();
-    animation.updateVisualization();
+    animation.computeAndRefreshDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.isTraining, animation, animationMachine]);
 

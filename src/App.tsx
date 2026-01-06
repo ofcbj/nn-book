@@ -26,13 +26,13 @@ export default function App() {
 
   // Initial visualization
   useEffect(() => {
-    actions.updateVisualization();
-  }, [actions.updateVisualization]);
+    actions.computeAndRefreshDisplay();
+  }, [actions.computeAndRefreshDisplay]);
 
   // Update visualization when inputs change
   useEffect(() => {
-    actions.updateVisualization();
-  }, [inputs.grade, inputs.attitude, inputs.response, actions.updateVisualization]);
+    actions.computeAndRefreshDisplay();
+  }, [inputs.grade, inputs.attitude, inputs.response, actions.computeAndRefreshDisplay]);
 
   // Help modal state
   const [showHelpModal, setShowHelpModal] = useState(false);
