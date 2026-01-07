@@ -3,6 +3,76 @@ import type { NodePosition, LayerType } from '../types';
 import type { LayerName } from '../core';
 import i18n from '../../i18n';
 import { activationToColor } from './activationColors';
+
+// =============================================================================
+// Text Rendering Helpers
+// =============================================================================
+
+/** Draw centered text */
+function drawCenteredText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  style: { font: string; fillStyle: string }
+): void {
+  ctx.font = style.font;
+  ctx.fillStyle = style.fillStyle;
+  ctx.textAlign = 'center';
+  ctx.fillText(text, x, y);
+}
+
+/** Draw left-aligned label */
+function drawLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  color: string
+): void {
+  ctx.font = '12px monospace';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'left';
+  ctx.fillText(text, x, y);
+}
+
+/** Draw value text */
+function drawValue(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  color: string,
+  font: string = '12px monospace'
+): void {
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'left';
+  ctx.fillText(text, x, y);
+}
+
+/** Draw weights vector with auto font-size adjustment */
+function drawWeightsVector(
+  ctx: CanvasRenderingContext2D,
+  weights: number[],
+  x: number,
+  y: number,
+  containerWidth: number
+): void {
+  ctx.font = '12px monospace';
+  ctx.fillStyle = '#a5b4fc';
+  ctx.textAlign = 'left';
+  
+  const vectorStr = '[' + weights.map(w => w.toFixed(2)).join(', ') + ']';
+  const textWidth = ctx.measureText(vectorStr).width;
+  
+  // Reduce font size if text is too wide
+  if (textWidth > containerWidth - 40) {
+    ctx.font = '11px monospace';
+  }
+  
+  ctx.fillText(vectorStr, x, y);
+}
 import {
   INPUT_BOX,
   NEURON_BOX,
@@ -147,7 +217,7 @@ export function drawNeuronVector(
 
   ctx.fill();
 
-  // Backprop highlight takes priority over regular highlight
+  // === 1. Draw border (highlight if active) ===
   if (isBackpropHighlighted) {
     ctx.strokeStyle = '#a855f7'; // Purple for backprop
     ctx.lineWidth = 5;
@@ -157,33 +227,25 @@ export function drawNeuronVector(
   }
   ctx.stroke();
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(label, x, centerY + 16);
+  // === 2. Draw neuron label ===
+  drawCenteredText(ctx, label, x, centerY + 16, {
+    font: 'bold 11px sans-serif',
+    fillStyle: '#ffffff'
+  });
 
-  ctx.font = '12px monospace';
-  ctx.fillStyle = '#cbd5e1';
-  ctx.textAlign = 'left';
-  ctx.fillText('W:', centerX + 8, centerY + 35);
+  // === 3. Draw weights vector (W: [...]) ===
+  const weightsY = centerY + 35;
+  drawLabel(ctx, 'W:', centerX + 8, weightsY, '#cbd5e1');
+  drawWeightsVector(ctx, weights, centerX + 24, weightsY, width);
 
-  ctx.fillStyle = '#a5b4fc';
-  const vectorStr = '[' + weights.map(w => w.toFixed(2)).join(', ') + ']';
-  const textWidth = ctx.measureText(vectorStr).width;
-  if (textWidth > width - 40) {
-    ctx.font = '11px monospace';
-  }
-  ctx.fillText(vectorStr, centerX + 24, centerY + 35);
+  // === 4. Draw bias value (b: X.XX) ===
+  const biasY = centerY + 50;
+  drawLabel(ctx, 'b:', centerX + 8, biasY, '#cbd5e1');
+  drawValue(ctx, bias.toFixed(2), centerX + 24, biasY, '#fbbf24');
 
-  ctx.font = '12px monospace';
-  ctx.fillStyle = '#cbd5e1';
-  ctx.fillText('b:', centerX + 8, centerY + 50);
-  ctx.fillStyle = '#fbbf24';
-  ctx.fillText(bias.toFixed(2), centerX + 24, centerY + 50);
-
-  ctx.fillStyle = '#34d399';
-  ctx.font = 'bold 12px monospace';
-  ctx.fillText('ↁE' + activation.toFixed(3), centerX + 70, centerY + 68);
+  // === 5. Draw activation output (σ=X.XXX) ===
+  const activationY = centerY + 68;
+  drawValue(ctx, `σ=${activation.toFixed(3)}`, centerX + 70, activationY, '#34d399', 'bold 12px monospace');
 
   return { x: centerX, y: centerY, width, height, centerX: x, centerY: y };
 }
