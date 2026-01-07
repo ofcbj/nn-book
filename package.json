@@ -2,7 +2,7 @@
   "name": "nn-book",
   "version": "1.0.0",
   "type": "module",
-  "description": "Neural Network Visualization - Interview System",
+  "description": "Neural Network Visualizer - Interview System",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

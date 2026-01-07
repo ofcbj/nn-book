@@ -35,8 +35,8 @@ export interface AnimationLoopConfig<TStage extends string, TData> {
   /** Called for each stage tick */
   onTick: (layer: LayerName, neuronIndex: number, stage: TStage, data: TData) => void;
   
-  /** Called after visualization update for each stage */
-  onAfterVisualization?: () => void;
+  /** Called after visualizer update for each stage */
+  onAfterVisualizer?: () => void;
   
   /** Called after a stage completes (e.g., for weight updates) */
   onStageComplete?: (layer: LayerName, neuronIndex: number, stage: TStage, data: TData) => void;
@@ -87,7 +87,7 @@ export async function runAnimationLoop<TStage extends string, TData>(
         
         // Compute network and refresh display
         config.computeAndRefreshDisplay();
-        config.onAfterVisualization?.();
+        config.onAfterVisualizer?.();
         
         // Wait for appropriate duration
         await config.sleep(config.stageDurations[stage], config.speedOverride);

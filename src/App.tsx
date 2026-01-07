@@ -24,12 +24,12 @@ export default function App() {
     actions,
   } = useNeuralNetwork();
 
-  // Initial visualization
+  // Initial visualizer
   useEffect(() => {
     actions.computeAndRefreshDisplay();
   }, [actions.computeAndRefreshDisplay]);
 
-  // Update visualization when inputs change
+  // Update visualizer when inputs change
   useEffect(() => {
     actions.computeAndRefreshDisplay();
   }, [inputs.grade, inputs.attitude, inputs.response, actions.computeAndRefreshDisplay]);
@@ -84,7 +84,7 @@ export default function App() {
               <StatsDisplay epoch={stats.epoch} loss={stats.loss} output={stats.output} />
             </Stack>
           </Box>
-          {/* Center: Network Visualization */}
+          {/* Center: Network Visualizer */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Stack spacing={2.5}>
               <NetworkCanvas nn={network.nn} onVisualizerReady={network.setVisualizer} onCanvasClick={actions.handleCanvasClick} />

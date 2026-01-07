@@ -60,7 +60,7 @@ export function useNetworkAnimation(
 
     // Update activations for heatmap
     if (nn.lastInput && nn.lastHidden1 && nn.lastHidden2 && nn.lastOutput) {
-      state.visualizationSetters.setActivations({
+      state.visualizerSetters.setActivations({
         input: nn.lastInput.toArray(),
         layer1: nn.lastHidden1.toArray(),
         layer2: nn.lastHidden2.toArray(),

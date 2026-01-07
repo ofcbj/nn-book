@@ -1,4 +1,4 @@
-// Visualizer for React - Canvas-based visualization
+// Visualizer for React - Canvas-based visualizer
 // Modified to work with React refs instead of direct DOM queries
 
 import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage, BackpropSteps } from '../types';
@@ -24,7 +24,7 @@ export class Visualizer {
   activeConnections: number[] = [];
   currentNeuronData: NeuronCalculation | null = null;
 
-  // Backpropagation visualization
+  // Backpropagation visualizer
   showLoss: LossDisplayData | null = null;
   backpropPhase: AnimationPhase | null = null;
   currentBackpropData: BackpropNeuronData | null = null;

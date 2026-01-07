@@ -1,4 +1,4 @@
-// Backpropagation visualization renderer
+// Backpropagation visualizer renderer
 import type { NodePosition, BackpropNeuronData, BackpropStage, AnimationPhase, BackpropSteps } from '../types';
 import { generateBackpropContent } from './overlayContentGenerator';
 import { renderOverlay } from './overlayRenderer';
@@ -136,7 +136,7 @@ function drawBackpropConnections(
 
 /**
  * Draw error labels on all neurons during backpropagation.
- * This provides persistent visualization of error values.
+ * This provides persistent visualizer of error values.
  */
 function drawAllErrorLabels(
   ctx: CanvasRenderingContext2D,

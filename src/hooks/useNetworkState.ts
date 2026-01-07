@@ -1,7 +1,7 @@
 /**
  * Network State Hook
  * 
- * Manages all state variables for the neural network visualization.
+ * Manages all state variables for the neural network visualizer.
  * State is organized by topic for better clarity and maintainability.
  */
 
@@ -34,7 +34,7 @@ export interface TrainingState {
   isManualMode: boolean;
 }
 
-export interface VisualizationState {
+export interface VisualizerState {
   showCanvasHeatmap: boolean;
   showGridHeatmap: boolean;
   activations: ActivationData | null;
@@ -80,13 +80,13 @@ export interface TrainingSetters {
   setIsManualMode: (v: boolean) => void;
 }
 
-export interface VisualizationSetters {
+export interface VisualizerSetters {
   setShowCanvasHeatmap: (v: boolean) => void;
   setShowGridHeatmap: (v: boolean) => void;
   setActivations: (v: ActivationData | null) => void;
 }
 
-export interface VisualizationActions {
+export interface VisualizerActions {
   toggleCanvasHeatmap: () => void;
   toggleGridHeatmap: () => void;
 }
@@ -111,18 +111,18 @@ export interface UseNetworkStateReturn {
   inputs: InputState;
   stats: NetworkStats;
   training: TrainingState;
-  visualizer: VisualizationState;
+  visualizer: VisualizerState;
   modals: ModalState;
   
   // Setters
   inputSetters: InputSetters;
   statsSetters: StatsSetters;
   trainingSetters: TrainingSetters;
-  visualizationSetters: VisualizationSetters;
+  visualizerSetters: VisualizerSetters;
   modalSetters: ModalSetters;
   
   // Actions
-  visualizationActions: VisualizationActions;
+  visualizerActions: VisualizerActions;
   modalActions: ModalActions;
 }
 
@@ -149,7 +149,7 @@ export function useNetworkState(): UseNetworkStateReturn {
   const [animationSpeed, setAnimationSpeed] = useState(1.0);
   const [isManualMode, setIsManualMode] = useState(false);
 
-  // Visualization state
+  // Visualizer state
   const [showCanvasHeatmap, setShowCanvasHeatmap] = useState(false);
   const [showGridHeatmap, setShowGridHeatmap] = useState(true);
   const [activations, setActivations] = useState<ActivationData | null>(null);
@@ -160,7 +160,7 @@ export function useNetworkState(): UseNetworkStateReturn {
   const [showComparisonModal, setShowComparisonModal] = useState(false);
   const [weightComparisonData, setWeightComparisonData] = useState<WeightComparisonData | null>(null);
 
-  // Visualization actions
+  // Visualizer actions
   const toggleCanvasHeatmap = useCallback(() => {
     setShowCanvasHeatmap(prev => !prev);
   }, []);
@@ -244,7 +244,7 @@ export function useNetworkState(): UseNetworkStateReturn {
       setIsManualMode,
     },
     
-    visualizationSetters: {
+    visualizerSetters: {
       setShowCanvasHeatmap,
       setShowGridHeatmap,
       setActivations,
@@ -258,7 +258,7 @@ export function useNetworkState(): UseNetworkStateReturn {
     },
 
     // Actions
-    visualizationActions: {
+    visualizerActions: {
       toggleCanvasHeatmap,
       toggleGridHeatmap,
     },

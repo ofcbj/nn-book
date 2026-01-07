@@ -1,7 +1,7 @@
 /**
  * UI Configuration
  * 
- * Centralized constants for visualization rendering.
+ * Centralized constants for visualizer rendering.
  * Change these values to adjust the visual appearance.
  */
 

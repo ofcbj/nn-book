@@ -81,7 +81,7 @@ export function backpropHiddenLayer(
 }
 
 // =============================================================================
-// Backprop Visualization Helpers
+// Backprop Visualizer Helpers
 // =============================================================================
 
 /**
@@ -160,7 +160,7 @@ function createLayerBackpropData(config: LayerBackpropConfig): BackpropNeuronDat
 }
 
 /**
- * Create BackpropSteps for visualization
+ * Create BackpropSteps for visualizer
  */
 export function createBackpropSteps(
   inputs: Matrix,

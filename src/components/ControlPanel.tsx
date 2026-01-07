@@ -315,10 +315,10 @@ export default function ControlPanel({
         </Stack>
       </Box>
 
-      {/* Visualization Options */}
+      {/* Visualizer Options */}
       <Box>
         <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
-          👁️ {t('visualization.activationTitle')}
+          👁️ {t('visualizer.activationTitle')}
         </Typography>
         
         <Box sx={{ mb: 1.5 }}>
@@ -332,7 +332,7 @@ export default function ControlPanel({
             }
             label={
               <Typography variant="body2" color="text.secondary">
-                {t('visualization.canvasHeatmap')}
+                {t('visualizer.canvasHeatmap')}
               </Typography>
             }
           />
@@ -349,7 +349,7 @@ export default function ControlPanel({
             }
             label={
               <Typography variant="body2" color="text.secondary">
-                {t('visualization.gridHeatmap')}
+                {t('visualizer.gridHeatmap')}
               </Typography>
             }
           />

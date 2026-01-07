@@ -45,7 +45,7 @@
   "network": {
     "title": "ネットワーク構造"
   },
-  "visualization": {
+  "visualizer": {
     "canvasHeatmap": "キャンバスヒートマップ",
     "gridHeatmap": "グリッドヒートマップ",
     "activationTitle": "レイヤー別活性化",

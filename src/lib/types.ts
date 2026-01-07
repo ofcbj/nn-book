@@ -1,4 +1,4 @@
-// Type definitions for Neural Network Visualization
+// Type definitions for Neural Network Visualizer
 // Core interfaces and types used across the application
 
 import type { LayerName } from './core/networkConfig';
@@ -26,7 +26,7 @@ export interface NetworkArchitecture {
 }
 
 /**
- * Single neuron calculation data for visualization
+ * Single neuron calculation data for visualizer
  */
 export interface NeuronCalculation {
   neuronIndex: number;
@@ -91,7 +91,7 @@ export interface LossDisplayData {
 }
 
 /**
- * Backpropagation visualization data for a single neuron
+ * Backpropagation visualizer data for a single neuron
  */
 export interface BackpropNeuronData {
   neuronIndex: number;
@@ -113,7 +113,7 @@ export interface BackpropNeuronData {
 }
 
 /**
- * Complete backpropagation steps for visualization
+ * Complete backpropagation steps for visualizer
  */
 export interface BackpropSteps {
   layer1: BackpropNeuronData[];

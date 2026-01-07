@@ -70,7 +70,7 @@ export default function ActivationHeatmap({ activations }: ActivationHeatmapProp
   return (
     <Paper sx={{ p: 2.5, mt: 2 }}>
       <Typography variant="h2" sx={{ mb: 2, textAlign: 'center' }}>
-        {t('visualization.activationTitle')}
+        {t('visualizer.activationTitle')}
       </Typography>
 
       <Box sx={{ display: 'flex', gap: 3, mb: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -83,7 +83,7 @@ export default function ActivationHeatmap({ activations }: ActivationHeatmapProp
       {/* Color Legend */}
       <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <Typography variant="subtitle2" sx={{ mb: 1, textAlign: 'center', color: 'text.secondary' }}>
-          {t('visualization.colorLegend')}
+          {t('visualizer.colorLegend')}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>

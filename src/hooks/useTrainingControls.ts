@@ -98,7 +98,7 @@ export function useTrainingControls(
     const predictions = nn.lastOutput?.toArray() || [0, 0, 0];
     const currentLoss = nn.lastLoss;
 
-    // Restore old weights for backprop visualization
+    // Restore old weights for backprop visualizer
     nn.weightsInputHidden1.data = oldWeights.layer1;
     nn.weightsHidden1Hidden2.data = oldWeights.layer2;
     nn.weightsHidden2Output.data = oldWeights.output;
@@ -243,7 +243,7 @@ export function useTrainingControls(
   // =========================================================================
   const toggleCanvasHeatmap = useCallback(() => {
     const newValue = !state.visualizer.showCanvasHeatmap;
-    state.visualizationSetters.setShowCanvasHeatmap(newValue);
+    state.visualizerSetters.setShowCanvasHeatmap(newValue);
     if (visualizerRef.current) {
       visualizerRef.current.setHeatmapMode(newValue);
       visualizerRef.current.update(nnRef.current);

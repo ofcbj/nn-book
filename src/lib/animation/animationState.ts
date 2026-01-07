@@ -1,5 +1,5 @@
 /**
- * Animation State Machine for Neural Network Visualization
+ * Animation State Machine for Neural Network Visualizer
  * 
  * This module defines a finite state machine (FSM) to manage animation states
  * in a predictable and bug-free manner. All state transitions are explicit.
@@ -272,7 +272,7 @@ export function isBackwardMode(state: AnimationState): boolean {
   return state.type === 'backward_animating' || state.type === 'showing_backprop_modal';
 }
 
-/** Get current highlighted neuron info for visualization */
+/** Get current highlighted neuron info for visualizer */
 export function getHighlightedNeuron(state: AnimationState): {
   layer: LayerName;
   index: number;
@@ -283,7 +283,7 @@ export function getHighlightedNeuron(state: AnimationState): {
   return null;
 }
 
-/** Get forward propagation stage for visualization */
+/** Get forward propagation stage for visualizer */
 export function getForwardStage(state: AnimationState): CalculationStage | null {
   if (state.type === 'forward_animating') {
     return state.stage;
@@ -291,7 +291,7 @@ export function getForwardStage(state: AnimationState): CalculationStage | null 
   return null;
 }
 
-/** Get backward propagation stage for visualization */
+/** Get backward propagation stage for visualizer */
 export function getBackpropStage(state: AnimationState): BackpropStage | null {
   if (state.type === 'backward_animating') {
     return state.stage;

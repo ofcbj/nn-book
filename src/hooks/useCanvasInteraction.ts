@@ -1,7 +1,7 @@
 /**
  * Canvas Interaction Hook
  * 
- * Handles canvas click events for neural network visualization.
+ * Handles canvas click events for neural network visualizer.
  * Extracted from useNeuralNetwork for better separation of concerns.
  */
 
@@ -244,7 +244,7 @@ function completeForwardPass(ctx: AnimationContext): void {
   const predictions = nn.lastOutput?.toArray() || [0, 0, 0];
   const currentLoss = nn.lastLoss;
 
-  // Restore old weights for backprop visualization
+  // Restore old weights for backprop visualizer
   nn.weightsInputHidden1.data = oldWeights.layer1;
   nn.weightsHidden1Hidden2.data = oldWeights.layer2;
   nn.weightsHidden2Output.data = oldWeights.output;

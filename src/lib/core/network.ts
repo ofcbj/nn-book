@@ -48,7 +48,7 @@ export class NeuralNetwork {
   
   learningRate: number = 0.1;
   
-  // Store intermediate values for visualization
+  // Store intermediate values for visualizer
   lastInput: Matrix | null = null;
   lastHidden1: Matrix | null = null;
   lastHidden2: Matrix | null = null;
@@ -57,14 +57,14 @@ export class NeuralNetwork {
   lastHidden2Raw: Matrix | null = null; // Before activation
   lastOutputRaw: Matrix | null = null;  // Before activation
   
-  // Store gradients for backprop visualization
+  // Store gradients for backprop visualizer
   lastGradients: {
     output: Matrix | null;
     layer2: Matrix | null;
     layer1: Matrix | null;
   };
 
-  // Store weight deltas for update visualization
+  // Store weight deltas for update visualizer
   lastWeightDeltas: {
     outputToLayer2: Matrix | null;
     layer2ToLayer1: Matrix | null;
@@ -73,7 +73,7 @@ export class NeuralNetwork {
 
   lastLoss: number = 0;
 
-  // Store detailed backprop data for visualization
+  // Store detailed backprop data for visualizer
   lastBackpropSteps: BackpropSteps | null = null;
 
   constructor() {
@@ -181,7 +181,7 @@ export class NeuralNetwork {
     // Convert target to matrix
     const targets = Matrix.fromArray(targetArray);
 
-    // Store old weights before update (for visualization)
+    // Store old weights before update (for visualizer)
     const oldWeightsHo = JSON.parse(JSON.stringify(this.weightsHidden2Output.data));
     const oldBiasO = JSON.parse(JSON.stringify(this.biasOutput.data));
     const oldWeightsH1h2 = JSON.parse(JSON.stringify(this.weightsHidden1Hidden2.data));
@@ -227,7 +227,7 @@ export class NeuralNetwork {
       }
     ];
 
-    // Store results for visualization
+    // Store results for visualizer
     const layerErrors: Record<string, Matrix> = {};
     const layerGradients: Record<string, Matrix> = {};
     const layerWeightDeltas: Record<string, Matrix> = {};
@@ -274,7 +274,7 @@ export class NeuralNetwork {
       config.weights.add(weightDeltas);
       config.bias.add(biasDeltas);
 
-      // Store for visualization
+      // Store for visualizer
       layerErrors[config.name] = errors;
       layerGradients[config.name] = gradients;
       layerWeightDeltas[config.name] = weightDeltas;
@@ -298,7 +298,7 @@ export class NeuralNetwork {
       sum + (t > 0 ? Math.log(Math.max(outputs.data[i][0], 1e-7)) : 0), 0
     );
 
-    // Build detailed backprop steps for visualization
+    // Build detailed backprop steps for visualizer
     this.lastBackpropSteps = createBackpropSteps(
       inputs,
       hidden1,

@@ -45,7 +45,7 @@
   "network": {
     "title": "네트워크 구조"
   },
-  "visualization": {
+  "visualizer": {
     "canvasHeatmap": "캔버스 히트맵",
     "gridHeatmap": "그리드 히트맵",
     "activationTitle": "레이어별 활성화",

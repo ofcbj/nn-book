@@ -1,4 +1,4 @@
-// Color mapping utilities for activation visualization
+// Color mapping utilities for activation visualizer
 // Maps activation values (0-1) to color gradients
 
 /**
