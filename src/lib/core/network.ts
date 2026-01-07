@@ -355,7 +355,6 @@ export class NeuralNetwork {
     const layerConfigs = [
       {
         key: 'layer1' as const,
-        count: 5,
         weights: this.weightsInputHidden1,
         bias: this.biasHidden1,
         rawValues: this.lastHidden1Raw!,
@@ -364,7 +363,6 @@ export class NeuralNetwork {
       },
       {
         key: 'layer2' as const,
-        count: 3,
         weights: this.weightsHidden1Hidden2,
         bias: this.biasHidden2,
         rawValues: this.lastHidden2Raw!,
@@ -373,7 +371,6 @@ export class NeuralNetwork {
       },
       {
         key: 'output' as const,
-        count: 3,
         weights: this.weightsHidden2Output,
         bias: this.biasOutput,
         rawValues: this.lastOutputRaw!,
@@ -385,7 +382,8 @@ export class NeuralNetwork {
     const classNames = [i18n.t('classes.fail'), i18n.t('classes.pending'), i18n.t('classes.pass')];
     
     for (const config of layerConfigs) {
-      for (let i = 0; i < config.count; i++) {
+      const count = LAYER_SIZES[config.key];
+      for (let i = 0; i < count; i++) {
         const weights = config.weights.data[i];
         const bias = config.bias.data[i][0];
         const rawValue = config.rawValues.data[i][0];
@@ -425,19 +423,14 @@ export class NeuralNetwork {
     newWeights: number[],
     newBias: number
   ): void {
-    switch (layer) {
-      case 'output':
-        this.weightsHidden2Output.data[neuronIndex] = newWeights;
-        this.biasOutput.data[neuronIndex][0] = newBias;
-        break;
-      case 'layer2':
-        this.weightsHidden1Hidden2.data[neuronIndex] = newWeights;
-        this.biasHidden2.data[neuronIndex][0] = newBias;
-        break;
-      case 'layer1':
-        this.weightsInputHidden1.data[neuronIndex] = newWeights;
-        this.biasHidden1.data[neuronIndex][0] = newBias;
-        break;
-    }
+    const layerConfig = {
+      output: { weights: this.weightsHidden2Output, bias: this.biasOutput },
+      layer2: { weights: this.weightsHidden1Hidden2, bias: this.biasHidden2 },
+      layer1: { weights: this.weightsInputHidden1, bias: this.biasHidden1 }
+    };
+
+    const config = layerConfig[layer];
+    config.weights.data[neuronIndex] = newWeights;
+    config.bias.data[neuronIndex][0] = newBias;
   }
 }

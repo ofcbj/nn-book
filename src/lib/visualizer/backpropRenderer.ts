@@ -15,14 +15,14 @@ function findNodeToHighlight(
   index: number,
   nodes: NodePosition[][]
 ): NodePosition | null {
-  if (layer === 'layer1' && nodes[1]) {
-    return nodes[1][index];
-  } else if (layer === 'layer2' && nodes[2]) {
-    return nodes[2][index];
-  } else if (layer === 'output' && nodes[3]) {
-    return nodes[3][index];
-  }
-  return null;
+  const layerIndexMap: Record<string, number> = {
+    layer1: 1,
+    layer2: 2,
+    output: 3
+  };
+
+  const layerIdx = layerIndexMap[layer];
+  return layerIdx !== undefined && nodes[layerIdx] ? nodes[layerIdx][index] : null;
 }
 
 /**
@@ -213,13 +213,13 @@ export function drawBackpropHighlight(
 
   // Draw connection lines during 'error' stage for hidden layers
   if (backpropStage === 'error' && layer !== 'output' && currentBackpropData) {
-    // Get next layer nodes
-    let nextLayerNodes: NodePosition[] = [];
-    if (layer === 'layer1' && nodes[2]) {
-      nextLayerNodes = nodes[2]; // layer2 nodes
-    } else if (layer === 'layer2' && nodes[3]) {
-      nextLayerNodes = nodes[3]; // output nodes
-    }
+    // Map layer to next layer nodes
+    const nextLayerMap: Record<string, NodePosition[]> = {
+      layer1: nodes[2] || [],  // layer2 nodes
+      layer2: nodes[3] || []   // output nodes
+    };
+    
+    const nextLayerNodes = nextLayerMap[layer];
     
     if (nextLayerNodes.length > 0) {
       drawBackpropConnections(

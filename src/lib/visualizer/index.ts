@@ -135,77 +135,79 @@ export class Visualizer {
     nodes: NodePosition[][], 
     _nn: NeuralNetwork
   ): void {
-    for (let i = 0; i < 5; i++) {
-      const from = nodes[0][0];
-      const to = nodes[1][i];
-      
-      const isActive = this.isConnectionActive('input', 0, 'layer1', i);
-      
-      ctx.beginPath();
-      ctx.moveTo(from.centerX + from.width / 2, from.centerY);
-      ctx.lineTo(to.centerX - to.width / 2, to.centerY);
-      
-      if (isActive) {
-        ctx.strokeStyle = 'rgba(96, 165, 250, 0.9)';
-        ctx.lineWidth = 3;
-        ctx.shadowColor = 'rgba(96, 165, 250, 0.8)';
-        ctx.shadowBlur = 10;
-      } else {
-        ctx.strokeStyle = 'rgba(100, 116, 139, 0.4)';
-        ctx.lineWidth = 1;
-        ctx.shadowBlur = 0;
-      }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
+    // Color themes for each layer connection
+    const colors = {
+      input: { active: 'rgba(96, 165, 250, 0.9)', shadow: 'rgba(96, 165, 250, 0.8)' },
+      layer1: { active: 'rgba(52, 211, 153, 0.9)', shadow: 'rgba(52, 211, 153, 0.8)' },
+      layer2: { active: 'rgba(251, 146, 60, 0.9)', shadow: 'rgba(251, 146, 60, 0.8)' }
+    };
+    const inactiveColor = 'rgba(100, 116, 139, 0.4)';
+
+    // Define connections: from → to with counts
+    const connections = [
+      { from: 'input', to: 'layer1', fromCount: 1, toCount: 5, theme: colors.input },
+      { from: 'layer1', to: 'layer2', fromCount: 5, toCount: 3, theme: colors.layer1 },
+      { from: 'layer2', to: 'output', fromCount: 3, toCount: 3, theme: colors.layer2 }
+    ] as const;
+
+    // Draw all connections
+    connections.forEach(({ from, to, fromCount, toCount, theme }, idx) => {
+      this.drawLayerConnections(ctx, nodes, {
+        fromLayerIdx: idx,
+        toLayerIdx: idx + 1,
+        fromLayer: from,
+        toLayer: to,
+        fromCount,
+        toCount,
+        activeColor: theme.active,
+        activeShadow: theme.shadow,
+        inactiveColor
+      });
+    });
+  }
+
+  /**
+   * Helper: Draw connections between two layers
+   */
+  private drawLayerConnections(
+    ctx: CanvasRenderingContext2D,
+    nodes: NodePosition[][],
+    config: {
+      fromLayerIdx: number;
+      toLayerIdx: number;
+      fromLayer: string;
+      toLayer: string;
+      fromCount: number;
+      toCount: number;
+      activeColor: string;
+      activeShadow: string;
+      inactiveColor: string;
     }
-    
-    for (let i = 0; i < 3; i++) {
-      for (let j = 0; j < 5; j++) {
-        const from = nodes[1][j];
-        const to = nodes[2][i];
+  ): void {
+    const { fromLayerIdx, toLayerIdx, fromLayer, toLayer, fromCount, toCount, activeColor, activeShadow, inactiveColor } = config;
+
+    for (let i = 0; i < fromCount; i++) {
+      for (let j = 0; j < toCount; j++) {
+        const from = nodes[fromLayerIdx][i];
+        const to = nodes[toLayerIdx][j];
         
-        const isActive = this.isConnectionActive('layer1', j, 'layer2', i);
+        const isActive = this.isConnectionActive(fromLayer, i, toLayer, j);
         
         ctx.beginPath();
         ctx.moveTo(from.centerX + from.width / 2, from.centerY);
         ctx.lineTo(to.centerX - to.width / 2, to.centerY);
         
         if (isActive) {
-          ctx.strokeStyle = 'rgba(52, 211, 153, 0.9)';
+          ctx.strokeStyle = activeColor;
           ctx.lineWidth = 3;
-          ctx.shadowColor = 'rgba(52, 211, 153, 0.8)';
+          ctx.shadowColor = activeShadow;
           ctx.shadowBlur = 10;
         } else {
-          ctx.strokeStyle = 'rgba(100, 116, 139, 0.3)';
+          ctx.strokeStyle = inactiveColor;
           ctx.lineWidth = 1;
           ctx.shadowBlur = 0;
         }
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      }
-    }
-    
-    for (let i = 0; i < 3; i++) {
-      for (let j = 0; j < 3; j++) {
-        const from = nodes[2][i];
-        const to = nodes[3][j];
         
-        const isActive = this.isConnectionActive('layer2', i, 'output', j);
-        
-        ctx.beginPath();
-        ctx.moveTo(from.centerX + from.width / 2, from.centerY);
-        ctx.lineTo(to.centerX - to.width / 2, to.centerY);
-        
-        if (isActive) {
-          ctx.strokeStyle = 'rgba(251, 146, 60, 0.9)';
-          ctx.lineWidth = 3;
-          ctx.shadowColor = 'rgba(251, 146, 60, 0.8)';
-          ctx.shadowBlur = 10;
-        } else {
-          ctx.strokeStyle = 'rgba(100, 116, 139, 0.4)';
-          ctx.lineWidth = 1;
-          ctx.shadowBlur = 0;
-        }
         ctx.stroke();
         ctx.shadowBlur = 0;
       }
