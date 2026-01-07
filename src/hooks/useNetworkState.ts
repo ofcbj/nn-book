@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import type { CalculationSteps, BackpropSummaryData, WeightComparisonData } from '../lib/types';
+import type { ForwardSteps, BackpropSummaryData, WeightComparisonData } from '../lib/types';
 import type { ActivationData } from '../components/ActivationHeatmap';
 
 // =============================================================================
@@ -25,10 +25,10 @@ export interface NetworkStats {
   loss: number;
   learningRate: number;
   output: number[] | null;
-  steps: CalculationSteps | null;
+  steps: ForwardSteps | null;
 }
 
-export interface TrainingState {
+export interface TrainingConfig {
   isTraining: boolean;
   animationSpeed: number;
   isManualMode: boolean;
@@ -71,7 +71,7 @@ export interface StatsSetters {
   setLoss: (v: number) => void;
   setLearningRate: (v: number) => void;
   setOutput: (v: number[] | null) => void;
-  setSteps: (v: CalculationSteps | null) => void;
+  setSteps: (v: ForwardSteps | null) => void;
 }
 
 export interface TrainingSetters {
@@ -110,7 +110,7 @@ export interface ModalActions {
 export interface UseNetworkStateReturn {
   inputs: InputState;
   stats: NetworkStats;
-  training: TrainingState;
+  training: TrainingConfig;
   visualizer: VisualizerState;
   modals: ModalState;
   
@@ -142,7 +142,7 @@ export function useNetworkState(): UseNetworkStateReturn {
   const [loss, setLoss] = useState(0);
   const [learningRate, setLearningRate] = useState(0.1);
   const [output, setOutput] = useState<number[] | null>(null);
-  const [steps, setSteps] = useState<CalculationSteps | null>(null);
+  const [steps, setSteps] = useState<ForwardSteps | null>(null);
 
   // Training state
   const [isTraining, setIsTraining] = useState(false);

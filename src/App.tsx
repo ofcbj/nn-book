@@ -10,9 +10,10 @@ import BackpropModal from './components/BackpropModal';
 import HelpModal from './components/HelpModal';
 import ActivationHeatmap from './components/ActivationHeatmap';
 import WeightComparisonModal from './components/WeightComparisonModal';
-import { useNeuralNetwork } from './hooks/useNeuralNetwork';
+import { NetworkProvider, useNetworkContext } from './hooks/NetworkContext';
 
-export default function App() {
+function AppContent() {
+  // Get state from context instead of directly from useNeuralNetwork
   const {
     network,
     inputs,
@@ -22,7 +23,7 @@ export default function App() {
     modals,
     visualizer,
     actions,
-  } = useNeuralNetwork();
+  } = useNetworkContext();
 
   // Initial visualizer
   useEffect(() => {
@@ -132,5 +133,14 @@ export default function App() {
         />
       </Container>
     </Box>
+  );
+}
+
+// Main App component - wraps with NetworkProvider
+export default function App() {
+  return (
+    <NetworkProvider>
+      <AppContent />
+    </NetworkProvider>
   );
 }

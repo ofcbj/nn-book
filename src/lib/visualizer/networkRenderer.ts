@@ -1,5 +1,5 @@
 // Network rendering module
-import type { CalculationSteps, NodePosition, AnimationPhase, NeuronCalculation, CalculationStage, LayerType } from '../types';
+import type { ForwardSteps, NodePosition, AnimationPhase, NeuronCalculation, ForwardStage, LayerType } from '../types';
 import type { NeuralNetwork } from '../core';
 import { LAYER_SIZES } from '../core';
 import { drawInputVector, drawNeuronVector } from './drawingUtils';
@@ -24,9 +24,9 @@ interface DrawContext {
   height: number;
   highlightedNeuron: AnimationPhase | null;
   backpropPhase: AnimationPhase | null;
-  calculationStage: CalculationStage | null;
+  ForwardStage: ForwardStage | null;
   currentNeuronData: NeuronCalculation | null;
-  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: CalculationStage, neuronData: NeuronCalculation | null) => void) | null;
+  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: ForwardStage, neuronData: NeuronCalculation | null) => void) | null;
   heatmapMode: boolean;
 }
 
@@ -39,7 +39,7 @@ interface DrawContext {
  */
 function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePosition[] {
   const { layerName, neurons, x, neuronCount, verticalSpacing, getLabel } = config;
-  const { ctx, height, highlightedNeuron, backpropPhase, calculationStage, currentNeuronData, drawCalculationOverlay, heatmapMode } = context;
+  const { ctx, height, highlightedNeuron, backpropPhase, ForwardStage, currentNeuronData, drawCalculationOverlay, heatmapMode } = context;
 
   const nodes: NodePosition[] = [];
   const totalHeight = (neuronCount - 1) * verticalSpacing;
@@ -67,8 +67,8 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
     );
 
     // Show calculation overlay for highlighted neuron
-    if (isHighlighted && calculationStage && currentNeuronData && drawCalculationOverlay) {
-      drawCalculationOverlay(ctx, x, y, calculationStage, currentNeuronData);
+    if (isHighlighted && ForwardStage && currentNeuronData && drawCalculationOverlay) {
+      drawCalculationOverlay(ctx, x, y, ForwardStage, currentNeuronData);
     }
 
     nodes.push(node);
@@ -85,15 +85,15 @@ export function drawNetwork(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   nn: NeuralNetwork,
-  steps: CalculationSteps | null,
+  steps: ForwardSteps | null,
   inputLabels: string[],
   highlightedNeuron: AnimationPhase | null,
   backpropPhase: AnimationPhase | null,
-  calculationStage: CalculationStage | null,
+  ForwardStage: ForwardStage | null,
   drawConnectionsVector: (ctx: CanvasRenderingContext2D, nodes: NodePosition[][], nn: NeuralNetwork) => void,
   drawLossOverlay: ((ctx: CanvasRenderingContext2D, width: number, height: number) => void) | null,
   drawBackpropHighlight: ((ctx: CanvasRenderingContext2D, nodes: NodePosition[][]) => void) | null,
-  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: CalculationStage, neuronData: NeuronCalculation | null) => void) | null,
+  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: ForwardStage, neuronData: NeuronCalculation | null) => void) | null,
   currentNeuronData: NeuronCalculation | null,
   heatmapMode: boolean = false
 ): NodePosition[][] {
@@ -124,7 +124,7 @@ export function drawNetwork(
     height,
     highlightedNeuron,
     backpropPhase,
-    calculationStage,
+    ForwardStage,
     currentNeuronData,
     drawCalculationOverlay,
     heatmapMode,

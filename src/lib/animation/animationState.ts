@@ -5,7 +5,7 @@
  * in a predictable and bug-free manner. All state transitions are explicit.
  */
 
-import type { CalculationStage, BackpropStage, NeuronCalculation, BackpropNeuronData } from '../types';
+import type { ForwardStage, BackpropStage, NeuronCalculation, BackpropNeuronData } from '../types';
 import { type LayerName } from '../core';
 
 // ============================================================================
@@ -32,7 +32,7 @@ export interface ForwardAnimatingState extends BaseAnimationState {
   type: 'forward_animating';
   layer: LayerName;
   neuronIndex: number;
-  stage: CalculationStage;
+  stage: ForwardStage;
   neuronData: NeuronCalculation | null;
 }
 
@@ -81,7 +81,7 @@ export type AnimationAction =
       type: 'FORWARD_TICK'; 
       layer: LayerName; 
       neuronIndex: number; 
-      stage: CalculationStage;
+      stage: ForwardStage;
       neuronData: NeuronCalculation | null;
     }
   | { type: 'FORWARD_COMPLETE' }
@@ -284,7 +284,7 @@ export function getHighlightedNeuron(state: AnimationState): {
 }
 
 /** Get forward propagation stage for visualizer */
-export function getForwardStage(state: AnimationState): CalculationStage | null {
+export function getForwardStage(state: AnimationState): ForwardStage | null {
   if (state.type === 'forward_animating') {
     return state.stage;
   }

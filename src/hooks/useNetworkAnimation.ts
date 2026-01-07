@@ -9,7 +9,7 @@ import { useCallback, useRef, useEffect, RefObject } from 'react';
 import type { NeuralNetwork } from '../lib/core';
 import { LAYER_SIZES, FORWARD_LAYER_ORDER, BACKWARD_LAYER_ORDER } from '../lib/core';
 import type { Visualizer } from '../lib/visualizer';
-import type { CalculationStage, BackpropStage } from '../lib/types';
+import type { ForwardStage, BackpropStage } from '../lib/types';
 import { createBackpropSummaryData } from '../lib/types';
 import type { UseNetworkStateReturn } from './useNetworkState';
 import type { AnimationStateMachine } from './useAnimationStateMachine';
@@ -194,7 +194,7 @@ export function useNetworkAnimation(
 
       const baseDelay = 400;
       const connectionDelay = 150;
-      const stageDurations: Record<CalculationStage, number> = {
+      const stageDurations: Record<ForwardStage, number> = {
         connections: connectionDelay,
         dotProduct: baseDelay,
         bias: baseDelay,

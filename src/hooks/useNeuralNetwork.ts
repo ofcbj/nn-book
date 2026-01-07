@@ -12,9 +12,8 @@
 import { useRef, useEffect } from 'react';
 import { NeuralNetwork } from '../lib/core';
 import { Visualizer } from '../lib/visualizer';
-import type { CalculationSteps, BackpropSummaryData, WeightComparisonData } from '../lib/types';
-import type { ActivationData } from '../components/ActivationHeatmap';
-import { useNetworkState } from './useNetworkState';
+import type { BackpropSummaryData, WeightComparisonData } from '../lib/types';
+import { useNetworkState, NetworkStats, VisualizerState, InputState } from './useNetworkState';
 import { useAnimationStateMachine } from './useAnimationStateMachine';
 import { useNetworkAnimation } from './useNetworkAnimation';
 import { useCanvasInteraction } from './useCanvasInteraction';
@@ -30,15 +29,6 @@ export interface NetworkCore {
   setVisualizer: (v: Visualizer) => void;
 }
 
-export interface InputValues {
-  grade: number;
-  attitude: number;
-  response: number;
-  targetValue: number;
-  learningRate: number;
-  animationSpeed: number;
-  isManualMode: boolean;
-}
 
 export interface InputControls {
   setGrade: (v: number) => void;
@@ -51,17 +41,7 @@ export interface InputControls {
   nextStep: () => void;
 }
 
-export interface NetworkStats {
-  epoch: number;
-  loss: number;
-  output: number[] | null;
-  steps: CalculationSteps | null;
-}
 
-export interface TrainingState {
-  isTraining: boolean;
-  isAnimating: boolean;
-}
 
 export interface ModalState {
   loss: {
@@ -82,13 +62,6 @@ export interface ModalState {
   };
 }
 
-export interface VisualizerState {
-  showCanvasHeatmap: boolean;
-  showGridHeatmap: boolean;
-  activations: ActivationData | null;
-  toggleCanvasHeatmap: () => void;
-  toggleGridHeatmap: () => void;
-}
 
 export interface TrainingActions {
   trainOneStep: () => Promise<void>;
@@ -100,12 +73,22 @@ export interface TrainingActions {
 
 export interface UseNeuralNetworkReturn {
   network: NetworkCore;
-  inputs: InputValues;
+  inputs: InputState & {
+    learningRate: number;
+    animationSpeed: number;
+    isManualMode: boolean;
+  };
   controls: InputControls;
   stats: NetworkStats;
-  training: TrainingState;
+  training: {
+    isTraining: boolean;
+    isAnimating: boolean;
+  };
   modals: ModalState;
-  visualizer: VisualizerState;
+  visualizer: VisualizerState & {
+    toggleCanvasHeatmap: () => void;
+    toggleGridHeatmap: () => void;
+  };
   actions: TrainingActions;
 }
 
@@ -189,6 +172,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     stats: {
       epoch: state.stats.epoch,
       loss: state.stats.loss,
+      learningRate: state.stats.learningRate,
       output: state.stats.output,
       steps: state.stats.steps,
     },

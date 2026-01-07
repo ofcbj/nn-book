@@ -1,7 +1,7 @@
 // Visualizer for React - Canvas-based visualizer
 // Modified to work with React refs instead of direct DOM queries
 
-import type { CalculationSteps, NeuronCalculation, AnimationPhase, CalculationStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage, BackpropSteps } from '../types';
+import type { ForwardSteps, NeuronCalculation, AnimationPhase, ForwardStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage, BackpropSteps } from '../types';
 import type { NeuralNetwork, LayerName } from '../core';
 import i18n from '../../i18n';
 import { activationToColor } from './activationColors';
@@ -20,7 +20,7 @@ export class Visualizer {
   highlightedNeuron: AnimationPhase | null = null;
 
   // Calculation animation properties
-  calculationStage: CalculationStage | null = null;
+  ForwardStage: ForwardStage | null = null;
   activeConnections: number[] = [];
   currentNeuronData: NeuronCalculation | null = null;
 
@@ -55,11 +55,11 @@ export class Visualizer {
   setForwardAnimationState(
     layer: AnimationPhase['layer'],
     index: number,
-    stage: CalculationStage,
+    stage: ForwardStage,
     neuronData: NeuronCalculation | null
   ): void {
     this.highlightedNeuron = { layer, index };
-    this.calculationStage = stage;
+    this.ForwardStage = stage;
     this.currentNeuronData = neuronData;
     this.backpropPhase = null;
     this.currentBackpropData = null;
@@ -78,7 +78,7 @@ export class Visualizer {
     allBackpropData: BackpropSteps | null
   ): void {
     this.highlightedNeuron = null;
-    this.calculationStage = null;
+    this.ForwardStage = null;
     this.currentNeuronData = null;
     this.backpropPhase = { layer, index };
     this.currentBackpropData = neuronData;
@@ -91,7 +91,7 @@ export class Visualizer {
    */
   clearAnimationState(): void {
     this.highlightedNeuron = null;
-    this.calculationStage = null;
+    this.ForwardStage = null;
     this.currentNeuronData = null;
     this.backpropPhase = null;
     this.currentBackpropData = null;
@@ -103,13 +103,13 @@ export class Visualizer {
     ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
-    stage: CalculationStage,
+    stage: ForwardStage,
     neuronData: NeuronCalculation | null
   ): void {
     drawCalcOverlay(ctx, this.canvas, x, y, stage, neuronData);
   }
 
-  drawNetwork(nn: NeuralNetwork, steps: CalculationSteps | null): void {
+  drawNetwork(nn: NeuralNetwork, steps: ForwardSteps | null): void {
     const nodes = drawNetwork(
       this.ctx,
       this.canvas,
@@ -118,7 +118,7 @@ export class Visualizer {
       this.inputLabels,
       this.highlightedNeuron,
       this.backpropPhase,
-      this.calculationStage,
+      this.ForwardStage,
       this.drawConnectionsVector.bind(this),
       this.showLoss ? this.drawLossOverlay.bind(this) : null,
       this.backpropPhase ? this.drawBackpropHighlight.bind(this) : null,

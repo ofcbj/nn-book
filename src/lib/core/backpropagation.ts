@@ -161,83 +161,132 @@ function createLayerBackpropData(config: LayerBackpropConfig): BackpropNeuronDat
 
 /**
  * Create BackpropSteps for visualizer
+ * 
+ * Parameter interfaces for better organization
  */
-export function createBackpropSteps(
-  inputs: Matrix,
-  hidden1: Matrix,
-  hidden2: Matrix,
-  outputs: Matrix,
-  targetArray: number[],
-  outputErrors: Matrix,
-  hidden2Errors: Matrix,
-  hidden1Errors: Matrix,
-  gradientsOutput: Matrix,
-  gradientsHidden2: Matrix,
-  gradientsHidden1: Matrix,
-  weightHoDeltas: Matrix,
-  weightH1h2Deltas: Matrix,
-  weightIh1Deltas: Matrix,
-  oldWeightsHo: number[][],
-  oldBiasO: number[][],
-  oldWeightsH1h2: number[][],
-  oldBiasH2: number[][],
-  oldWeightsIh1: number[][],
-  oldBiasH1: number[][],
-  newWeightsHo: number[][],
-  newBiasO: number[][],
-  newWeightsH1h2: number[][],
-  newBiasH2: number[][],
-  newWeightsIh1: number[][],
-  newBiasH1: number[][],
-  weightsHidden2Output: Matrix,
-  weightsHidden1Hidden2: Matrix,
-  lastLoss: number
-): BackpropSteps {
-  const targetClass = targetArray.indexOf(1);
-  const predictions = outputs.toArray();
+
+// Layer-wise weight and bias data
+interface LayerWeightData {
+  weights: number[][];
+  bias: number[][];
+}
+
+// All weights and biases before update
+interface OldWeightsAndBiases {
+  output: LayerWeightData;
+  hidden2: LayerWeightData;
+  hidden1: LayerWeightData;
+}
+
+// All weights and biases after update
+interface NewWeightsAndBiases {
+  output: LayerWeightData;
+  hidden2: LayerWeightData;
+  hidden1: LayerWeightData;
+}
+
+// Main parameter interface for createBackpropSteps
+export interface BackpropData {
+  // Layer activations
+  activations: {
+    inputs: Matrix;
+    hidden1: Matrix;
+    hidden2: Matrix;
+    outputs: Matrix;
+  };
+  
+  // Target values
+  target: number[];
+  
+  // Errors for each layer
+  errors: {
+    output: Matrix;
+    hidden2: Matrix;
+    hidden1: Matrix;
+  };
+  
+  // Gradients for each layer
+  gradients: {
+    output: Matrix;
+    hidden2: Matrix;
+    hidden1: Matrix;
+  };
+  
+  // Weight deltas for each layer
+  weightDeltas: {
+    outputToHidden2: Matrix;
+    hidden2ToHidden1: Matrix;
+    hidden1ToInput: Matrix;
+  };
+  
+  // Weights and biases before update
+  oldWeights: OldWeightsAndBiases;
+  
+  // Weights and biases after update
+  newWeights: NewWeightsAndBiases;
+  
+  // Current weight matrices (for calculating back-propagated errors)
+  currentWeights: {
+    hidden2ToOutput: Matrix;
+    hidden1ToHidden2: Matrix;
+  };
+  
+  // Loss value
+  loss: number;
+}
+
+/**
+ * Create BackpropSteps for visualizer
+ */
+export function createBackpropSteps(data: BackpropData): BackpropSteps {
+  // Destructure data for easier access
+  const { activations, target, errors, gradients, weightDeltas, oldWeights, newWeights, currentWeights, loss } = data;
+  
+  const targetClass = target.indexOf(1);
+  const predictions = activations.outputs.toArray();
 
   return {
     output: createLayerBackpropData({
       layerName: 'output',
-      activations: outputs,
-      errors: outputErrors,
-      gradients: gradientsOutput,
-      weightDeltas: weightHoDeltas,
-      oldWeights: oldWeightsHo,
-      oldBias: oldBiasO,
-      newWeights: newWeightsHo,
-      newBias: newBiasO,
-      inputs: hidden2
+      activations: activations.outputs,
+      errors: errors.output,
+      gradients: gradients.output,
+      weightDeltas: weightDeltas.outputToHidden2,
+      oldWeights: oldWeights.output.weights,
+      oldBias: oldWeights.output.bias,
+      newWeights: newWeights.output.weights,
+      newBias: newWeights.output.bias,
+      inputs: activations.hidden2
     }),
     layer2: createLayerBackpropData({
       layerName: 'layer2',
-      activations: hidden2,
-      errors: hidden2Errors,
-      gradients: gradientsHidden2,
-      weightDeltas: weightH1h2Deltas,
-      oldWeights: oldWeightsH1h2,
-      oldBias: oldBiasH2,
-      newWeights: newWeightsH1h2,
-      newBias: newBiasH2,
-      inputs: hidden1,
-      nextLayerErrors: outputErrors,
-      nextLayerWeights: weightsHidden2Output
+      activations: activations.hidden2,
+      errors: errors.hidden2,
+      gradients: gradients.hidden2,
+      weightDeltas: weightDeltas.hidden2ToHidden1,
+      oldWeights: oldWeights.hidden2.weights,
+      oldBias: oldWeights.hidden2.bias,
+      newWeights: newWeights.hidden2.weights,
+      newBias: newWeights.hidden2.bias,
+      inputs: activations.hidden1,
+      nextLayerErrors: errors.output,
+      nextLayerWeights: currentWeights.hidden2ToOutput
     }),
     layer1: createLayerBackpropData({
       layerName: 'layer1',
-      activations: hidden1,
-      errors: hidden1Errors,
-      gradients: gradientsHidden1,
-      weightDeltas: weightIh1Deltas,
-      oldWeights: oldWeightsIh1,
-      oldBias: oldBiasH1,
-      newWeights: newWeightsIh1,
-      newBias: newBiasH1,
-      inputs: inputs,
-      nextLayerErrors: hidden2Errors,
-      nextLayerWeights: weightsHidden1Hidden2
+      activations: activations.hidden1,
+      errors: errors.hidden1,
+      gradients: gradients.hidden1,
+      weightDeltas: weightDeltas.hidden1ToInput,
+      oldWeights: oldWeights.hidden1.weights,
+      oldBias: oldWeights.hidden1.bias,
+      newWeights: newWeights.hidden1.weights,
+      newBias: newWeights.hidden1.bias,
+      inputs: activations.inputs,
+      nextLayerErrors: errors.hidden2,
+      nextLayerWeights: currentWeights.hidden1ToHidden2
     }),
-    totalLoss: lastLoss,
+    totalLoss: loss,
     targetClass,
     predictions
   };

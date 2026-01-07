@@ -41,25 +41,13 @@ export interface NeuronCalculation {
 }
 
 /**
- * Complete calculation steps for all layers
+ * Complete forward propagation steps for all layers
  */
-export interface CalculationSteps {
+export interface ForwardSteps {
   input: number[];
   layer1: NeuronCalculation[];
   layer2: NeuronCalculation[];
   output: NeuronCalculation[];
-}
-
-/**
- * Training state management
- */
-export interface TrainingState {
-  isTraining: boolean;
-  epoch: number;
-  loss: number;
-  isAnimating: boolean;
-  shouldStopAnimation: boolean;
-  animationSpeed: number;
 }
 
 /**
@@ -71,9 +59,9 @@ export interface AnimationPhase {
 }
 
 /**
- * Calculation stage during animation
+ * Forward propagation stage during animation
  */
-export type CalculationStage = 'connections' | 'dotProduct' | 'bias' | 'activation';
+export type ForwardStage = 'connections' | 'dotProduct' | 'bias' | 'activation';
 
 /**
  * Backpropagation calculation stage during animation

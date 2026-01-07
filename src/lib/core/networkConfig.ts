@@ -5,7 +5,7 @@
  * Change layer sizes here to update the entire application.
  */
 
-import type { CalculationStage, BackpropStage } from '../types';
+import type { ForwardStage, BackpropStage } from '../types';
 
 // =============================================================================
 // Layer Configuration
@@ -119,7 +119,7 @@ export function getNextBackwardNeuron(
 /**
  * Calculation stages for forward propagation animation
  */
-export const FORWARD_STAGES: CalculationStage[] = [
+export const FORWARD_STAGES: ForwardStage[] = [
   'connections', 'dotProduct', 'bias', 'activation'
 ];
 
@@ -133,7 +133,7 @@ export const BACKPROP_STAGES: BackpropStage[] = [
 /**
  * Get next forward stage, or null if at the last stage
  */
-export function getNextForwardStage(current: CalculationStage): CalculationStage | null {
+export function getNextForwardStage(current: ForwardStage): ForwardStage | null {
   const idx = FORWARD_STAGES.indexOf(current);
   if (idx >= 0 && idx < FORWARD_STAGES.length - 1) {
     return FORWARD_STAGES[idx + 1];

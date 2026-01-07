@@ -5,7 +5,7 @@
  * Uses Strategy pattern to handle differences between modes.
  */
 
-import type { CalculationStage, BackpropStage } from '../types';
+import type { ForwardStage, BackpropStage } from '../types';
 
 // ============================================================================
 // Types
@@ -114,7 +114,7 @@ export { getForwardNeuronIndices as forwardNeuronIndices, getBackwardNeuronIndic
 // Stage Durations
 // ============================================================================
 
-export const FORWARD_STAGE_DURATIONS: Record<CalculationStage, number> = {
+export const FORWARD_STAGE_DURATIONS: Record<ForwardStage, number> = {
   connections: 150,
   dotProduct: 400,
   bias: 400,

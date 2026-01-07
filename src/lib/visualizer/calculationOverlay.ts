@@ -1,5 +1,5 @@
 // Calculation overlay renderer for forward propagation
-import type { CalculationStage, NeuronCalculation, NodePosition } from '../types';
+import type { ForwardStage, NeuronCalculation, NodePosition } from '../types';
 import { generateForwardContent } from './overlayContentGenerator';
 import { renderOverlay } from './overlayRenderer';
 
@@ -12,7 +12,7 @@ export function drawCalculationOverlay(
   canvas: HTMLCanvasElement,
   x: number,
   y: number,
-  stage: CalculationStage,
+  stage: ForwardStage,
   currentNeuronData: NeuronCalculation | null
 ): void {
   if (!currentNeuronData) return;

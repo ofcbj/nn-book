@@ -1,7 +1,7 @@
 // Neural Network Implementation with TypeScript
 // Architecture: 3 inputs -> 5 neurons (1차) -> 3 neurons (2차) -> 3 outputs (Softmax)
 
-import type { CalculationSteps, BackpropSteps, NeuronCalculation } from '../types';
+import type { ForwardSteps, BackpropSteps, NeuronCalculation } from '../types';
 import i18n from '../../i18n';
 import { Matrix } from './matrix';
 import { LAYER_SIZES, INPUT_SIZE } from './networkConfig';
@@ -298,44 +298,53 @@ export class NeuralNetwork {
       sum + (t > 0 ? Math.log(Math.max(outputs.data[i][0], 1e-7)) : 0), 0
     );
 
+
     // Build detailed backprop steps for visualizer
-    this.lastBackpropSteps = createBackpropSteps(
-      inputs,
-      hidden1,
-      hidden2,
-      outputs,
-      targetArray,
-      layerErrors.output,
-      layerErrors.layer2,
-      layerErrors.layer1,
-      layerGradients.output,
-      layerGradients.layer2,
-      layerGradients.layer1,
-      layerWeightDeltas.output,
-      layerWeightDeltas.layer2,
-      layerWeightDeltas.layer1,
-      oldWeightsHo,
-      oldBiasO,
-      oldWeightsH1h2,
-      oldBiasH2,
-      oldWeightsIh1,
-      oldBiasH1,
-      this.weightsHidden2Output.data,
-      this.biasOutput.data,
-      this.weightsHidden1Hidden2.data,
-      this.biasHidden2.data,
-      this.weightsInputHidden1.data,
-      this.biasHidden1.data,
-      this.weightsHidden2Output,
-      this.weightsHidden1Hidden2,
-      this.lastLoss
-    );
+    this.lastBackpropSteps = createBackpropSteps({
+      activations: {
+        inputs,
+        hidden1,
+        hidden2,
+        outputs
+      },
+      target: targetArray,
+      errors: {
+        output: layerErrors.output,
+        hidden2: layerErrors.layer2,
+        hidden1: layerErrors.layer1
+      },
+      gradients: {
+        output: layerGradients.output,
+        hidden2: layerGradients.layer2,
+        hidden1: layerGradients.layer1
+      },
+      weightDeltas: {
+        outputToHidden2: layerWeightDeltas.output,
+        hidden2ToHidden1: layerWeightDeltas.layer2,
+        hidden1ToInput: layerWeightDeltas.layer1
+      },
+      oldWeights: {
+        output: { weights: oldWeightsHo, bias: oldBiasO },
+        hidden2: { weights: oldWeightsH1h2, bias: oldBiasH2 },
+        hidden1: { weights: oldWeightsIh1, bias: oldBiasH1 }
+      },
+      newWeights: {
+        output: { weights: this.weightsHidden2Output.data, bias: this.biasOutput.data },
+        hidden2: { weights: this.weightsHidden1Hidden2.data, bias: this.biasHidden2.data },
+        hidden1: { weights: this.weightsInputHidden1.data, bias: this.biasHidden1.data }
+      },
+      currentWeights: {
+        hidden2ToOutput: this.weightsHidden2Output,
+        hidden1ToHidden2: this.weightsHidden1Hidden2
+      },
+      loss: this.lastLoss
+    });
   }
 
-  getCalculationSteps(): CalculationSteps | null {
+  getCalculationSteps(): ForwardSteps | null {
     if (!this.lastInput) return null;
     
-    const steps: CalculationSteps = {
+    const steps: ForwardSteps = {
       input: this.lastInput.toArray(),
       layer1: [],
       layer2: [],

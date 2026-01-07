@@ -1,9 +1,9 @@
 import { Box, Paper, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import type { CalculationSteps } from '../lib/types';
+import type { ForwardSteps } from '../lib/types';
 
 interface CalculationPanelProps {
-  steps: CalculationSteps | null;
+  steps: ForwardSteps | null;
 }
 
 export default function CalculationPanel({ steps }: CalculationPanelProps) {

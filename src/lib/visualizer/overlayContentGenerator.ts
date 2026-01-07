@@ -5,7 +5,7 @@
  * Separates content generation from rendering for better maintainability.
  */
 
-import type { CalculationStage, NeuronCalculation, BackpropStage, BackpropNeuronData } from '../types';
+import type { ForwardStage, NeuronCalculation, BackpropStage, BackpropNeuronData } from '../types';
 import i18n from '../../i18n';
 
 // ============================================================================
@@ -23,7 +23,7 @@ export interface OverlayContent {
 // ============================================================================
 
 export function generateForwardContent(
-  stage: CalculationStage,
+  stage: ForwardStage,
   data: NeuronCalculation
 ): OverlayContent {
   switch(stage) {
@@ -36,7 +36,7 @@ export function generateForwardContent(
 
     case 'dotProduct': {
       const terms = data.inputs.map((input, i) =>
-        `${input.toFixed(2)}×${data.weights[i].toFixed(2)}`
+        `${input.toFixed(2)}ÁE{data.weights[i].toFixed(2)}`
       );
       // Split into two lines if too many terms
       if (terms.length > 3) {
@@ -68,7 +68,7 @@ export function generateForwardContent(
       return {
         title: i18n.t('calculation.activation'),
         color: '#34d399',
-        lines: [`σ(${data.withBias.toFixed(3)}) = ${data.activated.toFixed(3)}`]
+        lines: [`ρE${data.withBias.toFixed(3)}) = ${data.activated.toFixed(3)}`]
       };
 
     default:
@@ -131,12 +131,12 @@ function generateErrorContent(
         const term = nextError * weight;
         const nextLabel = nextLayerLabels[idx];
         
-        // Show: "nextNeuron의 오류 × (현재→next 가중치) = 기여도"
+        // Show: "nextNeuron�E�E�E��E�EÁE(���E��→next �E��E�칁E = �E��E��E�E
         content.push(
           `${nextLabel}: error=${nextError.toFixed(4)}`
         );
         content.push(
-          `  × W[${currentNeuronLabel}→${nextLabel}]=${weight.toFixed(4)}`
+          `  ÁEW[${currentNeuronLabel}ↁE{nextLabel}]=${weight.toFixed(4)}`
         );
         content.push(
           `  = ${term.toFixed(4)}`
@@ -159,7 +159,7 @@ function generateErrorContent(
         i18n.t('backprop.nextLayerPropagation'),
         i18n.t('backprop.thisNeuron'),
         '',
-        `error = Σ(next_error × next_weight)`,
+        `error = Σ(next_error ÁEnext_weight)`,
         `      = ${data.error.toFixed(4)}`,
         '',
         i18n.t('backprop.neuronResponsibility')
@@ -194,8 +194,8 @@ export function generateBackpropContent(
         title: i18n.t('backprop.delta'),
         color: '#a5b4fc',
         lines: [
-          `σ'(y) = y × (1 - y)`,
-          `σ'(${y.toFixed(3)}) = ${y.toFixed(3)} × (1 - ${y.toFixed(3)})`,
+          `ρE(y) = y ÁE(1 - y)`,
+          `ρE(${y.toFixed(3)}) = ${y.toFixed(3)} ÁE(1 - ${y.toFixed(3)})`,
           `= ${deriv.toFixed(4)}`
         ]
       };
@@ -205,8 +205,8 @@ export function generateBackpropContent(
         title: i18n.t('backprop.gradient'),
         color: '#60a5fa',
         lines: [
-          `gradient = error × σ'(y)`,
-          `= ${data.error.toFixed(4)} × ${deriv.toFixed(4)}`,
+          `gradient = error ÁEρE(y)`,
+          `= ${data.error.toFixed(4)} ÁE${deriv.toFixed(4)}`,
           `= ${data.gradient.toFixed(4)}`
         ]
       };
@@ -217,10 +217,10 @@ export function generateBackpropContent(
         color: '#fbbf24',
         lines: [
           i18n.t('backprop.weightDeltaCalc'),
-          `ΔW = gradient × input × ${i18n.t('controls.learningRate')}(0.1)`,
+          `ΔW = gradient ÁEinput ÁE${i18n.t('controls.learningRate')}(0.1)`,
           ``,
           `${i18n.t('backprop.example')} input[${mostChangedIdx}]${i18n.t('backprop.connectedWeight')}:`,
-          `ΔW[${mostChangedIdx}] = ${data.gradient.toFixed(4)} × ${inputVal.toFixed(3)} × 0.1 = ${weightDelta.toFixed(5)}`
+          `ΔW[${mostChangedIdx}] = ${data.gradient.toFixed(4)} ÁE${inputVal.toFixed(3)} ÁE0.1 = ${weightDelta.toFixed(5)}`
         ]
       };
 
@@ -234,15 +234,15 @@ export function generateBackpropContent(
         const delta = data.weightDeltas[i];
         const oldWeight = data.oldWeights[i];
         lines.push(
-          `W[${i}] = ${oldWeight.toFixed(4)}  →  ΔW[${i}] = η × δ × x[${i}]`
+          `W[${i}] = ${oldWeight.toFixed(4)}  ↁE ΔW[${i}] = η ÁEδ ÁEx[${i}]`
         );
         lines.push(
-          `     = 0.1 × ${data.gradient.toFixed(4)} × ${inputVal.toFixed(3)} = ${delta.toFixed(5)}`
+          `     = 0.1 ÁE${data.gradient.toFixed(4)} ÁE${inputVal.toFixed(3)} = ${delta.toFixed(5)}`
         );
       });
       
       lines.push('');
-      lines.push(`b = ${data.oldBias.toFixed(4)}  →  Δb = 0.1 × ${data.gradient.toFixed(4)} = ${data.biasDelta.toFixed(5)}`);
+      lines.push(`b = ${data.oldBias.toFixed(4)}  ↁE Δb = 0.1 ÁE${data.gradient.toFixed(4)} = ${data.biasDelta.toFixed(5)}`);
       
       return {
         title: i18n.t('backprop.allWeightDeltas'),
@@ -253,7 +253,7 @@ export function generateBackpropContent(
 
     case 'update': {
       const biasChange = data.newBias - data.oldBias;
-      const biasArrow = biasChange > 0 ? '↗' : '↘';
+      const biasArrow = biasChange > 0 ? '↑' : '↓';
       const lines = [
         i18n.t('backprop.allWeightUpdate'),
         ''
@@ -262,14 +262,14 @@ export function generateBackpropContent(
       data.oldWeights.forEach((oldW: number, i: number) => {
         const newW = data.newWeights[i];
         const delta = data.weightDeltas[i];
-        const arrow = delta > 0 ? '↗' : '↘';
+        const arrow = delta > 0 ? '↑' : '↓';
         lines.push(
-          `W[${i}]: ${oldW.toFixed(4)} ${arrow} ${newW.toFixed(4)} (Δ=${delta.toFixed(5)})`
+          `W[${i}]: ${oldW.toFixed(4)} ${arrow} ${newW.toFixed(4)} (΁E${delta.toFixed(5)})`
         );
       });
       
       lines.push('');
-      lines.push(`Bias: ${data.oldBias.toFixed(4)} ${biasArrow} ${data.newBias.toFixed(4)} (Δ=${biasChange.toFixed(5)})`);
+      lines.push(`Bias: ${data.oldBias.toFixed(4)} ${biasArrow} ${data.newBias.toFixed(4)} (΁E${biasChange.toFixed(5)})`);
       
       return {
         title: i18n.t('backprop.update'),
