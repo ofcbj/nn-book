@@ -32,7 +32,7 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
       }}
     >
       <DialogTitle sx={{ textAlign: 'center', borderBottom: '2px solid #475569', pb: 2 }}>
-        <Typography variant="h5" fontWeight={700}>
+        <Typography variant="h5" component="div" fontWeight={700}>
           {t('help.title')}
         </Typography>
       </DialogTitle>

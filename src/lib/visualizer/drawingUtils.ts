@@ -73,6 +73,7 @@ function drawWeightsVector(
   
   ctx.fillText(vectorStr, x, y);
 }
+
 import {
   INPUT_BOX,
   NEURON_BOX,

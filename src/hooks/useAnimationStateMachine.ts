@@ -29,31 +29,37 @@ import type { LayerName } from '../lib/core';
 import type { NeuronCalculation, BackpropNeuronData, ForwardStage, BackpropStage } from '../lib/types';
 
 export interface UseAnimationStateMachineReturn {
-  // State
+  // === Core State ===
   state: AnimationState;
+  dispatch: React.Dispatch<AnimationAction>;
   
-  // Derived state helpers
+  // === Animation Status ===
   isAnimating: boolean;
   isPaused: boolean;
   isForwardMode: boolean;
   isBackwardMode: boolean;
+  
+  // === Current Visualization Data ===
   highlightedNeuron: { layer: LayerName; index: number } | null;
   forwardStage: ForwardStage | null;
   backpropStage: BackpropStage | null;
   currentNeuronData: NeuronCalculation | null;
   currentBackpropData: BackpropNeuronData | null;
   
-  // Actions
-  dispatch: React.Dispatch<AnimationAction>;
+  // === Training Controls ===
   startTraining: () => void;
-  setSpeed: (speed: number) => void;
   pause: () => void;
   resume: (speed?: number) => void;
+  reset: () => void;
+  setSpeed: (speed: number) => void;
+  
+  // === Step Controls ===
   nextStep: () => void;
   jumpToNeuron: (layer: LayerName, neuronIndex: number) => void;
-  reset: () => void;
+  waitForNextStep: () => Promise<void>;
+  resolveStep: () => void;
   
-  // Animation tick callbacks (called by animation loop)
+  // === Forward Animation Events ===
   forwardTick: (
     layer: LayerName,
     neuronIndex: number,
@@ -62,6 +68,8 @@ export interface UseAnimationStateMachineReturn {
   ) => void;
   forwardComplete: () => void;
   closeLossModal: () => void;
+  
+  // === Backward Animation Events ===
   backwardTick: (
     layer: LayerName,
     neuronIndex: number,
@@ -70,10 +78,6 @@ export interface UseAnimationStateMachineReturn {
   ) => void;
   backwardComplete: () => void;
   closeBackpropModal: () => void;
-  
-  // Manual step resolver for paused mode
-  waitForNextStep: () => Promise<void>;
-  resolveStep: () => void;
 }
 
 // Type alias for external use
@@ -195,32 +199,45 @@ export function useAnimationStateMachine(): UseAnimationStateMachineReturn {
   const isBackwardMode = state.type === 'backward_animating' || state.type === 'showing_backprop_modal';
   
   return {
+    // === Core State ===
     state,
+    dispatch,
+    
+    // === Animation Status ===
     isAnimating: animatingState,
     isPaused: pausedState,
     isForwardMode,
     isBackwardMode,
+    
+    // === Current Visualization Data ===
     highlightedNeuron: getHighlightedNeuron(state),
     forwardStage: getForwardStage(state),
     backpropStage: getBackpropStage(state),
     currentNeuronData: getCurrentNeuronData(state),
     currentBackpropData: getCurrentBackpropData(state),
-    dispatch,
+    
+    // === Training Controls ===
     startTraining,
-    setSpeed,
     pause,
     resume,
+    reset,
+    setSpeed,
+    
+    // === Step Controls ===
     nextStep,
     jumpToNeuron,
-    reset,
+    waitForNextStep,
+    resolveStep,
+    
+    // === Forward Animation Events ===
     forwardTick,
     forwardComplete,
     closeLossModal,
+    
+    // === Backward Animation Events ===
     backwardTick,
     backwardComplete,
     closeBackpropModal,
-    waitForNextStep,
-    resolveStep,
   };
 }
 
