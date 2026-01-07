@@ -47,16 +47,16 @@ export function useTrainingControls(
   // =========================================================================
   const trainOneStep = useCallback(() => {
     const nn = nnRef.current;
-    const inputs = [state.grade, state.attitude, state.response];
+    const inputs = [state.inputs.grade, state.inputs.attitude, state.inputs.response];
     const targetOneHot = [0, 0, 0];
-    targetOneHot[state.targetValue] = 1;
+    targetOneHot[state.inputs.targetValue] = 1;
 
     nn.train(inputs, targetOneHot);
-    state.setLoss(nn.lastLoss);
-    state.setEpoch(prev => prev + 1);
+    state.statsSetters.setLoss(nn.lastLoss);
+    state.statsSetters.setEpoch(prev => prev + 1);
     animation.computeAndRefreshDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.grade, state.attitude, state.response, state.targetValue, animation]);
+  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, state.inputs.targetValue, animation]);
 
   // =========================================================================
   // Train One Step With Animation
@@ -71,9 +71,9 @@ export function useTrainingControls(
     animationMachine.startTraining();
 
     const nn = nnRef.current;
-    const inputs = [state.grade, state.attitude, state.response];
+    const inputs = [state.inputs.grade, state.inputs.attitude, state.inputs.response];
     const targetOneHot = [0, 0, 0];
-    targetOneHot[state.targetValue] = 1;
+    targetOneHot[state.inputs.targetValue] = 1;
 
     // Forward pass
     nn.feedforward(inputs);
@@ -107,20 +107,20 @@ export function useTrainingControls(
     nn.biasOutput.data = oldBiases.output;
     nn.feedforward(inputs);
 
-    state.setLossModalData({ targetClass: state.targetValue, predictions, loss: currentLoss });
+    state.modalSetters.setLossModalData({ targetClass: state.inputs.targetValue, predictions, loss: currentLoss });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.grade, state.attitude, state.response, state.targetValue, animation, animationMachine]);
+  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, state.inputs.targetValue, animation, animationMachine]);
 
   // =========================================================================
   // Close Loss Modal - Start Backward Propagation
   // =========================================================================
   const closeLossModal = useCallback(async () => {
-    state.setLossModalData(null);
+    state.modalSetters.setLossModalData(null);
     animationMachine.closeLossModal();
 
     // Ensure animation speed is at least 1.0 for backprop
-    if (state.animationSpeed === 0) {
-      state.setAnimationSpeed(1.0);
+    if (state.training.animationSpeed === 0) {
+      state.trainingSetters.setAnimationSpeed(1.0);
     }
 
     const nn = nnRef.current;
@@ -139,7 +139,7 @@ export function useTrainingControls(
     };
 
     // Use speed of 1.0 if current speed is 0
-    const backpropSpeed = state.animationSpeed > 0 ? state.animationSpeed : 1.0;
+    const backpropSpeed = state.training.animationSpeed > 0 ? state.training.animationSpeed : 1.0;
     await animation.animateBackwardPropagation(backpropSpeed);
     await animation.sleep(500, backpropSpeed);
 
@@ -155,20 +155,20 @@ export function useTrainingControls(
       output: nn.biasOutput.data.map(row => row[0])
     };
 
-    const comparisonData = createWeightComparisonData(oldWeights, newWeights, oldBiases, newBiases, state.learningRate);
-    state.setWeightComparisonData(comparisonData);
+    const comparisonData = createWeightComparisonData(oldWeights, newWeights, oldBiases, newBiases, state.stats.learningRate);
+    state.modalSetters.setWeightComparisonData(comparisonData);
 
-    state.setEpoch(prev => prev + 1);
-    state.setLoss(nn.lastLoss);
+    state.statsSetters.setEpoch(prev => prev + 1);
+    state.statsSetters.setLoss(nn.lastLoss);
     animation.computeAndRefreshDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMachine, animation, state.learningRate, state.animationSpeed]);
+  }, [animationMachine, animation, state.stats.learningRate, state.training.animationSpeed]);
 
   // =========================================================================
   // Close Backprop Modal
   // =========================================================================
   const closeBackpropModal = useCallback(() => {
-    state.setBackpropSummaryData(null);
+    state.modalSetters.setBackpropSummaryData(null);
     animationMachine.closeBackpropModal();
     animation.computeAndRefreshDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,17 +178,17 @@ export function useTrainingControls(
   // Toggle Training (auto)
   // =========================================================================
   const toggleTraining = useCallback(() => {
-    if (state.isTraining) {
-      state.setIsTraining(false);
+    if (state.training.isTraining) {
+      state.trainingSetters.setIsTraining(false);
       if (trainingIntervalRef.current) {
         clearInterval(trainingIntervalRef.current);
       }
     } else {
-      state.setIsTraining(true);
+      state.trainingSetters.setIsTraining(true);
       trainingIntervalRef.current = window.setInterval(() => {
         trainOneStep();
         if (nnRef.current.lastLoss < 0.001) {
-          state.setIsTraining(false);
+          state.trainingSetters.setIsTraining(false);
           if (trainingIntervalRef.current) {
             clearInterval(trainingIntervalRef.current);
           }
@@ -196,14 +196,14 @@ export function useTrainingControls(
       }, 50);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.isTraining, trainOneStep]);
+  }, [state.training.isTraining, trainOneStep]);
 
   // =========================================================================
   // Reset
   // =========================================================================
   const reset = useCallback(() => {
-    if (state.isTraining) {
-      state.setIsTraining(false);
+    if (state.training.isTraining) {
+      state.trainingSetters.setIsTraining(false);
       if (trainingIntervalRef.current) {
         clearInterval(trainingIntervalRef.current);
       }
@@ -211,16 +211,16 @@ export function useTrainingControls(
 
     animation.shouldStopRef.current = true;
     nnRef.current = new NeuralNetwork();
-    state.setEpoch(0);
-    state.setLoss(0);
-    state.setOutput(null);
-    state.setLossModalData(null);
-    state.setBackpropSummaryData(null);
+    state.statsSetters.setEpoch(0);
+    state.statsSetters.setLoss(0);
+    state.statsSetters.setOutput(null);
+    state.modalSetters.setLossModalData(null);
+    state.modalSetters.setBackpropSummaryData(null);
 
     animationMachine.reset();
     animation.computeAndRefreshDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.isTraining, animation, animationMachine]);
+  }, [state.training.isTraining, animation, animationMachine]);
 
   // =========================================================================
   // Next Step (manual mode)
@@ -233,7 +233,7 @@ export function useTrainingControls(
   // Learning Rate Handler
   // =========================================================================
   const handleLearningRateChange = useCallback((v: number) => {
-    state.setLearningRate(v);
+    state.statsSetters.setLearningRate(v);
     nnRef.current.learningRate = v;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -242,14 +242,14 @@ export function useTrainingControls(
   // Canvas Heatmap Toggle (needs visualizer access)
   // =========================================================================
   const toggleCanvasHeatmap = useCallback(() => {
-    const newValue = !state.showCanvasHeatmap;
-    state.setShowCanvasHeatmap(newValue);
+    const newValue = !state.visualizer.showCanvasHeatmap;
+    state.visualizationSetters.setShowCanvasHeatmap(newValue);
     if (visualizerRef.current) {
       visualizerRef.current.setHeatmapMode(newValue);
       visualizerRef.current.update(nnRef.current);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.showCanvasHeatmap]);
+  }, [state.visualizer.showCanvasHeatmap]);
 
   return {
     trainOneStepWithAnimation,

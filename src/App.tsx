@@ -20,7 +20,7 @@ export default function App() {
     stats,
     training,
     modals,
-    visualization,
+    visualizer,
     actions,
   } = useNeuralNetwork();
 
@@ -74,10 +74,10 @@ export default function App() {
                 onReset={actions.reset}
                 isTraining={training.isTraining}
                 isAnimating={training.isAnimating}
-                showCanvasHeatmap={visualization.showCanvasHeatmap}
-                showGridHeatmap={visualization.showGridHeatmap}
-                onToggleCanvasHeatmap={visualization.toggleCanvasHeatmap}
-                onToggleGridHeatmap={visualization.toggleGridHeatmap}
+                showCanvasHeatmap={visualizer.showCanvasHeatmap}
+                showGridHeatmap={visualizer.showGridHeatmap}
+                onToggleCanvasHeatmap={visualizer.toggleCanvasHeatmap}
+                onToggleGridHeatmap={visualizer.toggleGridHeatmap}
                 hasComparisonData={modals.comparison.data !== null}
                 onViewComparison={modals.comparison.open}
               />
@@ -90,7 +90,7 @@ export default function App() {
               <NetworkCanvas nn={network.nn} onVisualizerReady={network.setVisualizer} onCanvasClick={actions.handleCanvasClick} />
               
               {/* Activation Heatmap */}
-              {visualization.showGridHeatmap && <ActivationHeatmap activations={visualization.activations} />}
+              {visualizer.showGridHeatmap && <ActivationHeatmap activations={visualizer.activations} />}
             </Stack>
           </Box>
           {/* Right Panel: Calculation Display */}

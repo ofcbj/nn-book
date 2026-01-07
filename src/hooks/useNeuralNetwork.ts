@@ -105,7 +105,7 @@ export interface UseNeuralNetworkReturn {
   stats: NetworkStats;
   training: TrainingState;
   modals: ModalState;
-  visualization: VisualizationState;
+  visualizer: VisualizationState;
   actions: TrainingActions;
 }
 
@@ -149,15 +149,15 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   // Sync animation speed with state machine
   // =========================================================================
   useEffect(() => {
-    animationMachine.setSpeed(state.animationSpeed);
+    animationMachine.setSpeed(state.training.animationSpeed);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.animationSpeed]);
+  }, [state.training.animationSpeed]);
 
   // =========================================================================
   // Handle learning rate changes
   // =========================================================================
   const handleLearningRateChange = (v: number) => {
-    state.setLearningRate(v);
+    state.statsSetters.setLearningRate(v);
     nnRef.current.learningRate = v;
   };
 
@@ -172,63 +172,52 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     },
 
     inputs: {
-      grade: state.grade,
-      attitude: state.attitude,
-      response: state.response,
-      targetValue: state.targetValue,
-      learningRate: state.learningRate,
-      animationSpeed: state.animationSpeed,
-      isManualMode: state.isManualMode,
+      ...state.inputs,
+      learningRate: state.stats.learningRate,
+      animationSpeed: state.training.animationSpeed,
+      isManualMode: state.training.isManualMode,
     },
 
     controls: {
-      setGrade: state.setGrade,
-      setAttitude: state.setAttitude,
-      setResponse: state.setResponse,
-      setTargetValue: state.setTargetValue,
+      ...state.inputSetters,
       setLearningRate: handleLearningRateChange,
-      setAnimationSpeed: state.setAnimationSpeed,
-      setIsManualMode: state.setIsManualMode,
+      setAnimationSpeed: state.trainingSetters.setAnimationSpeed,
+      setIsManualMode: state.trainingSetters.setIsManualMode,
       nextStep: trainingControls.nextStep,
     },
 
     stats: {
-      epoch: state.epoch,
-      loss: state.loss,
-      output: state.output,
-      steps: state.steps,
+      epoch: state.stats.epoch,
+      loss: state.stats.loss,
+      output: state.stats.output,
+      steps: state.stats.steps,
     },
 
     training: {
-      isTraining: state.isTraining,
+      isTraining: state.training.isTraining,
       isAnimating: animationMachine.isAnimating,
     },
 
     modals: {
       loss: {
-        show: animationMachine.state.type === 'showing_loss_modal',
-        data: state.lossModalData,
+        ...state.modals.loss,
         close: trainingControls.closeLossModal,
       },
       backprop: {
-        show: animationMachine.state.type === 'showing_backprop_modal',
-        data: state.backpropSummaryData,
+        ...state.modals.backprop,
         close: trainingControls.closeBackpropModal,
       },
       comparison: {
-        show: state.showComparisonModal,
-        data: state.weightComparisonData,
-        open: state.openComparisonModal,
-        close: state.closeComparisonModal,
+        ...state.modals.comparison,
+        open: state.modalActions.openComparisonModal,
+        close: state.modalActions.closeComparisonModal,
       },
     },
 
-    visualization: {
-      showCanvasHeatmap: state.showCanvasHeatmap,
-      showGridHeatmap: state.showGridHeatmap,
-      activations: state.activations,
+    visualizer: {
+      ...state.visualizer,
       toggleCanvasHeatmap: trainingControls.toggleCanvasHeatmap,
-      toggleGridHeatmap: state.toggleGridHeatmap,
+      toggleGridHeatmap: state.visualizationActions.toggleGridHeatmap,
     },
 
     actions: {

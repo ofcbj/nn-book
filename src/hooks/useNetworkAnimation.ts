@@ -50,17 +50,17 @@ export function useNetworkAnimation(
   // =========================================================================
   const computeAndRefreshDisplay = useCallback(() => {
     const nn = nnRef.current;
-    const inputs = [state.grade, state.attitude, state.response];
+    const inputs = [state.inputs.grade, state.inputs.attitude, state.inputs.response];
     nn.feedforward(inputs);
 
     if (nn.lastOutput) {
-      state.setOutput(nn.lastOutput.toArray());
+      state.statsSetters.setOutput(nn.lastOutput.toArray());
     }
-    state.setSteps(nn.getCalculationSteps());
+    state.statsSetters.setSteps(nn.getCalculationSteps());
 
     // Update activations for heatmap
     if (nn.lastInput && nn.lastHidden1 && nn.lastHidden2 && nn.lastOutput) {
-      state.setActivations({
+      state.visualizationSetters.setActivations({
         input: nn.lastInput.toArray(),
         layer1: nn.lastHidden1.toArray(),
         layer2: nn.lastHidden2.toArray(),
@@ -88,21 +88,21 @@ export function useNetworkAnimation(
       visualizerRef.current.update(nn);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.grade, state.attitude, state.response, animationMachine.state]);
+  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, animationMachine.state]);
 
   // =========================================================================
   // Sleep utility
   // =========================================================================
   const sleep = useCallback(async (ms: number, overrideSpeed?: number): Promise<void> => {
-    const effectiveSpeed = overrideSpeed ?? state.animationSpeed;
+    const effectiveSpeed = overrideSpeed ?? state.training.animationSpeed;
 
-    if (state.isManualMode || effectiveSpeed === 0) {
+    if (state.training.isManualMode || effectiveSpeed === 0) {
       await animationMachine.waitForNextStep();
     } else {
       await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMachine, state.isManualMode, state.animationSpeed]);
+  }, [animationMachine, state.training.isManualMode, state.training.animationSpeed]);
 
   // =========================================================================
   // Forward Propagation Animation
@@ -171,10 +171,10 @@ export function useNetworkAnimation(
     });
 
     // Collect summary data using helper function
-    const summaryData = createBackpropSummaryData(backpropData, state.learningRate);
-    state.setBackpropSummaryData(summaryData);
+    const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
+    state.modalSetters.setBackpropSummaryData(summaryData);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMachine, sleep, computeAndRefreshDisplay, state.learningRate]);
+  }, [animationMachine, sleep, computeAndRefreshDisplay, state.stats.learningRate]);
 
   // =========================================================================
   // Continue Animation from Jumped Position
@@ -273,11 +273,11 @@ export function useNetworkAnimation(
       animationMachine.backwardComplete();
 
       // Summary data using helper function
-      const summaryData = createBackpropSummaryData(backpropData, state.learningRate);
-      state.setBackpropSummaryData(summaryData);
+      const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
+      state.modalSetters.setBackpropSummaryData(summaryData);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMachine, sleep, computeAndRefreshDisplay, state.learningRate]);
+  }, [animationMachine, sleep, computeAndRefreshDisplay, state.stats.learningRate]);
 
   // Store reference for useEffect
   continueFromJumpedPositionRef.current = continueFromJumpedPosition;

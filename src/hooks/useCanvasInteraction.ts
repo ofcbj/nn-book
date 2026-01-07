@@ -223,9 +223,9 @@ function handleJumpedStateClick(ctx: AnimationContext, machineState: AnimationSt
 
 function completeForwardPass(ctx: AnimationContext): void {
   const { nn, state, animationMachine } = ctx;
-  const inputs = [state.grade, state.attitude, state.response];
+  const inputs = [state.inputs.grade, state.inputs.attitude, state.inputs.response];
   const targetOneHot = [0, 0, 0];
-  targetOneHot[state.targetValue] = 1;
+  targetOneHot[state.inputs.targetValue] = 1;
 
   // Backup old weights
   const oldWeights = {
@@ -255,7 +255,7 @@ function completeForwardPass(ctx: AnimationContext): void {
 
   // Show loss modal
   animationMachine.forwardComplete();
-  state.setLossModalData({ targetClass: state.targetValue, predictions, loss: currentLoss });
+  state.modalSetters.setLossModalData({ targetClass: state.inputs.targetValue, predictions, loss: currentLoss });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
