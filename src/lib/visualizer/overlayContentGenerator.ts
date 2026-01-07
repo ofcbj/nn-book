@@ -36,7 +36,7 @@ export function generateForwardContent(
 
     case 'dotProduct': {
       const terms = data.inputs.map((input, i) =>
-        `${input.toFixed(2)}ÁE{data.weights[i].toFixed(2)}`
+        `${input.toFixed(2)}×${data.weights[i].toFixed(2)}`
       );
       // Split into two lines if too many terms
       if (terms.length > 3) {
