@@ -66,12 +66,12 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
       heatmapMode
     );
 
-    // Show calculation overlay for highlighted neuron
-    if (isHighlighted && ForwardStage && currentNeuronData && drawCalculationOverlay) {
-      drawCalculationOverlay(ctx, x, y, ForwardStage, currentNeuronData);
-    }
-
     nodes.push(node);
+
+    // Show calculation overlay for highlighted neuron (after node is created)
+    if (isHighlighted && ForwardStage && currentNeuronData && drawCalculationOverlay) {
+      drawCalculationOverlay(ctx, node.centerX, node.centerY, ForwardStage, currentNeuronData);
+    }
   }
 
   return nodes;

@@ -77,7 +77,7 @@ export function useNetworkAnimation(
         );
       } else if (machineState.type === 'backward_animating') {
         visualizerRef.current.setBackwardAnimationState(
-          machineState.layer, machineState.neuronIndex, machineState.stage, 
+          machineState.layer, machineState.neuronIndex, machineState.stage,
           machineState.neuronData, nn.lastBackpropSteps
         );
       } else {
