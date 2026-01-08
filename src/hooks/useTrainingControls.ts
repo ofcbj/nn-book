@@ -19,7 +19,6 @@ export interface UseTrainingControlsReturn {
   closeBackpropModal: () => void;
   toggleTraining: () => void;
   reset: () => void;
-  nextStep: () => void;
   handleLearningRateChange: (v: number) => void;
   toggleCanvasHeatmap: () => void;
   setVisualizer: (v: Visualizer) => void;
@@ -216,12 +215,6 @@ export function useTrainingControls(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.training.isTraining, animation, animationMachine]);
 
-  // =========================================================================
-  // Next Step (manual mode)
-  // =========================================================================
-  const nextStep = useCallback(() => {
-    animationMachine.nextStep();
-  }, [animationMachine]);
 
   // =========================================================================
   // Learning Rate Handler
@@ -251,7 +244,6 @@ export function useTrainingControls(
     closeBackpropModal,
     toggleTraining,
     reset,
-    nextStep,
     handleLearningRateChange,
     toggleCanvasHeatmap,
     setVisualizer,

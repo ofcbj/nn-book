@@ -37,8 +37,6 @@ export interface InputControls {
   setTargetValue: (v: number) => void;
   setLearningRate: (v: number) => void;
   setAnimationSpeed: (v: number) => void;
-  setIsManualMode: (v: boolean) => void;
-  nextStep: () => void;
 }
 
 
@@ -76,7 +74,6 @@ export interface UseNeuralNetworkReturn {
   inputs: InputState & {
     learningRate: number;
     animationSpeed: number;
-    isManualMode: boolean;
   };
   controls: InputControls;
   stats: NetworkStats;
@@ -158,15 +155,12 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
       ...state.inputs,
       learningRate: state.stats.learningRate,
       animationSpeed: state.training.animationSpeed,
-      isManualMode: state.training.isManualMode,
     },
 
     controls: {
       ...state.inputSetters,
       setLearningRate: handleLearningRateChange,
       setAnimationSpeed: state.trainingSetters.setAnimationSpeed,
-      setIsManualMode: state.trainingSetters.setIsManualMode,
-      nextStep: trainingControls.nextStep,
     },
 
     stats: {

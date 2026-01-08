@@ -94,14 +94,9 @@ export function useNetworkAnimation(
   // =========================================================================
   const sleep = useCallback(async (ms: number, overrideSpeed?: number): Promise<void> => {
     const effectiveSpeed = overrideSpeed ?? state.training.animationSpeed;
-
-    if (state.training.isManualMode) {
-      await animationMachine.waitForNextStep();
-    } else {
-      await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
-    }
+    await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMachine, state.training.isManualMode, state.training.animationSpeed]);
+  }, [state.training.animationSpeed]);
 
   // =========================================================================
   // Forward Propagation Animation

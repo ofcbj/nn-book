@@ -9,7 +9,6 @@ interface ControlPanelProps {
   targetValue: number;
   learningRate: number;
   animationSpeed: number;
-  isManualMode: boolean;
   // Event handlers
   onGradeChange: (value: number) => void;
   onAttitudeChange: (value: number) => void;
@@ -17,8 +16,6 @@ interface ControlPanelProps {
   onTargetChange: (value: number) => void;
   onLearningRateChange: (value: number) => void;
   onAnimationSpeedChange: (value: number) => void;
-  onManualModeChange: (value: boolean) => void;
-  onNextStep: () => void;
   // Button handlers
   onStep: () => void;
   onTrainToggle: () => void;
@@ -43,15 +40,12 @@ export default function ControlPanel({
   targetValue,
   learningRate,
   animationSpeed,
-  isManualMode,
   onGradeChange,
   onAttitudeChange,
   onResponseChange,
   onTargetChange,
   onLearningRateChange,
   onAnimationSpeedChange,
-  onManualModeChange,
-  onNextStep,
   onStep,
   onTrainToggle,
   onReset,
@@ -225,7 +219,6 @@ export default function ControlPanel({
               min={0.1}
               max={2}
               step={0.1}
-              disabled={isManualMode}
               sx={{ flex: 1 }}
             />
             <Typography
@@ -233,47 +226,13 @@ export default function ControlPanel({
                 minWidth: 50,
                 fontFamily: 'monospace',
                 fontWeight: 600,
-                color: isManualMode ? 'text.disabled' : 'primary.light'
+                color: 'primary.light'
               }}
             >
-              {isManualMode ? 'Manual' : `${animationSpeed.toFixed(1)}x`}
+              {`${animationSpeed.toFixed(1)}x`}
             </Typography>
           </Stack>
         </Box>
-
-        <Box sx={{ mb: 2.5 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={isManualMode}
-                onChange={(e) => onManualModeChange(e.target.checked)}
-                disabled={isAnimating}
-              />
-            }
-            label={
-              <Typography variant="body2" color="text.secondary">
-                {t('controls.manualMode')}
-              </Typography>
-            }
-          />
-        </Box>
-
-        {isManualMode && isAnimating && (
-          <Box sx={{ mb: 2.5 }}>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={onNextStep}
-              sx={{
-                bgcolor: 'secondary.main',
-                '&:hover': { bgcolor: 'secondary.dark' },
-                fontWeight: 700,
-              }}
-            >
-              ▶ {t('controls.nextStep')}
-            </Button>
-          </Box>
-        )}
 
         <Stack spacing={1.5}>
           <Button 

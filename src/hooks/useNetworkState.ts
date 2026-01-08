@@ -31,7 +31,6 @@ export interface NetworkStats {
 export interface TrainingConfig {
   isTraining: boolean;
   animationSpeed: number;
-  isManualMode: boolean;
 }
 
 export interface VisualizerState {
@@ -77,7 +76,6 @@ export interface StatsSetters {
 export interface TrainingSetters {
   setIsTraining: (v: boolean) => void;
   setAnimationSpeed: (v: number) => void;
-  setIsManualMode: (v: boolean) => void;
 }
 
 export interface VisualizerSetters {
@@ -147,7 +145,6 @@ export function useNetworkState(): UseNetworkStateReturn {
   // Training state
   const [isTraining, setIsTraining] = useState(false);
   const [animationSpeed, setAnimationSpeed] = useState(1.0);
-  const [isManualMode, setIsManualMode] = useState(false);
 
   // Visualizer state
   const [showCanvasHeatmap, setShowCanvasHeatmap] = useState(false);
@@ -198,7 +195,6 @@ export function useNetworkState(): UseNetworkStateReturn {
     training: {
       isTraining,
       animationSpeed,
-      isManualMode,
     },
     
     visualizer: {
@@ -241,7 +237,6 @@ export function useNetworkState(): UseNetworkStateReturn {
     trainingSetters: {
       setIsTraining,
       setAnimationSpeed,
-      setIsManualMode,
     },
     
     visualizerSetters: {

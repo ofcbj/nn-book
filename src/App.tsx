@@ -55,9 +55,9 @@ function AppContent() {
           <Box sx={{ width: { xs: '100%', lg: 220 }, flexShrink: 0 }}>
             <Stack spacing={2.5}>
               {/* Props organized by category:
-                  - Input Values: grade, attitude, response, targetValue, learningRate, animationSpeed, isManualMode
-                  - Control Handlers: onGradeChange, onAttitudeChange, onResponseChange, onTargetChange, onLearningRateChange, onAnimationSpeedChange, onManualModeChange
-                  - Training Actions: onNextStep, onStep, onTrainToggle, onReset
+                  - Input Values: grade, attitude, response, targetValue, learningRate, animationSpeed
+                  - Control Handlers: onGradeChange, onAttitudeChange, onResponseChange, onTargetChange, onLearningRateChange, onAnimationSpeedChange
+                  - Training Actions: onStep, onTrainToggle, onReset
                   - Training State: isTraining, isAnimating
                   - Visualization Controls: showCanvasHeatmap, showGridHeatmap, onToggleCanvasHeatmap, onToggleGridHeatmap
                   - Comparison Modal: hasComparisonData, onViewComparison
@@ -69,15 +69,12 @@ function AppContent() {
                 targetValue={inputs.targetValue}
                 learningRate={inputs.learningRate}
                 animationSpeed={inputs.animationSpeed}
-                isManualMode={inputs.isManualMode}
                 onGradeChange={controls.setGrade}
                 onAttitudeChange={controls.setAttitude}
                 onResponseChange={controls.setResponse}
                 onTargetChange={controls.setTargetValue}
                 onLearningRateChange={controls.setLearningRate}
                 onAnimationSpeedChange={controls.setAnimationSpeed}
-                onManualModeChange={controls.setIsManualMode}
-                onNextStep={controls.nextStep}
                 onStep={actions.trainOneStep}
                 onTrainToggle={actions.toggleTraining}
                 onReset={actions.reset}
