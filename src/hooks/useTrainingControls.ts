@@ -58,14 +58,68 @@ export function useTrainingControls(
   }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, state.inputs.targetValue, animation]);
 
   // =========================================================================
-  // Train One Step With Animation
+  // Train One Step With Animation (Stop/Resume Toggle)
   // =========================================================================
   const trainOneStepWithAnimation = useCallback(async () => {
+    const machineState = animationMachine.state;
+    
+    // If animating and jumped (paused), resume from current position
+    if (animationMachine.isAnimating && machineState.isJumped) {
+      animation.shouldStopRef.current = false;
+      // Resume with current animation speed to reset isJumped flag
+      animationMachine.resume(state.training.animationSpeed);
+      
+      // Continue animation from jumped position
+      await animation.continueFromJumpedPosition();
+      
+      // If we just completed forward propagation, show loss modal
+      if (machineState.type === 'forward_animating' && !animation.shouldStopRef.current) {
+        const nn = nnRef.current;
+        const inputs = [state.inputs.grade, state.inputs.attitude, state.inputs.response];
+        const targetOneHot = [0, 0, 0];
+        targetOneHot[state.inputs.targetValue] = 1;
+        
+        // Backup old weights
+        const oldWeights = {
+          layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
+          layer2: JSON.parse(JSON.stringify(nn.weightsHidden1Hidden2.data)),
+          output: JSON.parse(JSON.stringify(nn.weightsHidden2Output.data))
+        };
+        const oldBiases = {
+          layer1: JSON.parse(JSON.stringify(nn.biasHidden1.data)),
+          layer2: JSON.parse(JSON.stringify(nn.biasHidden2.data)),
+          output: JSON.parse(JSON.stringify(nn.biasOutput.data))
+        };
+        
+        // Train
+        nn.train(inputs, targetOneHot);
+        const predictions = nn.lastOutput?.toArray() || [0, 0, 0];
+        const currentLoss = nn.lastLoss;
+        
+        // Restore old weights for backprop visualizer
+        nn.weightsInputHidden1.data = oldWeights.layer1;
+        nn.weightsHidden1Hidden2.data = oldWeights.layer2;
+        nn.weightsHidden2Output.data = oldWeights.output;
+        nn.biasHidden1.data = oldBiases.layer1;
+        nn.biasHidden2.data = oldBiases.layer2;
+        nn.biasOutput.data = oldBiases.output;
+        nn.feedforward(inputs);
+        
+        state.modalSetters.setLossModalData({ targetClass: state.inputs.targetValue, predictions, loss: currentLoss });
+      }
+      
+      return;
+    }
+    
+    // If animating (not paused), stop the animation by pausing
     if (animationMachine.isAnimating) {
+      // Pause to preserve current position and stage (sets isJumped = true)
+      animationMachine.pause();
       animation.shouldStopRef.current = true;
       return;
     }
 
+    // Otherwise, start new training animation
     animation.shouldStopRef.current = false;
     animationMachine.startTraining();
 

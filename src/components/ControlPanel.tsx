@@ -23,6 +23,7 @@ interface ControlPanelProps {
   // State
   isTraining: boolean;
   isAnimating: boolean;
+  isJumped: boolean;
   // Heatmap toggles
   showCanvasHeatmap: boolean;
   showGridHeatmap: boolean;
@@ -51,6 +52,7 @@ export default function ControlPanel({
   onReset,
   isTraining,
   isAnimating,
+  isJumped,
   showCanvasHeatmap,
   showGridHeatmap,
   onToggleCanvasHeatmap,
@@ -239,13 +241,13 @@ export default function ControlPanel({
             variant="contained" 
             onClick={onStep}
             sx={{ 
-              bgcolor: isAnimating ? 'warning.main' : 'primary.main',
+              bgcolor: isJumped ? 'success.main' : (isAnimating ? 'warning.main' : 'primary.main'),
               '&:hover': {
-                bgcolor: isAnimating ? 'warning.dark' : 'primary.dark',
+                bgcolor: isJumped ? 'success.dark' : (isAnimating ? 'warning.dark' : 'primary.dark'),
               }
             }}
           >
-            {isAnimating ? t('controls.stop') : t('controls.oneStep')}
+            {isJumped ? 'Resume' : (isAnimating ? t('controls.stop') : t('controls.oneStep'))}
           </Button>
           <Button 
             variant="contained" 

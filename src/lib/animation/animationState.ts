@@ -123,10 +123,10 @@ export function animationReducer(
       return { ...state, speed: action.speed };
 
     case 'PAUSE':
-      return { ...state, speed: 0 };
+      return { ...state, isJumped: true };
 
     case 'RESUME':
-      return { ...state, speed: action.speed > 0 ? action.speed : 1.0 };
+      return { ...state, speed: action.speed > 0 ? action.speed : 1.0, isJumped: false };
 
     case 'RESET':
       return initialAnimationState;
@@ -167,7 +167,6 @@ export function animationReducer(
           layer: action.layer,
           neuronIndex: action.neuronIndex,
           stage: 'connections', // Reset to first stage
-          speed: 0, // Pause when jumping
           isJumped: true,
         };
       }
@@ -177,7 +176,6 @@ export function animationReducer(
           layer: action.layer,
           neuronIndex: action.neuronIndex,
           stage: 'error', // Reset to first backprop stage
-          speed: 0,
           isJumped: true,
         };
       }

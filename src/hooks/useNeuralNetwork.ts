@@ -80,6 +80,7 @@ export interface UseNeuralNetworkReturn {
   training: {
     isTraining: boolean;
     isAnimating: boolean;
+    isJumped: boolean;
   };
   modals: ModalState;
   visualizer: VisualizerState & {
@@ -174,6 +175,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     training: {
       isTraining: state.training.isTraining,
       isAnimating: animationMachine.isAnimating,
+      isJumped: animationMachine.state.isJumped,
     },
 
     modals: {

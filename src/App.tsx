@@ -58,7 +58,7 @@ function AppContent() {
                   - Input Values: grade, attitude, response, targetValue, learningRate, animationSpeed
                   - Control Handlers: onGradeChange, onAttitudeChange, onResponseChange, onTargetChange, onLearningRateChange, onAnimationSpeedChange
                   - Training Actions: onStep, onTrainToggle, onReset
-                  - Training State: isTraining, isAnimating
+                  - Training State: isTraining, isAnimating, isJumped
                   - Visualization Controls: showCanvasHeatmap, showGridHeatmap, onToggleCanvasHeatmap, onToggleGridHeatmap
                   - Comparison Modal: hasComparisonData, onViewComparison
               */}
@@ -80,6 +80,7 @@ function AppContent() {
                 onReset={actions.reset}
                 isTraining={training.isTraining}
                 isAnimating={training.isAnimating}
+                isJumped={training.isJumped}
                 showCanvasHeatmap={visualizer.showCanvasHeatmap}
                 showGridHeatmap={visualizer.showGridHeatmap}
                 onToggleCanvasHeatmap={visualizer.toggleCanvasHeatmap}
