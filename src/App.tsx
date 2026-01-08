@@ -81,8 +81,6 @@ function AppContent() {
                 isTraining={training.isTraining}
                 isAnimating={training.isAnimating}
                 isJumped={training.isJumped}
-                showCanvasHeatmap={visualizer.showCanvasHeatmap}
-                onToggleCanvasHeatmap={visualizer.toggleCanvasHeatmap}
                 hasComparisonData={modals.comparison.data !== null}
                 onViewComparison={modals.comparison.open}
               />

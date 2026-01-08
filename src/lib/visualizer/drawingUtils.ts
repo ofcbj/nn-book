@@ -157,7 +157,7 @@ export function drawNeuronVector(
   layerType: LayerType,
   isHighlighted: boolean = false,
   isBackpropHighlighted: boolean = false,
-  heatmapMode: boolean = false
+  activationRange?: { min: number; max: number }
 ): NodePosition {
   // Calculate width based on weights and layer type
   const baseWidth = weights.length * NEURON_BOX.weightMultiplier;
@@ -185,36 +185,50 @@ export function drawNeuronVector(
   // Get colors from config based on layer type
   // Note: drawNeuronVector is only called for layer1, layer2, output (not input)
   const colors = LAYER_COLORS[layerType as LayerName];
-  
+
   let gradient: CanvasGradient;
   let strokeColor: string;
 
   gradient = ctx.createLinearGradient(centerX, centerY, centerX, centerY + height);
+
   if (isHighlighted) {
+    // Highlighted neurons use full color intensity
     gradient.addColorStop(0, colors.highlightGradientStart);
     gradient.addColorStop(1, colors.highlightGradientEnd);
     strokeColor = colors.highlightStroke;
   } else {
-    gradient.addColorStop(0, colors.gradientStart);
-    gradient.addColorStop(1, colors.gradientEnd);
-    strokeColor = colors.stroke;
-  }
-  ctx.fillStyle = gradient;
+    // Apply activation-based opacity to base colors
+    // Use layer-specific activation range for dramatic contrast
+    const minOpacity = 0.3;
+    const maxOpacity = 1.0;
 
-  // Use heatmap color if in heatmap mode (unless highlighted)
-  if (heatmapMode && !isHighlighted && !isBackpropHighlighted) {
-    const heatColor = activationToColor(activation);
-    gradient = ctx.createLinearGradient(centerX, centerY, centerX, centerY + height);
-    // Convert rgb to rgba with different alphas for gradient
-    const rgbMatch = heatColor.match(/\d+/g);
-    if (rgbMatch) {
-      const [r, g, b] = rgbMatch.map(Number);
-      gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.8)`);
-      gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.5)`);
+    let opacity: number;
+    if (activationRange && activationRange.max > activationRange.min) {
+      // Normalize activation within the layer's range
+      const normalized = (activation - activationRange.min) / (activationRange.max - activationRange.min);
+      opacity = minOpacity + (normalized * (maxOpacity - minOpacity));
+    } else {
+      // Fallback to global mapping
+      opacity = minOpacity + (activation * (maxOpacity - minOpacity));
     }
-    ctx.fillStyle = gradient;
-    strokeColor = heatColor;
+
+    // Extract RGB values from the base colors and apply opacity
+    const adjustOpacity = (colorStr: string, alpha: number): string => {
+      // Extract rgba values if already rgba, otherwise rgb
+      const rgbaMatch = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+      if (rgbaMatch) {
+        const [, r, g, b] = rgbaMatch;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+      return colorStr;
+    };
+
+    gradient.addColorStop(0, adjustOpacity(colors.gradientStart, opacity));
+    gradient.addColorStop(1, adjustOpacity(colors.gradientEnd, opacity * 0.7));
+    strokeColor = adjustOpacity(colors.stroke, opacity);
   }
+
+  ctx.fillStyle = gradient;
 
   ctx.fill();
 

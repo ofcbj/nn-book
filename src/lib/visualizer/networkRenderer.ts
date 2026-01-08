@@ -27,7 +27,7 @@ interface DrawContext {
   ForwardStage: ForwardStage | null;
   currentNeuronData: NeuronCalculation | null;
   drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: ForwardStage, neuronData: NeuronCalculation | null) => void) | null;
-  heatmapMode: boolean;
+  activationRange: { min: number; max: number };
 }
 
 // =============================================================================
@@ -39,7 +39,7 @@ interface DrawContext {
  */
 function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePosition[] {
   const { layerName, neurons, x, neuronCount, verticalSpacing, getLabel } = config;
-  const { ctx, height, highlightedNeuron, backpropPhase, ForwardStage, currentNeuronData, drawCalculationOverlay, heatmapMode } = context;
+  const { ctx, height, highlightedNeuron, backpropPhase, ForwardStage, currentNeuronData, drawCalculationOverlay, activationRange } = context;
 
   const nodes: NodePosition[] = [];
   const totalHeight = (neuronCount - 1) * verticalSpacing;
@@ -63,7 +63,7 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
       layerName,
       isHighlighted || false,
       isBackpropHighlighted || false,
-      heatmapMode
+      activationRange
     );
 
     nodes.push(node);
@@ -94,8 +94,7 @@ export function drawNetwork(
   drawLossOverlay: ((ctx: CanvasRenderingContext2D, width: number, height: number) => void) | null,
   drawBackpropHighlight: ((ctx: CanvasRenderingContext2D, nodes: NodePosition[][]) => void) | null,
   drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: ForwardStage, neuronData: NeuronCalculation | null) => void) | null,
-  currentNeuronData: NeuronCalculation | null,
-  heatmapMode: boolean = false
+  currentNeuronData: NeuronCalculation | null
 ): NodePosition[][] {
   const width = canvas.width;
   const height = canvas.height;
@@ -127,7 +126,6 @@ export function drawNetwork(
     ForwardStage,
     currentNeuronData,
     drawCalculationOverlay,
-    heatmapMode,
   };
 
   // Input layer
@@ -160,6 +158,11 @@ export function drawNetwork(
 
   // Draw all layers
   layerConfigs.forEach(({ name, data, x, getLabel }) => {
+    // Calculate activation range for this layer
+    const activations = data.map(n => n.activated);
+    const minActivation = Math.min(...activations);
+    const maxActivation = Math.max(...activations);
+
     const layerNodes = drawLayerNeurons({
       layerName: name,
       neurons: data,
@@ -167,7 +170,10 @@ export function drawNetwork(
       neuronCount: LAYER_SIZES[name],
       verticalSpacing: VERTICAL_SPACING[name],
       getLabel,
-    }, drawContext);
+    }, {
+      ...drawContext,
+      activationRange: { min: minActivation, max: maxActivation }
+    });
     nodes.push(layerNodes);
   });
 

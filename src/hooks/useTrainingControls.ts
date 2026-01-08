@@ -20,7 +20,6 @@ export interface UseTrainingControlsReturn {
   toggleTraining: () => void;
   reset: () => void;
   handleLearningRateChange: (v: number) => void;
-  toggleCanvasHeatmap: () => void;
   setVisualizer: (v: Visualizer) => void;
   trainingIntervalRef: RefObject<number | undefined>;
 }
@@ -279,19 +278,6 @@ export function useTrainingControls(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // =========================================================================
-  // Canvas Heatmap Toggle (needs visualizer access)
-  // =========================================================================
-  const toggleCanvasHeatmap = useCallback(() => {
-    const newValue = !state.visualizer.showCanvasHeatmap;
-    state.visualizerSetters.setShowCanvasHeatmap(newValue);
-    if (visualizerRef.current) {
-      visualizerRef.current.setHeatmapMode(newValue);
-      visualizerRef.current.update(nnRef.current);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.visualizer.showCanvasHeatmap]);
-
   return {
     trainOneStepWithAnimation,
     closeLossModal,
@@ -299,7 +285,6 @@ export function useTrainingControls(
     toggleTraining,
     reset,
     handleLearningRateChange,
-    toggleCanvasHeatmap,
     setVisualizer,
     trainingIntervalRef,
   };

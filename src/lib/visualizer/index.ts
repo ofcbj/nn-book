@@ -12,7 +12,6 @@ import { drawCalculationOverlay as drawCalcOverlay } from './calculationOverlay'
 export class Visualizer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
-  private heatmapMode: boolean = false;
 
   get inputLabels(): string[] {
     return [i18n.t('controls.grade'), i18n.t('controls.attitude'), i18n.t('controls.response')];
@@ -123,8 +122,7 @@ export class Visualizer {
       this.showLoss ? this.drawLossOverlay.bind(this) : null,
       this.backpropPhase ? this.drawBackpropHighlight.bind(this) : null,
       this.drawCalculationOverlay.bind(this),
-      this.currentNeuronData,
-      this.heatmapMode
+      this.currentNeuronData
     );
     // Store nodes for click detection
     this.lastNodes = nodes;
@@ -285,14 +283,6 @@ export class Visualizer {
   update(nn: NeuralNetwork): void {
     const steps = nn.getCalculationSteps();
     this.drawNetwork(nn, steps);
-  }
-
-  setHeatmapMode(enabled: boolean): void {
-    this.heatmapMode = enabled;
-  }
-
-  getHeatmapMode(): boolean {
-    return this.heatmapMode;
   }
 
   getActivationColor(value: number): string {

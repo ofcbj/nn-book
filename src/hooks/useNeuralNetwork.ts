@@ -83,9 +83,7 @@ export interface UseNeuralNetworkReturn {
     isJumped: boolean;
   };
   modals: ModalState;
-  visualizer: VisualizerState & {
-    toggleCanvasHeatmap: () => void;
-  };
+  visualizer: VisualizerState;
   actions: TrainingActions;
 }
 
@@ -195,7 +193,6 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
 
     visualizer: {
       ...state.visualizer,
-      toggleCanvasHeatmap: trainingControls.toggleCanvasHeatmap,
     },
 
     actions: {

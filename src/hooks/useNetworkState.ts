@@ -34,7 +34,6 @@ export interface TrainingConfig {
 }
 
 export interface VisualizerState {
-  showCanvasHeatmap: boolean;
   activations: ActivationData | null;
 }
 
@@ -78,12 +77,10 @@ export interface TrainingSetters {
 }
 
 export interface VisualizerSetters {
-  setShowCanvasHeatmap: (v: boolean) => void;
   setActivations: (v: ActivationData | null) => void;
 }
 
 export interface VisualizerActions {
-  toggleCanvasHeatmap: () => void;
 }
 
 export interface ModalSetters {
@@ -144,7 +141,6 @@ export function useNetworkState(): UseNetworkStateReturn {
   const [animationSpeed, setAnimationSpeed] = useState(1.0);
 
   // Visualizer state
-  const [showCanvasHeatmap, setShowCanvasHeatmap] = useState(false);
   const [activations, setActivations] = useState<ActivationData | null>(null);
 
   // Modal state
@@ -152,11 +148,6 @@ export function useNetworkState(): UseNetworkStateReturn {
   const [backpropSummaryData, setBackpropSummaryData] = useState<BackpropSummaryData | null>(null);
   const [showComparisonModal, setShowComparisonModal] = useState(false);
   const [weightComparisonData, setWeightComparisonData] = useState<WeightComparisonData | null>(null);
-
-  // Visualizer actions
-  const toggleCanvasHeatmap = useCallback(() => {
-    setShowCanvasHeatmap(prev => !prev);
-  }, []);
 
   // Modal actions
   const openComparisonModal = useCallback(() => {
@@ -190,7 +181,6 @@ export function useNetworkState(): UseNetworkStateReturn {
     },
     
     visualizer: {
-      showCanvasHeatmap,
       activations,
     },
     
@@ -231,7 +221,6 @@ export function useNetworkState(): UseNetworkStateReturn {
     },
     
     visualizerSetters: {
-      setShowCanvasHeatmap,
       setActivations,
     },
     
@@ -244,7 +233,6 @@ export function useNetworkState(): UseNetworkStateReturn {
 
     // Actions
     visualizerActions: {
-      toggleCanvasHeatmap,
     },
     
     modalActions: {

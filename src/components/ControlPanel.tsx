@@ -24,9 +24,6 @@ interface ControlPanelProps {
   isTraining: boolean;
   isAnimating: boolean;
   isJumped: boolean;
-  // Heatmap toggles
-  showCanvasHeatmap: boolean;
-  onToggleCanvasHeatmap: () => void;
   // Weight comparison
   hasComparisonData: boolean;
   onViewComparison: () => void;
@@ -51,8 +48,6 @@ export default function ControlPanel({
   isTraining,
   isAnimating,
   isJumped,
-  showCanvasHeatmap,
-  onToggleCanvasHeatmap,
   hasComparisonData,
   onViewComparison,
 }: ControlPanelProps) {
@@ -272,28 +267,11 @@ export default function ControlPanel({
         </Stack>
       </Box>
 
-      {/* Visualizer Options */}
+      {/* Weight Comparison */}
       <Box>
         <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
-          👁️ {t('visualizer.activationTitle')}
+          📊 {t('comparison.viewComparison')}
         </Typography>
-        
-        <Box sx={{ mb: 2 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={showCanvasHeatmap}
-                onChange={onToggleCanvasHeatmap}
-                size="small"
-              />
-            }
-            label={
-              <Typography variant="body2" color="text.secondary">
-                {t('visualizer.canvasHeatmap')}
-              </Typography>
-            }
-          />
-        </Box>
 
         <Box>
           <Button
