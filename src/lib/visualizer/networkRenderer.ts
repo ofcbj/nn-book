@@ -118,7 +118,7 @@ export function drawNetwork(
   const outputX = width - paddingRight - 10;
 
   // Shared drawing context
-  const drawContext: DrawContext = {
+  const drawContext: Omit<DrawContext, 'activationRange'> = {
     ctx,
     height,
     highlightedNeuron,
