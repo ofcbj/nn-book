@@ -5,7 +5,7 @@
  * Extracted from useNeuralNetwork for better separation of concerns.
  */
 
-import { useCallback, useRef, useEffect, RefObject } from 'react';
+import { useCallback, useRef, RefObject } from 'react';
 import type { NeuralNetwork } from '../lib/core';
 import { LAYER_SIZES, FORWARD_LAYER_ORDER, BACKWARD_LAYER_ORDER } from '../lib/core';
 import type { Visualizer } from '../lib/visualizer';
@@ -42,7 +42,6 @@ export function useNetworkAnimation(
 ): UseNetworkAnimationReturn {
   const shouldStopRef = useRef(false);
   const continueFromJumpedPositionRef = useRef<(() => Promise<void>) | null>(null);
-  const prevSpeedRef = useRef(animationMachine.state.speed);
 
   // =========================================================================
   // Compute Network and Refresh Display
@@ -96,7 +95,7 @@ export function useNetworkAnimation(
   const sleep = useCallback(async (ms: number, overrideSpeed?: number): Promise<void> => {
     const effectiveSpeed = overrideSpeed ?? state.training.animationSpeed;
 
-    if (state.training.isManualMode || effectiveSpeed === 0) {
+    if (state.training.isManualMode) {
       await animationMachine.waitForNextStep();
     } else {
       await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
@@ -281,25 +280,6 @@ export function useNetworkAnimation(
 
   // Store reference for useEffect
   continueFromJumpedPositionRef.current = continueFromJumpedPosition;
-
-  // =========================================================================
-  // Effect: Resume animation when speed changes from 0 to > 0 while jumped
-  // =========================================================================
-  useEffect(() => {
-    const currentSpeed = animationMachine.state.speed;
-    const wasZero = prevSpeedRef.current === 0;
-    const isNowPositive = currentSpeed > 0;
-    const isJumped = animationMachine.state.isJumped;
-
-    if (wasZero && isNowPositive && isJumped) {
-      shouldStopRef.current = false;
-      if (continueFromJumpedPositionRef.current) {
-        continueFromJumpedPositionRef.current();
-      }
-    }
-
-    prevSpeedRef.current = currentSpeed;
-  }, [animationMachine.state.speed, animationMachine.state.isJumped]);
 
   return {
     animateForwardPropagation,

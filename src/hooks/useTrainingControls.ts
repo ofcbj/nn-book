@@ -118,10 +118,6 @@ export function useTrainingControls(
     state.modalSetters.setLossModalData(null);
     animationMachine.closeLossModal();
 
-    // Ensure animation speed is at least 1.0 for backprop
-    if (state.training.animationSpeed === 0) {
-      state.trainingSetters.setAnimationSpeed(1.0);
-    }
 
     const nn = nnRef.current;
     animation.shouldStopRef.current = false;
@@ -138,10 +134,8 @@ export function useTrainingControls(
       output: nn.biasOutput.data.map(row => row[0])
     };
 
-    // Use speed of 1.0 if current speed is 0
-    const backpropSpeed = state.training.animationSpeed > 0 ? state.training.animationSpeed : 1.0;
-    await animation.animateBackwardPropagation(backpropSpeed);
-    await animation.sleep(500, backpropSpeed);
+    await animation.animateBackwardPropagation(state.training.animationSpeed);
+    await animation.sleep(500, state.training.animationSpeed);
 
     // Collect new weights
     const newWeights = {

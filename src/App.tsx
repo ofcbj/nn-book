@@ -54,6 +54,14 @@ function AppContent() {
           {/* Left Panel: Controls */}
           <Box sx={{ width: { xs: '100%', lg: 220 }, flexShrink: 0 }}>
             <Stack spacing={2.5}>
+              {/* Props organized by category:
+                  - Input Values: grade, attitude, response, targetValue, learningRate, animationSpeed, isManualMode
+                  - Control Handlers: onGradeChange, onAttitudeChange, onResponseChange, onTargetChange, onLearningRateChange, onAnimationSpeedChange, onManualModeChange
+                  - Training Actions: onNextStep, onStep, onTrainToggle, onReset
+                  - Training State: isTraining, isAnimating
+                  - Visualization Controls: showCanvasHeatmap, showGridHeatmap, onToggleCanvasHeatmap, onToggleGridHeatmap
+                  - Comparison Modal: hasComparisonData, onViewComparison
+              */}
               <ControlPanel
                 grade={inputs.grade}
                 attitude={inputs.attitude}

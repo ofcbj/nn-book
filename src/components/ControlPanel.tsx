@@ -222,7 +222,7 @@ export default function ControlPanel({
             <Slider
               value={animationSpeed}
               onChange={(_, v) => onAnimationSpeedChange(v as number)}
-              min={0}
+              min={0.1}
               max={2}
               step={0.1}
               disabled={isManualMode}
@@ -258,7 +258,7 @@ export default function ControlPanel({
           />
         </Box>
 
-        {(isManualMode || animationSpeed === 0) && isAnimating && (
+        {isManualMode && isAnimating && (
           <Box sx={{ mb: 2.5 }}>
             <Button
               variant="contained"
