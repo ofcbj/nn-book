@@ -82,9 +82,7 @@ function AppContent() {
                 isAnimating={training.isAnimating}
                 isJumped={training.isJumped}
                 showCanvasHeatmap={visualizer.showCanvasHeatmap}
-                showGridHeatmap={visualizer.showGridHeatmap}
                 onToggleCanvasHeatmap={visualizer.toggleCanvasHeatmap}
-                onToggleGridHeatmap={visualizer.toggleGridHeatmap}
                 hasComparisonData={modals.comparison.data !== null}
                 onViewComparison={modals.comparison.open}
               />
@@ -95,9 +93,9 @@ function AppContent() {
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Stack spacing={2.5}>
               <NetworkCanvas nn={network.nn} onVisualizerReady={network.setVisualizer} onCanvasClick={actions.handleCanvasClick} />
-              
-              {/* Activation Heatmap */}
-              {visualizer.showGridHeatmap && <ActivationHeatmap activations={visualizer.activations} />}
+
+              {/* Activation Heatmap - Always visible */}
+              <ActivationHeatmap activations={visualizer.activations} />
             </Stack>
           </Box>
           {/* Right Panel: Calculation Display */}

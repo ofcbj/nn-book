@@ -35,7 +35,6 @@ export interface TrainingConfig {
 
 export interface VisualizerState {
   showCanvasHeatmap: boolean;
-  showGridHeatmap: boolean;
   activations: ActivationData | null;
 }
 
@@ -80,13 +79,11 @@ export interface TrainingSetters {
 
 export interface VisualizerSetters {
   setShowCanvasHeatmap: (v: boolean) => void;
-  setShowGridHeatmap: (v: boolean) => void;
   setActivations: (v: ActivationData | null) => void;
 }
 
 export interface VisualizerActions {
   toggleCanvasHeatmap: () => void;
-  toggleGridHeatmap: () => void;
 }
 
 export interface ModalSetters {
@@ -148,7 +145,6 @@ export function useNetworkState(): UseNetworkStateReturn {
 
   // Visualizer state
   const [showCanvasHeatmap, setShowCanvasHeatmap] = useState(false);
-  const [showGridHeatmap, setShowGridHeatmap] = useState(true);
   const [activations, setActivations] = useState<ActivationData | null>(null);
 
   // Modal state
@@ -160,10 +156,6 @@ export function useNetworkState(): UseNetworkStateReturn {
   // Visualizer actions
   const toggleCanvasHeatmap = useCallback(() => {
     setShowCanvasHeatmap(prev => !prev);
-  }, []);
-
-  const toggleGridHeatmap = useCallback(() => {
-    setShowGridHeatmap(prev => !prev);
   }, []);
 
   // Modal actions
@@ -199,7 +191,6 @@ export function useNetworkState(): UseNetworkStateReturn {
     
     visualizer: {
       showCanvasHeatmap,
-      showGridHeatmap,
       activations,
     },
     
@@ -241,7 +232,6 @@ export function useNetworkState(): UseNetworkStateReturn {
     
     visualizerSetters: {
       setShowCanvasHeatmap,
-      setShowGridHeatmap,
       setActivations,
     },
     
@@ -255,7 +245,6 @@ export function useNetworkState(): UseNetworkStateReturn {
     // Actions
     visualizerActions: {
       toggleCanvasHeatmap,
-      toggleGridHeatmap,
     },
     
     modalActions: {

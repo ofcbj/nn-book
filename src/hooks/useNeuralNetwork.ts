@@ -85,7 +85,6 @@ export interface UseNeuralNetworkReturn {
   modals: ModalState;
   visualizer: VisualizerState & {
     toggleCanvasHeatmap: () => void;
-    toggleGridHeatmap: () => void;
   };
   actions: TrainingActions;
 }
@@ -197,7 +196,6 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     visualizer: {
       ...state.visualizer,
       toggleCanvasHeatmap: trainingControls.toggleCanvasHeatmap,
-      toggleGridHeatmap: state.visualizerActions.toggleGridHeatmap,
     },
 
     actions: {

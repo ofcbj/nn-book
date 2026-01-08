@@ -26,9 +26,7 @@ interface ControlPanelProps {
   isJumped: boolean;
   // Heatmap toggles
   showCanvasHeatmap: boolean;
-  showGridHeatmap: boolean;
   onToggleCanvasHeatmap: () => void;
-  onToggleGridHeatmap: () => void;
   // Weight comparison
   hasComparisonData: boolean;
   onViewComparison: () => void;
@@ -54,9 +52,7 @@ export default function ControlPanel({
   isAnimating,
   isJumped,
   showCanvasHeatmap,
-  showGridHeatmap,
   onToggleCanvasHeatmap,
-  onToggleGridHeatmap,
   hasComparisonData,
   onViewComparison,
 }: ControlPanelProps) {
@@ -282,7 +278,7 @@ export default function ControlPanel({
           👁️ {t('visualizer.activationTitle')}
         </Typography>
         
-        <Box sx={{ mb: 1.5 }}>
+        <Box sx={{ mb: 2 }}>
           <FormControlLabel
             control={
               <Switch
@@ -300,23 +296,6 @@ export default function ControlPanel({
         </Box>
 
         <Box>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={showGridHeatmap}
-                onChange={onToggleGridHeatmap}
-                size="small"
-              />
-            }
-            label={
-              <Typography variant="body2" color="text.secondary">
-                {t('visualizer.gridHeatmap')}
-              </Typography>
-            }
-          />
-        </Box>
-
-        <Box sx={{ mt: 2 }}>
           <Button
             variant="outlined"
             fullWidth
