@@ -164,9 +164,11 @@ export function useNetworkAnimation(
       speedOverride,
     });
 
-    // Collect summary data using helper function
-    const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
-    state.modalSetters.setBackpropSummaryData(summaryData);
+    // Collect summary data only if animation completed (not stopped)
+    if (!shouldStopRef.current) {
+      const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
+      state.modalSetters.setBackpropSummaryData(summaryData);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationMachine, sleep, computeAndRefreshDisplay, state.stats.learningRate]);
 
@@ -266,9 +268,11 @@ export function useNetworkAnimation(
 
       animationMachine.backwardComplete();
 
-      // Summary data using helper function
-      const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
-      state.modalSetters.setBackpropSummaryData(summaryData);
+      // Summary data only if animation completed (not stopped)
+      if (!shouldStopRef.current) {
+        const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
+        state.modalSetters.setBackpropSummaryData(summaryData);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationMachine, sleep, computeAndRefreshDisplay, state.stats.learningRate]);
