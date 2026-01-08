@@ -16,6 +16,7 @@
     "actionSection": "Training Actions",
     "oneStep": "Train Once",
     "autoTrain": "Auto Train",
+    "pause": "Pause",
     "stop": "Stop",
     "reset": "Reset",
     "nextStep": "Next Step"

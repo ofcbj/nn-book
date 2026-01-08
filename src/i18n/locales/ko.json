@@ -16,6 +16,7 @@
     "actionSection": "학습 동작",
     "oneStep": "1회 학습",
     "autoTrain": "자동 학습",
+    "pause": "일시정지",
     "stop": "중지",
     "reset": "초기화",
     "nextStep": "다음 단계"

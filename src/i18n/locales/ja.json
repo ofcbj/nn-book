@@ -16,6 +16,7 @@
     "actionSection": "学習操作",
     "oneStep": "1回学習",
     "autoTrain": "自動学習",
+    "pause": "一時停止",
     "stop": "停止",
     "reset": "リセット",
     "nextStep": "次のステップ"

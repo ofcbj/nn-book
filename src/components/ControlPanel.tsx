@@ -247,7 +247,7 @@ export default function ControlPanel({
               }
             }}
           >
-            {isJumped ? 'Resume' : (isAnimating ? t('controls.stop') : t('controls.oneStep'))}
+            {isJumped ? 'Resume' : (isAnimating ? t('controls.pause') : t('controls.oneStep'))}
           </Button>
           <Button 
             variant="contained" 
