@@ -42,6 +42,10 @@ export function useNetworkAnimation(
 ): UseNetworkAnimationReturn {
   const shouldStopRef = useRef(false);
   const continueFromJumpedPositionRef = useRef<(() => Promise<void>) | null>(null);
+  const animationMachineRef = useRef(animationMachine);
+
+  // Always keep the ref updated
+  animationMachineRef.current = animationMachine;
 
   // =========================================================================
   // Compute Network and Refresh Display
@@ -93,10 +97,15 @@ export function useNetworkAnimation(
   // Sleep utility
   // =========================================================================
   const sleep = useCallback(async (ms: number, overrideSpeed?: number): Promise<void> => {
-    const effectiveSpeed = overrideSpeed ?? state.training.animationSpeed;
-    await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.training.animationSpeed]);
+    // Always read the latest speed from the ref to get real-time updates
+    const effectiveSpeed = overrideSpeed ?? animationMachineRef.current.state.speed;
+    if (effectiveSpeed === 0) {
+      // Paused state - wait indefinitely until resumed
+      await animationMachineRef.current.waitForNextStep();
+    } else {
+      await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
+    }
+  }, []); // No dependencies - always uses ref for latest value
 
   // =========================================================================
   // Forward Propagation Animation
