@@ -3,23 +3,23 @@ import { useTranslation } from 'react-i18next';
 
 interface ControlPanelProps {
   // Input values
-  grade: number;
-  attitude: number;
-  response: number;
-  targetValue: number;
-  animationSpeed: number;
+  grade           : number;
+  attitude        : number;
+  response        : number;
+  targetValue     : number;
+  animationSpeed  : number;
   // Event handlers
-  onGradeChange: (value: number) => void;
+  onGradeChange   : (value: number) => void;
   onAttitudeChange: (value: number) => void;
   onResponseChange: (value: number) => void;
-  onTargetChange: (value: number) => void;
+  onTargetChange  : (value: number) => void;
   onAnimationSpeedChange: (value: number) => void;
   // Button handlers
-  onStep: () => void;
-  onReset: () => void;
+  onStep          : () => void;
+  onReset         : () => void;
   // State
-  isAnimating: boolean;
-  isJumped: boolean;
+  isAnimating     : boolean;
+  isJumped        : boolean;
 }
 
 export default function ControlPanel({

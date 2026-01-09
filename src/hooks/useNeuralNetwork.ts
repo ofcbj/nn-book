@@ -197,10 +197,10 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     },
 
     actions: {
-      trainOneStep: trainingControls.trainOneStepWithAnimation,
-      trainOneEpoch: trainingControls.trainOneEpochWithoutAnimation,
+      trainOneStep  : trainingControls.trainOneStepWithAnimation,
+      trainOneEpoch : trainingControls.trainOneEpochWithoutAnimation,
       toggleTraining: trainingControls.toggleTraining,
-      reset: trainingControls.reset,
+      reset         : trainingControls.reset,
       computeAndRefreshDisplay: animation.computeAndRefreshDisplay,
       handleCanvasClick: canvasInteraction.handleCanvasClick,
     },

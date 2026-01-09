@@ -1,13 +1,9 @@
 // Backpropagation helper functions for neural network training
 import { Matrix } from './matrix';
+import { dsigmoid } from './network';
 import type { BackpropSteps, BackpropNeuronData } from '../types';
 import { LAYER_SIZES } from './networkConfig';
 import type { LayerName } from './networkConfig';
-
-// Activation function derivative
-function dsigmoid(y: number): number {
-  return y*(1-y);
-}
 
 /**
  * Perform backpropagation for output layer and return deltas

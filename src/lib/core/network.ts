@@ -49,13 +49,13 @@ export class NeuralNetwork {
   learningRate: number = 0.1;
   
   // Store intermediate values for visualizer
-  lastInput: Matrix | null = null;
-  lastHidden1: Matrix | null = null;
-  lastHidden2: Matrix | null = null;
-  lastOutput: Matrix | null = null;
-  lastHidden1Raw: Matrix | null = null; // Before activation
-  lastHidden2Raw: Matrix | null = null; // Before activation
-  lastOutputRaw: Matrix | null = null;  // Before activation
+  lastInput      : Matrix | null = null;
+  lastHidden1    : Matrix | null = null;
+  lastHidden2    : Matrix | null = null;
+  lastOutput     : Matrix | null = null;
+  lastHidden1Raw : Matrix | null = null; // Before activation
+  lastHidden2Raw : Matrix | null = null; // Before activation
+  lastOutputRaw  : Matrix | null = null;  // Before activation
   
   // Store gradients for backprop visualizer
   lastGradients: {
@@ -169,10 +169,34 @@ export class NeuralNetwork {
     return this.lastOutput!.toArray();
   }
 
+  /**
+   * Compute backpropagation without updating weights.
+   * Used for visualization - generates backprop data for animation.
+   */
+  computeBackpropagation(inputArray: number[], targetArray: number[]): void {
+    // Feedforward
+    this.feedforward(inputArray);
+    // Compute backprop data without updating weights
+    this._computeBackpropData(targetArray, false);
+  }
+
+  /**
+   * Train the network with one epoch.
+   * Performs feedforward, backpropagation, and weight updates.
+   */
   train(inputArray: number[], targetArray: number[]): void {
     // Feedforward
     this.feedforward(inputArray);
+    
+    // Compute backprop data and update weights
+    this._computeBackpropData(targetArray, true);
+  }
 
+  /**
+   * Private method to compute backpropagation data.
+   * @param updateWeights - If true, updates weights; if false, only computes deltas for visualization
+   */
+  private _computeBackpropData(targetArray: number[], updateWeights: boolean): void {
     const inputs = this.lastInput!;
     const hidden1 = this.lastHidden1!;
     const hidden2 = this.lastHidden2!;
@@ -182,19 +206,19 @@ export class NeuralNetwork {
     const targets = Matrix.fromArray(targetArray);
 
     // Store old weights before update (for visualizer)
-    const oldWeightsHo = JSON.parse(JSON.stringify(this.weightsHidden2Output.data));
-    const oldBiasO = JSON.parse(JSON.stringify(this.biasOutput.data));
-    const oldWeightsH1h2 = JSON.parse(JSON.stringify(this.weightsHidden1Hidden2.data));
-    const oldBiasH2 = JSON.parse(JSON.stringify(this.biasHidden2.data));
+    const oldWeightsHo  = JSON.parse(JSON.stringify(this.weightsHidden2Output.data));
+    const oldBiasO      = JSON.parse(JSON.stringify(this.biasOutput.data));
+    const oldWeightsH1h2= JSON.parse(JSON.stringify(this.weightsHidden1Hidden2.data));
+    const oldBiasH2     = JSON.parse(JSON.stringify(this.biasHidden2.data));
     const oldWeightsIh1 = JSON.parse(JSON.stringify(this.weightsInputHidden1.data));
-    const oldBiasH1 = JSON.parse(JSON.stringify(this.biasHidden1.data));
+    const oldBiasH1     = JSON.parse(JSON.stringify(this.biasHidden1.data));
 
     // === BACKPROPAGATION ===
     // All layers follow the same pattern in reverse:
     // 1. Calculate error (output layer: target-output, hidden: backprop from next layer)
     // 2. Calculate gradients (error × derivative × learning_rate)
     // 3. Calculate weight deltas (gradients × previous_layer_activations^T)
-    // 4. Update weights and biases
+    // 4. Update weights and biases (if updateWeights is true)
     
     // Define layer configurations for backprop (processed in reverse order)
     const backpropConfigs = [
@@ -236,10 +260,10 @@ export class NeuralNetwork {
 
     // Process each layer with unified backprop logic
     for (const config of backpropConfigs) {
-      let errors: Matrix;
-      let gradients: Matrix;
+      let errors      : Matrix;
+      let gradients   : Matrix;
       let weightDeltas: Matrix;
-      let biasDeltas: Matrix;
+      let biasDeltas  : Matrix;
 
       if (config.isOutputLayer) {
         // Output layer: error = target - output
@@ -250,10 +274,10 @@ export class NeuralNetwork {
           this.learningRate
         );
         
-        errors = result.outputErrors;
-        gradients = result.gradientsOutput;
-        weightDeltas = result.weightHoDeltas;
-        biasDeltas = result.biasOutputDeltas;
+        errors      = result.outputErrors;
+        gradients   = result.gradientsOutput;
+        weightDeltas= result.weightHoDeltas;
+        biasDeltas  = result.biasOutputDeltas;
       } else {
         // Hidden layers: error propagated from next layer
         const result = backpropHiddenLayer(
@@ -264,25 +288,23 @@ export class NeuralNetwork {
           this.learningRate
         );
         
-        errors = result.currentErrors;
-        gradients = result.currentGradients;
-        weightDeltas = result.weightDeltas;
-        biasDeltas = result.biasDeltas;
+        errors      = result.currentErrors;
+        gradients   = result.currentGradients;
+        weightDeltas= result.weightDeltas;
+        biasDeltas  = result.biasDeltas;
       }
-
-      // Update weights and biases
-      config.weights.add(weightDeltas);
-      config.bias.add(biasDeltas);
-
+      // Update weights and biases only if requested
+      if (updateWeights) {
+        config.weights.add(weightDeltas);
+        config.bias.add(biasDeltas);
+      }
       // Store for visualizer
       layerErrors[config.name] = errors;
       layerGradients[config.name] = gradients;
       layerWeightDeltas[config.name] = weightDeltas;
-
       // Propagate error to previous layer
       currentError = errors;
     }
-
     // === STORE FOR VISUALIZATION ===
     this.lastGradients.output = layerErrors.output;
     this.lastGradients.layer2 = layerErrors.layer2;
@@ -297,8 +319,6 @@ export class NeuralNetwork {
     this.lastLoss = -targetOneHot.reduce((sum, t, i) =>
       sum + (t > 0 ? Math.log(Math.max(outputs.data[i][0], 1e-7)) : 0), 0
     );
-
-
     // Build detailed backprop steps for visualizer
     this.lastBackpropSteps = createBackpropSteps({
       activations: {
@@ -309,32 +329,32 @@ export class NeuralNetwork {
       },
       target: targetArray,
       errors: {
-        output: layerErrors.output,
-        hidden2: layerErrors.layer2,
-        hidden1: layerErrors.layer1
+        output  : layerErrors.output,
+        hidden2 : layerErrors.layer2,
+        hidden1 : layerErrors.layer1
       },
       gradients: {
-        output: layerGradients.output,
-        hidden2: layerGradients.layer2,
-        hidden1: layerGradients.layer1
+        output  : layerGradients.output,
+        hidden2 : layerGradients.layer2,
+        hidden1 : layerGradients.layer1
       },
       weightDeltas: {
-        outputToHidden2: layerWeightDeltas.output,
+        outputToHidden2 : layerWeightDeltas.output,
         hidden2ToHidden1: layerWeightDeltas.layer2,
-        hidden1ToInput: layerWeightDeltas.layer1
+        hidden1ToInput  : layerWeightDeltas.layer1
       },
       oldWeights: {
-        output: { weights: oldWeightsHo, bias: oldBiasO },
-        hidden2: { weights: oldWeightsH1h2, bias: oldBiasH2 },
-        hidden1: { weights: oldWeightsIh1, bias: oldBiasH1 }
+        output  : { weights: oldWeightsHo, bias: oldBiasO },
+        hidden2 : { weights: oldWeightsH1h2, bias: oldBiasH2 },
+        hidden1 : { weights: oldWeightsIh1, bias: oldBiasH1 }
       },
       newWeights: {
-        output: { weights: this.weightsHidden2Output.data, bias: this.biasOutput.data },
-        hidden2: { weights: this.weightsHidden1Hidden2.data, bias: this.biasHidden2.data },
-        hidden1: { weights: this.weightsInputHidden1.data, bias: this.biasHidden1.data }
+        output  : { weights: this.weightsHidden2Output.data, bias: this.biasOutput.data },
+        hidden2 : { weights: this.weightsHidden1Hidden2.data, bias: this.biasHidden2.data },
+        hidden1 : { weights: this.weightsInputHidden1.data, bias: this.biasHidden1.data }
       },
       currentWeights: {
-        hidden2ToOutput: this.weightsHidden2Output,
+        hidden2ToOutput : this.weightsHidden2Output,
         hidden1ToHidden2: this.weightsHidden1Hidden2
       },
       loss: this.lastLoss
@@ -350,7 +370,6 @@ export class NeuralNetwork {
       layer2: [],
       output: []
     };
-    
     // Define layer configurations for iteration
     const layerConfigs = [
       {
@@ -384,11 +403,11 @@ export class NeuralNetwork {
     for (const config of layerConfigs) {
       const count = LAYER_SIZES[config.key];
       for (let i = 0; i < count; i++) {
-        const weights = config.weights.data[i];
-        const bias = config.bias.data[i][0];
-        const rawValue = config.rawValues.data[i][0];
-        const activatedValue = config.activatedValues.data[i][0];
-        const inputArray = config.inputs.toArray();
+        const weights       = config.weights.data[i];
+        const bias          = config.bias.data[i][0];
+        const rawValue      = config.rawValues.data[i][0];
+        const activatedValue= config.activatedValues.data[i][0];
+        const inputArray    = config.inputs.toArray();
         
         const neuronData: NeuronCalculation = {
           neuronIndex: i,
@@ -409,10 +428,8 @@ export class NeuralNetwork {
         steps[config.key].push(neuronData);
       }
     }
-    
     return steps;
   }
-
   /**
    * Update weights and bias for a specific neuron in a layer.
    * This provides a flexible way to update neuron parameters without hardcoding layer names.

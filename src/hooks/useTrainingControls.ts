@@ -14,23 +14,23 @@ import type { UseNetworkAnimationReturn } from './useNetworkAnimation';
 import { createWeightComparisonData } from '../lib/visualizer/weightComparison';
 
 export interface UseTrainingControlsReturn {
-  trainOneStepWithAnimation: () => Promise<void>;
-  trainOneEpochWithoutAnimation: () => void;
-  closeLossModal: () => Promise<void>;
-  closeBackpropModal: () => void;
-  toggleTraining: () => void;
-  reset: () => void;
-  handleLearningRateChange: (v: number) => void;
-  setVisualizer: (v: Visualizer) => void;
-  trainingIntervalRef: RefObject<number | undefined>;
+  trainOneStepWithAnimation     : () => Promise<void>;
+  trainOneEpochWithoutAnimation : () => void;
+  closeLossModal                : () => Promise<void>;
+  closeBackpropModal            : () => void;
+  toggleTraining                : () => void;
+  reset                         : () => void;
+  handleLearningRateChange      : (v: number) => void;
+  setVisualizer                 : (v: Visualizer) => void;
+  trainingIntervalRef           : RefObject<number | undefined>;
 }
 
 export function useTrainingControls(
-  nnRef: RefObject<NeuralNetwork>,
-  visualizerRef: RefObject<Visualizer | null>,
-  state: UseNetworkStateReturn,
-  animationMachine: AnimationStateMachine,
-  animation: UseNetworkAnimationReturn
+  nnRef                         : RefObject<NeuralNetwork>,
+  visualizerRef                 : RefObject<Visualizer | null>,
+  state                         : UseNetworkStateReturn,
+  animationMachine              : AnimationStateMachine,
+  animation                     : UseNetworkAnimationReturn
 ): UseTrainingControlsReturn {
   const trainingIntervalRef = useRef<number | undefined>(undefined);
 
@@ -49,7 +49,6 @@ export function useTrainingControls(
     const inputs = [state.inputs.grade, state.inputs.attitude, state.inputs.response];
     const targetOneHot = [0, 0, 0];
     targetOneHot[state.inputs.targetValue] = 1;
-
     // Backup old weights and biases before training
     const oldWeights = {
       layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
@@ -61,10 +60,8 @@ export function useTrainingControls(
       layer2: nn.biasHidden2.data.map(row => row[0]),
       output: nn.biasOutput.data.map(row => row[0])
     };
-
     // Train
     nn.train(inputs, targetOneHot);
-    
     // Collect new weights and biases after training
     const newWeights = {
       layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
@@ -76,17 +73,66 @@ export function useTrainingControls(
       layer2: nn.biasHidden2.data.map(row => row[0]),
       output: nn.biasOutput.data.map(row => row[0])
     };
-
     // Create and save weight comparison data
     const comparisonData = createWeightComparisonData(oldWeights, newWeights, oldBiases, newBiases, state.stats.learningRate);
     state.modalSetters.setWeightComparisonData(comparisonData);
-
     // Update stats
     state.statsSetters.setLoss(nn.lastLoss);
     state.statsSetters.setEpoch(prev => prev + 1);
     animation.computeAndRefreshDisplay();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, state.inputs.targetValue, animation, state.stats.learningRate]);
+  // =========================================================================
+  // Train One Step With Animation (Stop/Resume Toggle)
+  // =========================================================================
+  // =========================================================================
+  // Helper Functions
+  // =========================================================================
+  
+  const prepareTrainingInputs = useCallback(() => {
+    const inputs = [state.inputs.grade, state.inputs.attitude, state.inputs.response];
+    const targetOneHot = [0, 0, 0];
+    targetOneHot[state.inputs.targetValue] = 1;
+    return { inputs, targetOneHot };
+  }, [state.inputs]);
+
+  const backupWeightsAndBiases = useCallback((nn: NeuralNetwork) => {
+    return {
+      weights: {
+        layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
+        layer2: JSON.parse(JSON.stringify(nn.weightsHidden1Hidden2.data)),
+        output: JSON.parse(JSON.stringify(nn.weightsHidden2Output.data))
+      },
+      biases: {
+        layer1: JSON.parse(JSON.stringify(nn.biasHidden1.data)),
+        layer2: JSON.parse(JSON.stringify(nn.biasHidden2.data)),
+        output: JSON.parse(JSON.stringify(nn.biasOutput.data))
+      }
+    };
+  }, []);
+
+  const restoreWeightsAndBiases = useCallback((
+    nn: NeuralNetwork, 
+    backup: ReturnType<typeof backupWeightsAndBiases>,
+    inputs: number[]
+  ) => {
+    nn.weightsInputHidden1.data   = backup.weights.layer1;
+    nn.weightsHidden1Hidden2.data = backup.weights.layer2;
+    nn.weightsHidden2Output.data  = backup.weights.output;
+    nn.biasHidden1.data           = backup.biases.layer1;
+    nn.biasHidden2.data           = backup.biases.layer2;
+    nn.biasOutput.data            = backup.biases.output;
+    nn.feedforward(inputs);
+  }, []);
+
+  const showLossModal = useCallback((nn: NeuralNetwork) => {
+    const predictions = nn.lastOutput?.toArray() || [0, 0, 0];
+    const loss = nn.lastLoss;
+    state.modalSetters.setLossModalData({ 
+      targetClass: state.inputs.targetValue, 
+      predictions, 
+      loss 
+    });
+  }, [state.inputs.targetValue, state.modalSetters]);
 
   // =========================================================================
   // Train One Step With Animation (Stop/Resume Toggle)
@@ -94,106 +140,55 @@ export function useTrainingControls(
   const trainOneStepWithAnimation = useCallback(async () => {
     const machineState = animationMachine.state;
     
-    // If animating and jumped (paused), resume from current position
+    // Case 1: Resume from paused position
     if (animationMachine.isAnimating && machineState.isJumped) {
       animation.shouldStopRef.current = false;
-      // Resume with current animation speed to reset isJumped flag
       animationMachine.resume(state.training.animationSpeed);
-      
-      // Continue animation from jumped position
       await animation.continueFromJumpedPosition();
-      
-      // If we just completed forward propagation, show loss modal
+      // If completed forward propagation, prepare for backprop
       if (machineState.type === 'forward_animating' && !animation.shouldStopRef.current) {
         const nn = nnRef.current;
-        const inputs = [state.inputs.grade, state.inputs.attitude, state.inputs.response];
-        const targetOneHot = [0, 0, 0];
-        targetOneHot[state.inputs.targetValue] = 1;
+        const { inputs, targetOneHot } = prepareTrainingInputs();
+        const backup = backupWeightsAndBiases(nn);
         
-        // Backup old weights
-        const oldWeights = {
-          layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
-          layer2: JSON.parse(JSON.stringify(nn.weightsHidden1Hidden2.data)),
-          output: JSON.parse(JSON.stringify(nn.weightsHidden2Output.data))
-        };
-        const oldBiases = {
-          layer1: JSON.parse(JSON.stringify(nn.biasHidden1.data)),
-          layer2: JSON.parse(JSON.stringify(nn.biasHidden2.data)),
-          output: JSON.parse(JSON.stringify(nn.biasOutput.data))
-        };
-        
-        // Train
-        nn.train(inputs, targetOneHot);
-        const predictions = nn.lastOutput?.toArray() || [0, 0, 0];
-        const currentLoss = nn.lastLoss;
-        
-        // Restore old weights for backprop visualizer
-        nn.weightsInputHidden1.data = oldWeights.layer1;
-        nn.weightsHidden1Hidden2.data = oldWeights.layer2;
-        nn.weightsHidden2Output.data = oldWeights.output;
-        nn.biasHidden1.data = oldBiases.layer1;
-        nn.biasHidden2.data = oldBiases.layer2;
-        nn.biasOutput.data = oldBiases.output;
-        nn.feedforward(inputs);
-        
-        state.modalSetters.setLossModalData({ targetClass: state.inputs.targetValue, predictions, loss: currentLoss });
+        nn.computeBackpropagation(inputs, targetOneHot);
+        restoreWeightsAndBiases(nn, backup, inputs);
+        showLossModal(nn);
       }
-      
       return;
     }
-    
-    // If animating (not paused), stop the animation by pausing
+    // Case 2: Pause running animation
     if (animationMachine.isAnimating) {
-      // Pause to preserve current position and stage (sets isJumped = true)
       animationMachine.pause();
       animation.shouldStopRef.current = true;
       return;
     }
-
-    // Otherwise, start new training animation
+    // Case 3: Start new animation
     animation.shouldStopRef.current = false;
     animationMachine.startTraining();
 
     const nn = nnRef.current;
-    const inputs = [state.inputs.grade, state.inputs.attitude, state.inputs.response];
-    const targetOneHot = [0, 0, 0];
-    targetOneHot[state.inputs.targetValue] = 1;
+    const { inputs, targetOneHot } = prepareTrainingInputs();
 
-    // Forward pass
     nn.feedforward(inputs);
     await animation.animateForwardPropagation();
 
     if (animation.shouldStopRef.current) return;
 
-    // Backup old weights
-    const oldWeights = {
-      layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
-      layer2: JSON.parse(JSON.stringify(nn.weightsHidden1Hidden2.data)),
-      output: JSON.parse(JSON.stringify(nn.weightsHidden2Output.data))
-    };
-    const oldBiases = {
-      layer1: JSON.parse(JSON.stringify(nn.biasHidden1.data)),
-      layer2: JSON.parse(JSON.stringify(nn.biasHidden2.data)),
-      output: JSON.parse(JSON.stringify(nn.biasOutput.data))
-    };
-
-    // Train
+    const backup = backupWeightsAndBiases(nn);
     nn.train(inputs, targetOneHot);
-    const predictions = nn.lastOutput?.toArray() || [0, 0, 0];
-    const currentLoss = nn.lastLoss;
-
-    // Restore old weights for backprop visualizer
-    nn.weightsInputHidden1.data = oldWeights.layer1;
-    nn.weightsHidden1Hidden2.data = oldWeights.layer2;
-    nn.weightsHidden2Output.data = oldWeights.output;
-    nn.biasHidden1.data = oldBiases.layer1;
-    nn.biasHidden2.data = oldBiases.layer2;
-    nn.biasOutput.data = oldBiases.output;
-    nn.feedforward(inputs);
-
-    state.modalSetters.setLossModalData({ targetClass: state.inputs.targetValue, predictions, loss: currentLoss });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, state.inputs.targetValue, animation, animationMachine]);
+    restoreWeightsAndBiases(nn, backup, inputs);
+    showLossModal(nn);
+  }, [
+    state.inputs, 
+    state.training.animationSpeed, 
+    animation, 
+    animationMachine, 
+    prepareTrainingInputs,
+    backupWeightsAndBiases,
+    restoreWeightsAndBiases,
+    showLossModal
+  ]);
 
   // =========================================================================
   // Close Loss Modal - Start Backward Propagation

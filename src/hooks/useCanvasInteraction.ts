@@ -1,36 +1,19 @@
-/**
- * Canvas Interaction Hook
- * 
- * Handles canvas click events for neural network visualizer.
- * Extracted from useNeuralNetwork for better separation of concerns.
- */
-
 import { useCallback, RefObject } from 'react';
 import type { NeuralNetwork, LayerName } from '../lib/core';
 import type { Visualizer } from '../lib/visualizer';
 import type { UseNetworkStateReturn } from './useNetworkState';
 import type { AnimationStateMachine } from './useAnimationStateMachine';
 import type { UseNetworkAnimationReturn } from './useNetworkAnimation';
-import type { 
-  ForwardAnimatingState, 
-  BackwardAnimatingState,
-  AnimationState,
-} from '../lib/animation';
-import {
-  getNextForwardStage,
-  getNextBackpropStage,
-  getNextForwardNeuron,
-  getNextBackwardNeuron,
+import type { ForwardAnimatingState, BackwardAnimatingState, AnimationState } from '../lib/animation';
+import { getNextForwardStage, getNextBackpropStage, getNextForwardNeuron, getNextBackwardNeuron, 
 } from './useAnimationStateMachine';
 
 export interface UseCanvasInteractionReturn {
   handleCanvasClick: (x?: number, y?: number) => void;
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper Types
 // ─────────────────────────────────────────────────────────────────────────────
-
 type NeuronLocation = { layer: LayerName; index: number };
 
 interface AnimationContext {
@@ -39,11 +22,9 @@ interface AnimationContext {
   animationMachine: AnimationStateMachine;
   animation: UseNetworkAnimationReturn;
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Data Access Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
 function getForwardNeuronData(nn: NeuralNetwork, layer: LayerName, index: number) {
   const calcSteps = nn.getCalculationSteps();
   if (!calcSteps) return null;
@@ -55,11 +36,9 @@ function getBackwardNeuronData(nn: NeuralNetwork, layer: LayerName, index: numbe
   if (!backpropData) return null;
   return backpropData[layer]?.[index] ?? null;
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Neuron Transition Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
 function transitionToNextForwardNeuron(
   ctx: AnimationContext,
   nextNeuron: NeuronLocation
@@ -85,11 +64,9 @@ function transitionToNextBackwardNeuron(
   ctx.animation.refreshDisplayOnly();  // No recalculation needed - uses pre-calculated data
   return true;
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Forward/Backward Stage Handlers
 // ─────────────────────────────────────────────────────────────────────────────
-
 function handleForwardSameNeuronClick(
   ctx: AnimationContext,
   neuron: NeuronLocation,
@@ -102,7 +79,6 @@ function handleForwardSameNeuronClick(
     ctx.animation.refreshDisplayOnly();  // No recalculation needed - just update visualization
     return;
   }
-  
   // All stages done - move to next neuron
   const nextNeuron = getNextForwardNeuron(neuron.layer, neuron.index);
   if (nextNeuron) {
@@ -124,7 +100,6 @@ function handleBackwardSameNeuronClick(
     ctx.animation.refreshDisplayOnly();  // No recalculation needed - just update visualization
     return;
   }
-  
   // All stages done - move to next neuron in backward order
   const nextNeuron = getNextBackwardNeuron(neuron.layer, neuron.index);
   if (nextNeuron) {
@@ -156,77 +131,14 @@ function handleJumpToDifferentNeuron(
 
   ctx.animation.refreshDisplayOnly();  // No recalculation needed - just visualizing existing data
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Paused State Click Handlers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function handleForwardJumpedClick(
-  ctx: AnimationContext,
-  machineState: ForwardAnimatingState
-): void {
-  const nextStage = getNextForwardStage(machineState.stage);
-  
-  if (nextStage) {
-    ctx.animationMachine.forwardTick(machineState.layer, machineState.neuronIndex, nextStage, machineState.neuronData);
-    ctx.animation.refreshDisplayOnly();  // No recalculation needed - just update visualization
-    return;
-  }
-  
-  // All stages done - move to next neuron while staying paused
-  const nextNeuron = getNextForwardNeuron(machineState.layer, machineState.neuronIndex);
-  if (nextNeuron) {
-    transitionToNextForwardNeuron(ctx, nextNeuron);
-  } else {
-    completeForwardPass(ctx);
-  }
-}
-
-function handleBackwardJumpedClick(
-  ctx: AnimationContext,
-  machineState: BackwardAnimatingState
-): void {
-  const nextStage = getNextBackpropStage(machineState.stage);
-  
-  if (nextStage) {
-    // Apply update if completing 'update' stage
-    if (machineState.stage === 'update' && machineState.neuronData) {
-      const neuronData = machineState.neuronData;
-      ctx.nn.updateNeuronWeights(machineState.layer, machineState.neuronIndex, neuronData.newWeights, neuronData.newBias);
-      ctx.nn.feedforward(ctx.nn.lastInput!.toArray());
-    }
-    ctx.animationMachine.backwardTick(machineState.layer, machineState.neuronIndex, nextStage, machineState.neuronData);
-    ctx.animation.refreshDisplayOnly();  // No recalculation needed - just update visualization
-    return;
-  }
-  
-  // All stages done - move to next neuron while staying paused
-  const nextNeuron = getNextBackwardNeuron(machineState.layer, machineState.neuronIndex);
-  if (nextNeuron) {
-    transitionToNextBackwardNeuron(ctx, nextNeuron);
-  } else {
-    ctx.animationMachine.backwardComplete();
-  }
-}
-
-function handleJumpedStateClick(ctx: AnimationContext, machineState: AnimationState): void {
-  if (machineState.type === 'forward_animating') {
-    handleForwardJumpedClick(ctx, machineState);
-  } else if (machineState.type === 'backward_animating') {
-    handleBackwardJumpedClick(ctx, machineState);
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Forward Pass Completion
 // ─────────────────────────────────────────────────────────────────────────────
-
 function completeForwardPass(ctx: AnimationContext): void {
   const { nn, state, animationMachine } = ctx;
   const inputs = [state.inputs.grade, state.inputs.attitude, state.inputs.response];
   const targetOneHot = [0, 0, 0];
   targetOneHot[state.inputs.targetValue] = 1;
-
   // Backup old weights
   const oldWeights = {
     layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
@@ -238,30 +150,25 @@ function completeForwardPass(ctx: AnimationContext): void {
     layer2: JSON.parse(JSON.stringify(nn.biasHidden2.data)),
     output: JSON.parse(JSON.stringify(nn.biasOutput.data))
   };
-
-  // Train to prepare backprop data
-  nn.train(inputs, targetOneHot);
+  // Compute backprop data for visualizer (without weight updates)
+  nn.computeBackpropagation(inputs, targetOneHot);
   const predictions = nn.lastOutput?.toArray() || [0, 0, 0];
   const currentLoss = nn.lastLoss;
-
   // Restore old weights for backprop visualizer
-  nn.weightsInputHidden1.data = oldWeights.layer1;
+  nn.weightsInputHidden1.data   = oldWeights.layer1;
   nn.weightsHidden1Hidden2.data = oldWeights.layer2;
-  nn.weightsHidden2Output.data = oldWeights.output;
-  nn.biasHidden1.data = oldBiases.layer1;
-  nn.biasHidden2.data = oldBiases.layer2;
-  nn.biasOutput.data = oldBiases.output;
+  nn.weightsHidden2Output.data  = oldWeights.output;
+  nn.biasHidden1.data           = oldBiases.layer1;
+  nn.biasHidden2.data           = oldBiases.layer2;
+  nn.biasOutput.data            = oldBiases.output;
   nn.feedforward(inputs);
-
   // Show loss modal
   animationMachine.forwardComplete();
   state.modalSetters.setLossModalData({ targetClass: state.inputs.targetValue, predictions, loss: currentLoss });
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Neuron Click Detection
 // ─────────────────────────────────────────────────────────────────────────────
-
 function isValidNeuronLayer(layer: string): layer is LayerName {
   return layer === 'layer1' || layer === 'layer2' || layer === 'output';
 }
@@ -272,15 +179,12 @@ function isSameNeuron(
   neuron: NeuronLocation
 ): boolean {
   if (machineState.type !== expectedType) return false;
-  // Type narrowing happens after the check above
   const animatingState = machineState as ForwardAnimatingState | BackwardAnimatingState;
   return animatingState.layer === neuron.layer && animatingState.neuronIndex === neuron.index;
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Hook
 // ─────────────────────────────────────────────────────────────────────────────
-
 export function useCanvasInteraction(
   nnRef: RefObject<NeuralNetwork>,
   visualizerRef: RefObject<Visualizer | null>,
@@ -296,7 +200,6 @@ export function useCanvasInteraction(
     const nn = nnRef.current;
     const machineState = animationMachine.state;
     const ctx: AnimationContext = { nn, state, animationMachine, animation };
-
     // Handle neuron click if coordinates provided
     if (x !== undefined && y !== undefined && visualizer) {
       const neuron = visualizer.findNeuronAtPosition(x, y);
@@ -308,27 +211,15 @@ export function useCanvasInteraction(
           handleForwardSameNeuronClick(ctx, neuronLoc, machineState as ForwardAnimatingState);
           return;
         }
-
         if (isSameNeuron(machineState, 'backward_animating', neuronLoc)) {
           handleBackwardSameNeuronClick(ctx, neuronLoc, machineState as BackwardAnimatingState);
           return;
         }
-
         // Different neuron clicked - jump to it
         handleJumpToDifferentNeuron(ctx, neuronLoc, machineState);
         return;
       }
     }
-
-    // Click on empty space - pause/resume or next step
-    if (animationMachine.state.speed > 0) {
-      animationMachine.pause();
-    } else if (machineState.isJumped) {
-      handleJumpedStateClick(ctx, machineState);
-    } else {
-      animationMachine.nextStep();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationMachine, animation]);
 
   return {
