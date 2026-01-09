@@ -53,39 +53,24 @@ function AppContent() {
         >
           {/* Left Panel: Controls */}
           <Box sx={{ width: { xs: '100%', lg: 220 }, flexShrink: 0 }}>
-            <Stack spacing={2.5}>
-              {/* Props organized by category:
-                  - Input Values: grade, attitude, response, targetValue, learningRate, animationSpeed
-                  - Control Handlers: onGradeChange, onAttitudeChange, onResponseChange, onTargetChange, onLearningRateChange, onAnimationSpeedChange
-                  - Training Actions: onStep, onTrainToggle, onReset
-                  - Training State: isTraining, isAnimating, isJumped
-                  - Visualization Controls: showCanvasHeatmap, showGridHeatmap, onToggleCanvasHeatmap, onToggleGridHeatmap
-                  - Comparison Modal: hasComparisonData, onViewComparison
-              */}
-              <ControlPanel
-                grade={inputs.grade}
-                attitude={inputs.attitude}
-                response={inputs.response}
-                targetValue={inputs.targetValue}
-                learningRate={inputs.learningRate}
-                animationSpeed={inputs.animationSpeed}
-                onGradeChange={controls.setGrade}
-                onAttitudeChange={controls.setAttitude}
-                onResponseChange={controls.setResponse}
-                onTargetChange={controls.setTargetValue}
-                onLearningRateChange={controls.setLearningRate}
-                onAnimationSpeedChange={controls.setAnimationSpeed}
-                onStep={actions.trainOneStep}
-                onTrainToggle={actions.toggleTraining}
-                onReset={actions.reset}
-                isTraining={training.isTraining}
-                isAnimating={training.isAnimating}
-                isJumped={training.isJumped}
-                hasComparisonData={modals.comparison.data !== null}
-                onViewComparison={modals.comparison.open}
-              />
-              <StatsDisplay epoch={stats.epoch} loss={stats.loss} output={stats.output} />
-            </Stack>
+            <ControlPanel
+              grade={inputs.grade}
+              attitude={inputs.attitude}
+              response={inputs.response}
+              targetValue={inputs.targetValue}
+              learningRate={inputs.learningRate}
+              animationSpeed={inputs.animationSpeed}
+              onGradeChange={controls.setGrade}
+              onAttitudeChange={controls.setAttitude}
+              onResponseChange={controls.setResponse}
+              onTargetChange={controls.setTargetValue}
+              onLearningRateChange={controls.setLearningRate}
+              onAnimationSpeedChange={controls.setAnimationSpeed}
+              onStep={actions.trainOneStep}
+              onReset={actions.reset}
+              isAnimating={training.isAnimating}
+              isJumped={training.isJumped}
+            />
           </Box>
           {/* Center: Network Visualizer */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -96,9 +81,19 @@ function AppContent() {
               <ActivationHeatmap activations={visualizer.activations} />
             </Stack>
           </Box>
-          {/* Right Panel: Calculation Display */}
+          {/* Right Panel: Stats, Weight Comparison, Calculation Display */}
           <Box sx={{ width: { xs: '100%', lg: 280 }, flexShrink: 0 }}>
-            <CalculationPanel steps={stats.steps} />
+            <Stack spacing={2.5}>
+              <StatsDisplay 
+                epoch={stats.epoch} 
+                loss={stats.loss} 
+                output={stats.output} 
+                isTraining={training.isTraining}
+                onTrainOnce={actions.trainOneEpoch}
+                onTrainToggle={actions.toggleTraining}
+              />
+              <CalculationPanel steps={stats.steps} hasComparisonData={modals.comparison.data !== null} onViewComparison={modals.comparison.open} />
+            </Stack>
           </Box>
         </Box>
 

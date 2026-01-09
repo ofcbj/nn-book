@@ -1,13 +1,16 @@
-import { Box, Paper, Typography, Stack } from '@mui/material';
+import { Box, Paper, Typography, Stack, Button } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 
 interface StatsDisplayProps {
   epoch: number;
   loss: number;
   output: number[] | null;
+  isTraining: boolean;
+  onTrainOnce: () => void;
+  onTrainToggle: () => void;
 }
 
-export default function StatsDisplay({ epoch, loss, output }: StatsDisplayProps) {
+export default function StatsDisplay({ epoch, loss, output, isTraining, onTrainOnce, onTrainToggle }: StatsDisplayProps) {
   const { t } = useTranslation();
   const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
   const getOutputText = () => {
@@ -66,7 +69,7 @@ export default function StatsDisplay({ epoch, loss, output }: StatsDisplayProps)
           </Typography>
         </Box>
         
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #1e293b' }}>
           <Typography variant="body2" color="text.secondary">
             {t('stats.prediction')}:
           </Typography>
@@ -80,6 +83,39 @@ export default function StatsDisplay({ epoch, loss, output }: StatsDisplayProps)
           >
             {getOutputText()}
           </Typography>
+        </Box>
+        
+        {/* Training Buttons */}
+        <Box sx={{ pt: 1 }}>
+          <Stack spacing={1}>
+            {/* Train Once Button */}
+            <Button 
+              variant="contained" 
+              fullWidth
+              color="primary"
+              onClick={onTrainOnce}
+              disabled={isTraining}
+            >
+              {t('controls.oneStep')}
+            </Button>
+            
+            {/* Auto Train Button */}
+            <Button 
+              variant="contained" 
+              fullWidth
+              color={isTraining ? 'error' : 'success'}
+              onClick={onTrainToggle}
+              sx={{
+                animation: isTraining ? 'pulse 1.5s infinite' : 'none',
+                '@keyframes pulse': {
+                  '0%, 100%': { opacity: 1 },
+                  '50%': { opacity: 0.7 },
+                },
+              }}
+            >
+              {isTraining ? t('controls.stop') : t('controls.autoTrain')}
+            </Button>
+          </Stack>
         </Box>
       </Stack>
     </Paper>

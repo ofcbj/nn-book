@@ -18,15 +18,10 @@ interface ControlPanelProps {
   onAnimationSpeedChange: (value: number) => void;
   // Button handlers
   onStep: () => void;
-  onTrainToggle: () => void;
   onReset: () => void;
   // State
-  isTraining: boolean;
   isAnimating: boolean;
   isJumped: boolean;
-  // Weight comparison
-  hasComparisonData: boolean;
-  onViewComparison: () => void;
 }
 
 export default function ControlPanel({
@@ -43,13 +38,9 @@ export default function ControlPanel({
   onLearningRateChange,
   onAnimationSpeedChange,
   onStep,
-  onTrainToggle,
   onReset,
-  isTraining,
   isAnimating,
   isJumped,
-  hasComparisonData,
-  onViewComparison,
 }: ControlPanelProps) {
   const { t } = useTranslation();
   const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
@@ -167,6 +158,21 @@ export default function ControlPanel({
             </Typography>
           </Stack>
         </Box>
+        
+        {/* Reset Button */}
+        <Box sx={{ mb: 3 }}>
+          <Button 
+            variant="contained" 
+            fullWidth
+            sx={{ 
+              bgcolor: '#64748b',
+              '&:hover': { bgcolor: 'error.main' }
+            }}
+            onClick={onReset}
+          >
+            {t('controls.reset')}
+          </Button>
+        </Box>
       </Box>
 
       {/* Training Controls */}
@@ -227,74 +233,19 @@ export default function ControlPanel({
           </Stack>
         </Box>
 
-        <Stack spacing={1.5}>
-          <Button 
-            variant="contained" 
-            onClick={onStep}
-            sx={{ 
-              bgcolor: isJumped ? 'success.main' : (isAnimating ? 'warning.main' : 'primary.main'),
-              '&:hover': {
-                bgcolor: isJumped ? 'success.dark' : (isAnimating ? 'warning.dark' : 'primary.dark'),
-              }
-            }}
-          >
-            {isJumped ? 'Resume' : (isAnimating ? t('controls.pause') : t('controls.oneStep'))}
-          </Button>
-          <Button 
-            variant="contained" 
-            color={isTraining ? 'error' : 'success'}
-            onClick={onTrainToggle}
-            sx={{
-              animation: isTraining ? 'pulse 1.5s infinite' : 'none',
-              '@keyframes pulse': {
-                '0%, 100%': { opacity: 1 },
-                '50%': { opacity: 0.7 },
-              },
-            }}
-          >
-            {isTraining ? t('controls.stop') : t('controls.autoTrain')}
-          </Button>
-          <Button 
-            variant="contained" 
-            sx={{ 
-              bgcolor: '#64748b',
-              '&:hover': { bgcolor: 'error.main' }
-            }}
-            onClick={onReset}
-          >
-            {t('controls.reset')}
-          </Button>
-        </Stack>
-      </Box>
-
-      {/* Weight Comparison */}
-      <Box>
-        <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
-          📊 {t('comparison.viewComparison')}
-        </Typography>
-
-        <Box>
-          <Button
-            variant="outlined"
-            fullWidth
-            onClick={onViewComparison}
-            disabled={!hasComparisonData}
-            sx={{
-              borderColor: 'primary.main',
-              color: 'primary.main',
-              '&:hover': {
-                borderColor: 'primary.dark',
-                bgcolor: 'rgba(59, 130, 246, 0.1)',
-              },
-              '&:disabled': {
-                borderColor: 'action.disabled',
-                color: 'text.disabled',
-              },
-            }}
-          >
-            📊 {t('comparison.viewComparison')}
-          </Button>
-        </Box>
+        <Button 
+          variant="contained"
+          fullWidth
+          onClick={onStep}
+          sx={{ 
+            bgcolor: isJumped ? 'success.main' : (isAnimating ? 'warning.main' : 'primary.main'),
+            '&:hover': {
+              bgcolor: isJumped ? 'success.dark' : (isAnimating ? 'warning.dark' : 'primary.dark'),
+            }
+          }}
+        >
+          {isJumped ? 'Resume' : (isAnimating ? t('controls.pause') : 'Start')}
+        </Button>
       </Box>
     </Paper>
   );

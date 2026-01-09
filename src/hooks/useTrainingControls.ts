@@ -15,6 +15,7 @@ import { createWeightComparisonData } from '../lib/visualizer/weightComparison';
 
 export interface UseTrainingControlsReturn {
   trainOneStepWithAnimation: () => Promise<void>;
+  trainOneEpochWithoutAnimation: () => void;
   closeLossModal: () => Promise<void>;
   closeBackpropModal: () => void;
   toggleTraining: () => void;
@@ -41,9 +42,9 @@ export function useTrainingControls(
   }, [visualizerRef]);
 
   // =========================================================================
-  // Train One Step (non-animated)
+  // Train One Epoch Without Animation
   // =========================================================================
-  const trainOneStep = useCallback(() => {
+  const trainOneEpochWithoutAnimation = useCallback(() => {
     const nn = nnRef.current;
     const inputs = [state.inputs.grade, state.inputs.attitude, state.inputs.response];
     const targetOneHot = [0, 0, 0];
@@ -232,7 +233,7 @@ export function useTrainingControls(
     } else {
       state.trainingSetters.setIsTraining(true);
       trainingIntervalRef.current = window.setInterval(() => {
-        trainOneStep();
+        trainOneEpochWithoutAnimation();
         if (nnRef.current.lastLoss < 0.001) {
           state.trainingSetters.setIsTraining(false);
           if (trainingIntervalRef.current) {
@@ -242,7 +243,7 @@ export function useTrainingControls(
       }, 50);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.training.isTraining, trainOneStep]);
+  }, [state.training.isTraining, trainOneEpochWithoutAnimation]);
 
   // =========================================================================
   // Reset
@@ -280,6 +281,7 @@ export function useTrainingControls(
 
   return {
     trainOneStepWithAnimation,
+    trainOneEpochWithoutAnimation,
     closeLossModal,
     closeBackpropModal,
     toggleTraining,

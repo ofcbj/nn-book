@@ -63,6 +63,7 @@ export interface ModalState {
 
 export interface TrainingActions {
   trainOneStep: () => Promise<void>;
+  trainOneEpoch: () => void;
   toggleTraining: () => void;
   reset: () => void;
   computeAndRefreshDisplay: () => void;
@@ -197,6 +198,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
 
     actions: {
       trainOneStep: trainingControls.trainOneStepWithAnimation,
+      trainOneEpoch: trainingControls.trainOneEpochWithoutAnimation,
       toggleTraining: trainingControls.toggleTraining,
       reset: trainingControls.reset,
       computeAndRefreshDisplay: animation.computeAndRefreshDisplay,

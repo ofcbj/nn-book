@@ -1,20 +1,50 @@
-import { Box, Paper, Typography } from '@mui/material';
+import { Box, Paper, Typography, Button } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import type { ForwardSteps } from '../lib/types';
 
 interface CalculationPanelProps {
   steps: ForwardSteps | null;
+  hasComparisonData: boolean;
+  onViewComparison: () => void;
 }
 
-export default function CalculationPanel({ steps }: CalculationPanelProps) {
+export default function CalculationPanel({ steps, hasComparisonData, onViewComparison }: CalculationPanelProps) {
   const { t } = useTranslation();
-  const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
+  const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pending')];
   if (!steps) {
     return (
       <Paper sx={{ p: 2.5, height: '100%' }}>
         <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
           🔢 {t('calculation.title')}
         </Typography>
+        
+        {/* Weight Comparison Button */}
+        <Box sx={{ mb: 2 }}>
+          <Button
+            variant="outlined"
+            fullWidth
+            size="small"
+            onClick={onViewComparison}
+            disabled={!hasComparisonData}
+            sx={{
+              borderColor: 'primary.main',
+              color: 'primary.main',
+              fontSize: '0.85rem',
+              py: 0.75,
+              '&:hover': {
+                borderColor: 'primary.dark',
+                bgcolor: 'rgba(59, 130, 246, 0.1)',
+              },
+              '&:disabled': {
+                borderColor: 'action.disabled',
+                color: 'text.disabled',
+              },
+            }}
+          >
+            📊 {t('comparison.viewComparison')}
+          </Button>
+        </Box>
+        
         <Typography color="text.secondary">{t('calculation.noData')}</Typography>
       </Paper>
     );
@@ -25,6 +55,33 @@ export default function CalculationPanel({ steps }: CalculationPanelProps) {
       <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
         🔢 {t('calculation.title')}
       </Typography>
+      
+      {/* Weight Comparison Button */}
+      <Box sx={{ mb: 2 }}>
+        <Button
+          variant="outlined"
+          fullWidth
+          size="small"
+          onClick={onViewComparison}
+          disabled={!hasComparisonData}
+          sx={{
+            borderColor: 'primary.main',
+            color: 'primary.main',
+            fontSize: '0.85rem',
+            py: 0.75,
+            '&:hover': {
+              borderColor: 'primary.dark',
+              bgcolor: 'rgba(59, 130, 246, 0.1)',
+            },
+            '&:disabled': {
+              borderColor: 'action.disabled',
+              color: 'text.disabled',
+            },
+          }}
+        >
+          📊 {t('comparison.viewComparison')}
+        </Button>
+      </Box>
       
       <Box sx={{ maxHeight: 650, overflowY: 'auto', pr: 1 }}>
         {/* Input Vector */}
