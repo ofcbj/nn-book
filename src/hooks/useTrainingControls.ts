@@ -50,12 +50,43 @@ export function useTrainingControls(
     const targetOneHot = [0, 0, 0];
     targetOneHot[state.inputs.targetValue] = 1;
 
+    // Backup old weights and biases before training
+    const oldWeights = {
+      layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
+      layer2: JSON.parse(JSON.stringify(nn.weightsHidden1Hidden2.data)),
+      output: JSON.parse(JSON.stringify(nn.weightsHidden2Output.data))
+    };
+    const oldBiases = {
+      layer1: nn.biasHidden1.data.map(row => row[0]),
+      layer2: nn.biasHidden2.data.map(row => row[0]),
+      output: nn.biasOutput.data.map(row => row[0])
+    };
+
+    // Train
     nn.train(inputs, targetOneHot);
+    
+    // Collect new weights and biases after training
+    const newWeights = {
+      layer1: JSON.parse(JSON.stringify(nn.weightsInputHidden1.data)),
+      layer2: JSON.parse(JSON.stringify(nn.weightsHidden1Hidden2.data)),
+      output: JSON.parse(JSON.stringify(nn.weightsHidden2Output.data))
+    };
+    const newBiases = {
+      layer1: nn.biasHidden1.data.map(row => row[0]),
+      layer2: nn.biasHidden2.data.map(row => row[0]),
+      output: nn.biasOutput.data.map(row => row[0])
+    };
+
+    // Create and save weight comparison data
+    const comparisonData = createWeightComparisonData(oldWeights, newWeights, oldBiases, newBiases, state.stats.learningRate);
+    state.modalSetters.setWeightComparisonData(comparisonData);
+
+    // Update stats
     state.statsSetters.setLoss(nn.lastLoss);
     state.statsSetters.setEpoch(prev => prev + 1);
     animation.computeAndRefreshDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, state.inputs.targetValue, animation]);
+  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, state.inputs.targetValue, animation, state.stats.learningRate]);
 
   // =========================================================================
   // Train One Step With Animation (Stop/Resume Toggle)
