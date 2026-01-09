@@ -2,7 +2,6 @@
 import type { NodePosition, LayerType } from '../types';
 import type { LayerName } from '../core';
 import i18n from '../../i18n';
-import { activationToColor } from './activationColors';
 
 // =============================================================================
 // Text Rendering Helpers

@@ -1,4 +1,4 @@
-import { Box, Paper, Typography, Slider, Button, Stack, Switch, FormControlLabel } from '@mui/material';
+import { Box, Paper, Typography, Slider, Button, Stack } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 
 interface ControlPanelProps {
