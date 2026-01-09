@@ -7,14 +7,12 @@ interface ControlPanelProps {
   attitude: number;
   response: number;
   targetValue: number;
-  learningRate: number;
   animationSpeed: number;
   // Event handlers
   onGradeChange: (value: number) => void;
   onAttitudeChange: (value: number) => void;
   onResponseChange: (value: number) => void;
   onTargetChange: (value: number) => void;
-  onLearningRateChange: (value: number) => void;
   onAnimationSpeedChange: (value: number) => void;
   // Button handlers
   onStep: () => void;
@@ -29,13 +27,11 @@ export default function ControlPanel({
   attitude,
   response,
   targetValue,
-  learningRate,
   animationSpeed,
   onGradeChange,
   onAttitudeChange,
   onResponseChange,
   onTargetChange,
-  onLearningRateChange,
   onAnimationSpeedChange,
   onStep,
   onReset,
@@ -180,32 +176,6 @@ export default function ControlPanel({
         <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
           ⚙️ {t('controls.trainingSection')}
         </Typography>
-        
-        <Box sx={{ mb: 2.5 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {t('controls.learningRate')}
-          </Typography>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <Slider
-              value={learningRate}
-              onChange={(_, v) => onLearningRateChange(v as number)}
-              min={0.01}
-              max={0.5}
-              step={0.01}
-              sx={{ flex: 1 }}
-            />
-            <Typography 
-              sx={{ 
-                minWidth: 50, 
-                fontFamily: 'monospace', 
-                fontWeight: 600,
-                color: 'primary.light'
-              }}
-            >
-              {learningRate.toFixed(2)}
-            </Typography>
-          </Stack>
-        </Box>
 
         <Box sx={{ mb: 2.5 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -244,7 +214,7 @@ export default function ControlPanel({
             }
           }}
         >
-          {isJumped ? 'Resume' : (isAnimating ? t('controls.pause') : 'Start')}
+          {isJumped ? t('controls.resume') : (isAnimating ? t('controls.pause') : t('controls.start'))}
         </Button>
       </Box>
     </Paper>

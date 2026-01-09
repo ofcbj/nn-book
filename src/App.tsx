@@ -58,13 +58,11 @@ function AppContent() {
               attitude={inputs.attitude}
               response={inputs.response}
               targetValue={inputs.targetValue}
-              learningRate={inputs.learningRate}
               animationSpeed={inputs.animationSpeed}
               onGradeChange={controls.setGrade}
               onAttitudeChange={controls.setAttitude}
               onResponseChange={controls.setResponse}
               onTargetChange={controls.setTargetValue}
-              onLearningRateChange={controls.setLearningRate}
               onAnimationSpeedChange={controls.setAnimationSpeed}
               onStep={actions.trainOneStep}
               onReset={actions.reset}
@@ -87,8 +85,10 @@ function AppContent() {
               <StatsDisplay 
                 epoch={stats.epoch} 
                 loss={stats.loss} 
-                output={stats.output} 
+                output={stats.output}
+                learningRate={inputs.learningRate}
                 isTraining={training.isTraining}
+                onLearningRateChange={controls.setLearningRate}
                 onTrainOnce={actions.trainOneEpoch}
                 onTrainToggle={actions.toggleTraining}
               />

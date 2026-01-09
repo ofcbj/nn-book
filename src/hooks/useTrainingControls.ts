@@ -294,6 +294,13 @@ export function useTrainingControls(
     state.statsSetters.setOutput(null);
     state.modalSetters.setLossModalData(null);
     state.modalSetters.setBackpropSummaryData(null);
+    state.modalSetters.setWeightComparisonData(null);
+
+    // Randomize input values
+    state.inputSetters.setGrade(Math.random());
+    state.inputSetters.setAttitude(Math.random());
+    state.inputSetters.setResponse(Math.random());
+    state.inputSetters.setTargetValue(Math.floor(Math.random() * 3)); // 0, 1, or 2
 
     animationMachine.reset();
     animation.computeAndRefreshDisplay();

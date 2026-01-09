@@ -1,16 +1,18 @@
-import { Box, Paper, Typography, Stack, Button } from '@mui/material';
+import { Box, Paper, Typography, Stack, Button, Slider } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 
 interface StatsDisplayProps {
   epoch: number;
   loss: number;
   output: number[] | null;
+  learningRate: number;
   isTraining: boolean;
+  onLearningRateChange: (value: number) => void;
   onTrainOnce: () => void;
   onTrainToggle: () => void;
 }
 
-export default function StatsDisplay({ epoch, loss, output, isTraining, onTrainOnce, onTrainToggle }: StatsDisplayProps) {
+export default function StatsDisplay({ epoch, loss, output, learningRate, isTraining, onLearningRateChange, onTrainOnce, onTrainToggle }: StatsDisplayProps) {
   const { t } = useTranslation();
   const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
   const getOutputText = () => {
@@ -83,6 +85,35 @@ export default function StatsDisplay({ epoch, loss, output, isTraining, onTrainO
           >
             {getOutputText()}
           </Typography>
+        </Box>
+        
+        {/* Learning Rate Slider */}
+        <Box sx={{ pt: 1, pb: 1, borderBottom: '1px solid #1e293b' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            {t('controls.learningRate')}
+          </Typography>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Slider
+              value={learningRate}
+              onChange={(_, v) => onLearningRateChange(v as number)}
+              min={0.01}
+              max={0.5}
+              step={0.01}
+              size="small"
+              sx={{ flex: 1 }}
+            />
+            <Typography 
+              sx={{ 
+                minWidth: 45, 
+                fontFamily: 'monospace', 
+                fontWeight: 600,
+                color: 'primary.light',
+                fontSize: '0.85rem'
+              }}
+            >
+              {learningRate.toFixed(2)}
+            </Typography>
+          </Stack>
         </Box>
         
         {/* Training Buttons */}
