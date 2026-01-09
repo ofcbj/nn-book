@@ -50,7 +50,10 @@ export interface AnimationLoopConfig<TStage extends string, TData> {
   /** Sleep function (respects pause state) */
   sleep: (ms: number, speedOverride?: number) => Promise<void>;
   
-  /** Compute network and refresh display */
+  /** Refresh display without recalculation (preferred) */
+  refreshDisplayOnly: () => void;
+  
+  /** Compute network and refresh display (legacy, kept for compatibility) */
   computeAndRefreshDisplay: () => void;
   
   /** Speed override for sleep (optional) */

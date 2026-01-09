@@ -248,7 +248,7 @@ export function useTrainingControls(
   const closeBackpropModal = useCallback(() => {
     state.modalSetters.setBackpropSummaryData(null);
     animationMachine.closeBackpropModal();
-    animation.computeAndRefreshDisplay();
+    animation.refreshDisplayOnly();  // No recalculation needed - just closing modal
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationMachine, animation]);
 

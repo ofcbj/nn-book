@@ -32,6 +32,7 @@ export interface UseNetworkAnimationReturn {
   sleep: (ms: number, overrideSpeed?: number) => Promise<void>;
   shouldStopRef: RefObject<boolean>;
   computeAndRefreshDisplay: () => void;
+  refreshDisplayOnly: () => void;
 }
 
 export function useNetworkAnimation(
@@ -48,8 +49,41 @@ export function useNetworkAnimation(
   animationMachineRef.current = animationMachine;
 
   // =========================================================================
-  // Compute Network and Refresh Display
-  // Recalculates the network with current inputs and updates both UI state and canvas
+  // Common visualizer sync logic
+  // =========================================================================
+  const syncVisualizerState = useCallback(() => {
+    if (visualizerRef.current) {
+      const nn = nnRef.current;
+      const machineState = animationMachine.state;
+
+      if (machineState.type === 'forward_animating') {
+        visualizerRef.current.setForwardAnimationState(
+          machineState.layer, machineState.neuronIndex, machineState.stage, machineState.neuronData
+        );
+      } else if (machineState.type === 'backward_animating') {
+        visualizerRef.current.setBackwardAnimationState(
+          machineState.layer, machineState.neuronIndex, machineState.stage,
+          machineState.neuronData, nn.lastBackpropSteps
+        );
+      } else {
+        visualizerRef.current.clearAnimationState();
+      }
+
+      visualizerRef.current.update(nn);
+    }
+  }, [animationMachine, nnRef, visualizerRef]); // Added nnRef and visualizerRef to dependencies for correctness
+
+  // =========================================================================
+  // Refresh Display Only (no recalculation)
+  // =========================================================================
+  const refreshDisplayOnly = useCallback(() => {
+    // Just sync visualizer and update canvas - no feedforward
+    syncVisualizerState();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animationMachine.state, syncVisualizerState]); // Added syncVisualizerState to dependencies for correctness
+
+  // =========================================================================
+  // Compute and Refresh Display (full recalculation + refresh)
   // =========================================================================
   const computeAndRefreshDisplay = useCallback(() => {
     const nn = nnRef.current;
@@ -71,27 +105,10 @@ export function useNetworkAnimation(
       });
     }
 
-    if (visualizerRef.current) {
-      // Sync visualizer state from state machine
-      const machineState = animationMachine.state;
-
-      if (machineState.type === 'forward_animating') {
-        visualizerRef.current.setForwardAnimationState(
-          machineState.layer, machineState.neuronIndex, machineState.stage, machineState.neuronData
-        );
-      } else if (machineState.type === 'backward_animating') {
-        visualizerRef.current.setBackwardAnimationState(
-          machineState.layer, machineState.neuronIndex, machineState.stage,
-          machineState.neuronData, nn.lastBackpropSteps
-        );
-      } else {
-        visualizerRef.current.clearAnimationState();
-      }
-
-      visualizerRef.current.update(nn);
-    }
+    // Sync visualizer and update canvas
+    syncVisualizerState();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, animationMachine.state]);
+  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, syncVisualizerState]); // Removed animationMachine.state, added syncVisualizerState
 
   // =========================================================================
   // Sleep utility
@@ -130,6 +147,7 @@ export function useNetworkAnimation(
       onComplete: () => {
         animationMachine.forwardComplete();
       },
+      refreshDisplayOnly,
       shouldStop: () => shouldStopRef.current,
       sleep,
       computeAndRefreshDisplay,
@@ -161,7 +179,7 @@ export function useNetworkAnimation(
         if (stage === 'update') {
           nn.updateNeuronWeights(layer, neuronIndex, data.newWeights, data.newBias);
           nn.feedforward(nn.lastInput!.toArray());
-          computeAndRefreshDisplay();
+          // Removed duplicate computeAndRefreshDisplay() - already called in loop
         }
       },
       onComplete: () => {
@@ -169,6 +187,7 @@ export function useNetworkAnimation(
       },
       shouldStop: () => shouldStopRef.current,
       sleep,
+      refreshDisplayOnly,
       computeAndRefreshDisplay,
       speedOverride,
     });
@@ -222,7 +241,7 @@ export function useNetworkAnimation(
             if (shouldStopRef.current) return;
 
             animationMachine.forwardTick(layer, neuronIndex, stage, neuronData);
-            computeAndRefreshDisplay();
+            refreshDisplayOnly();
             await sleep(stageDurations[stage]);
           }
         }
@@ -263,13 +282,13 @@ export function useNetworkAnimation(
             if (shouldStopRef.current) return;
 
             animationMachine.backwardTick(layer, neuronIndex, stage, neuronData);
-            computeAndRefreshDisplay();
+            refreshDisplayOnly();
             await sleep(stageDurations[stage]);
 
             if (stage === 'update') {
               nn.updateNeuronWeights(layer, neuronIndex, neuronData.newWeights, neuronData.newBias);
               nn.feedforward(nn.lastInput!.toArray());
-              computeAndRefreshDisplay();
+              refreshDisplayOnly();
             }
           }
         }
@@ -296,5 +315,6 @@ export function useNetworkAnimation(
     sleep,
     shouldStopRef,
     computeAndRefreshDisplay,
+    refreshDisplayOnly,
   };
 }
