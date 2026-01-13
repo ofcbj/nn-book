@@ -1,23 +1,19 @@
 /**
- * Neural Network Hook - Refactored with Animation State Machine
- * 
- * This hook is the main orchestrator that combines all specialized hooks:
+ * Neural Network Hook - Simplified Architecture
+ *
+ * This hook is the main orchestrator that combines:
  * - useNetworkState: State management
- * - useAnimationStateMachine: Animation state transitions
- * - useNetworkAnimation: Animation logic (forward/backward propagation)
- * - useCanvasInteraction: Canvas click handling
- * - useTrainingControls: Training controls and modal management
+ * - useAnimationEngine: Unified animation, training, and interaction logic
+ *
+ * Previous 5-hook architecture has been consolidated to 2 hooks for better maintainability.
  */
 
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import { NeuralNetwork } from '../lib/core';
 import { Visualizer } from '../lib/visualizer';
 import type { BackpropSummaryData, WeightComparisonData } from '../lib/types';
 import { useNetworkState, NetworkStats, VisualizerState, InputState } from './useNetworkState';
-import { useAnimationStateMachine } from './useAnimationStateMachine';
-import { useNetworkAnimation } from './useNetworkAnimation';
-import { useCanvasInteraction } from './useCanvasInteraction';
-import { useTrainingControls } from './useTrainingControls';
+import { useAnimationEngine } from './useAnimationEngine';
 
 // ============================================================================
 // Grouped Return Types
@@ -29,7 +25,6 @@ export interface NetworkCore {
   setVisualizer: (v: Visualizer) => void;
 }
 
-
 export interface InputControls {
   setGrade: (v: number) => void;
   setAttitude: (v: number) => void;
@@ -38,8 +33,6 @@ export interface InputControls {
   setLearningRate: (v: number) => void;
   setAnimationSpeed: (v: number) => void;
 }
-
-
 
 export interface ModalState {
   loss: {
@@ -59,7 +52,6 @@ export interface ModalState {
     close: () => void;
   };
 }
-
 
 export interface TrainingActions {
   trainOneStep: () => Promise<void>;
@@ -96,49 +88,10 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   const visualizerRef = useRef<Visualizer | null>(null);
 
   // =========================================================================
-  // Hooks
+  // Hooks - Simplified from 5 to 2
   // =========================================================================
   const state = useNetworkState();
-  const animationMachine = useAnimationStateMachine();
-  
-  const animation = useNetworkAnimation(
-    nnRef,
-    visualizerRef,
-    state,
-    animationMachine
-  );
-  
-  const canvasInteraction = useCanvasInteraction(
-    nnRef,
-    visualizerRef,
-    state,
-    animationMachine,
-    animation
-  );
-  
-  const trainingControls = useTrainingControls(
-    nnRef,
-    visualizerRef,
-    state,
-    animationMachine,
-    animation
-  );
-
-  // =========================================================================
-  // Sync animation speed with state machine
-  // =========================================================================
-  useEffect(() => {
-    animationMachine.setSpeed(state.training.animationSpeed);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.training.animationSpeed]);
-
-  // =========================================================================
-  // Handle learning rate changes
-  // =========================================================================
-  const handleLearningRateChange = (v: number) => {
-    state.statsSetters.setLearningRate(v);
-    nnRef.current.learningRate = v;
-  };
+  const engine = useAnimationEngine(nnRef, visualizerRef, state);
 
   // =========================================================================
   // Return combined interface
@@ -147,7 +100,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     network: {
       nn: nnRef.current,
       visualizer: visualizerRef.current,
-      setVisualizer: trainingControls.setVisualizer,
+      setVisualizer: engine.setVisualizer,
     },
 
     inputs: {
@@ -158,7 +111,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
 
     controls: {
       ...state.inputSetters,
-      setLearningRate: handleLearningRateChange,
+      setLearningRate: engine.handleLearningRateChange,
       setAnimationSpeed: state.trainingSetters.setAnimationSpeed,
     },
 
@@ -172,23 +125,27 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
 
     training: {
       isTraining: state.training.isTraining,
-      isAnimating: animationMachine.isAnimating,
-      isJumped: animationMachine.state.isJumped,
+      isAnimating: engine.isAnimating,
+      isJumped: engine.state.isJumped,
     },
 
     modals: {
       loss: {
         ...state.modals.loss,
-        close: trainingControls.closeLossModal,
+        close: engine.closeLossModal,
       },
       backprop: {
         ...state.modals.backprop,
-        close: trainingControls.closeBackpropModal,
+        close: engine.closeBackpropModal,
       },
       comparison: {
         ...state.modals.comparison,
-        open: state.modalActions.openComparisonModal,
-        close: state.modalActions.closeComparisonModal,
+        // Wrapper for open to make it no-argument (data already set by training)
+        open: () => {
+          if (state.modals.comparison.data) {
+            state.modals.comparison.open(state.modals.comparison.data);
+          }
+        },
       },
     },
 
@@ -197,12 +154,12 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     },
 
     actions: {
-      trainOneStep  : trainingControls.trainOneStepWithAnimation,
-      trainOneEpoch : trainingControls.trainOneEpochWithoutAnimation,
-      toggleTraining: trainingControls.toggleTraining,
-      reset         : trainingControls.reset,
-      computeAndRefreshDisplay: animation.computeAndRefreshDisplay,
-      handleCanvasClick: canvasInteraction.handleCanvasClick,
+      trainOneStep: engine.trainOneStepWithAnimation,
+      trainOneEpoch: engine.trainOneEpochWithoutAnimation,
+      toggleTraining: engine.toggleTraining,
+      reset: engine.reset,
+      computeAndRefreshDisplay: engine.computeAndRefreshDisplay,
+      handleCanvasClick: engine.handleCanvasClick,
     },
   };
 }
