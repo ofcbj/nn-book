@@ -28,12 +28,12 @@ function AppContent() {
   // Initial visualizer
   useEffect(() => {
     actions.computeAndRefreshDisplay();
-  }, [actions.computeAndRefreshDisplay]);
+  }, [actions]);
 
   // Update visualizer when inputs change
   useEffect(() => {
     actions.computeAndRefreshDisplay();
-  }, [inputs.grade, inputs.attitude, inputs.response, actions.computeAndRefreshDisplay]);
+  }, [inputs.grade, inputs.attitude, inputs.response, actions]);
 
   // Help modal state
   const [showHelpModal, setShowHelpModal] = useState(false);

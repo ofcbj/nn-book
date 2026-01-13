@@ -5,9 +5,10 @@
  * State is organized by topic for better clarity and maintainability.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import type { ForwardSteps, BackpropSummaryData, WeightComparisonData } from '../lib/types';
 import type { ActivationData } from '../components/ActivationHeatmap';
+import { useModal, type UseModalReturn } from './useModalState';
 
 // =============================================================================
 // State Interfaces - Organized by Topic
@@ -37,19 +38,13 @@ export interface VisualizerState {
   activations: ActivationData | null;
 }
 
+// Modal data types
+export type LossModalData = { targetClass: number; predictions: number[]; loss: number };
+
 export interface ModalState {
-  loss: {
-    show: boolean;
-    data: { targetClass: number; predictions: number[]; loss: number } | null;
-  };
-  backprop: {
-    show: boolean;
-    data: BackpropSummaryData | null;
-  };
-  comparison: {
-    show: boolean;
-    data: WeightComparisonData | null;
-  };
+  loss: UseModalReturn<LossModalData>;
+  backprop: UseModalReturn<BackpropSummaryData>;
+  comparison: UseModalReturn<WeightComparisonData>;
 }
 
 // =============================================================================
@@ -83,16 +78,16 @@ export interface VisualizerSetters {
 export interface VisualizerActions {
 }
 
+// Modal setters and actions are now part of the modal state itself
+// Keeping these interfaces for backward compatibility during transition
 export interface ModalSetters {
-  setLossModalData: (v: { targetClass: number; predictions: number[]; loss: number } | null) => void;
+  setLossModalData: (v: LossModalData | null) => void;
   setBackpropSummaryData: (v: BackpropSummaryData | null) => void;
-  setShowComparisonModal: (v: boolean) => void;
   setWeightComparisonData: (v: WeightComparisonData | null) => void;
 }
 
 export interface ModalActions {
-  openComparisonModal: () => void;
-  closeComparisonModal: () => void;
+  // No longer needed - actions are part of modal state
 }
 
 // =============================================================================
@@ -143,20 +138,41 @@ export function useNetworkState(): UseNetworkStateReturn {
   // Visualizer state
   const [activations, setActivations] = useState<ActivationData | null>(null);
 
-  // Modal state
-  const [lossModalData, setLossModalData] = useState<{ targetClass: number; predictions: number[]; loss: number } | null>(null);
-  const [backpropSummaryData, setBackpropSummaryData] = useState<BackpropSummaryData | null>(null);
-  const [showComparisonModal, setShowComparisonModal] = useState(false);
-  const [weightComparisonData, setWeightComparisonData] = useState<WeightComparisonData | null>(null);
+  // Modal state - now using generic useModal hook
+  const lossModal = useModal<LossModalData>();
+  const backpropModal = useModal<BackpropSummaryData>();
+  const comparisonModal = useModal<WeightComparisonData>();
 
-  // Modal actions
-  const openComparisonModal = useCallback(() => {
-    setShowComparisonModal(true);
-  }, []);
+  // Memoize setters to prevent recreating objects every render
+  const inputSetters = useMemo(() => ({
+    setGrade,
+    setAttitude,
+    setResponse,
+    setTargetValue,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const closeComparisonModal = useCallback(() => {
-    setShowComparisonModal(false);
-  }, []);
+  const statsSetters = useMemo(() => ({
+    setEpoch,
+    setLoss,
+    setLearningRate,
+    setOutput,
+    setSteps,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const trainingSetters = useMemo(() => ({
+    setIsTraining,
+    setAnimationSpeed,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const visualizerSetters = useMemo(() => ({
+    setActivations,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const modalSetters = useMemo(() => ({
+    setLossModalData: (data: LossModalData | null) => data ? lossModal.open(data) : lossModal.close(),
+    setBackpropSummaryData: (data: BackpropSummaryData | null) => data ? backpropModal.open(data) : backpropModal.close(),
+    setWeightComparisonData: (data: WeightComparisonData | null) => data ? comparisonModal.open(data) : comparisonModal.close(),
+  }), [lossModal.open, lossModal.close, backpropModal.open, backpropModal.close, comparisonModal.open, comparisonModal.close]);
 
   return {
     // Grouped state
@@ -166,7 +182,7 @@ export function useNetworkState(): UseNetworkStateReturn {
       response,
       targetValue,
     },
-    
+
     stats: {
       epoch,
       loss,
@@ -174,70 +190,35 @@ export function useNetworkState(): UseNetworkStateReturn {
       output,
       steps,
     },
-    
+
     training: {
       isTraining,
       animationSpeed,
     },
-    
+
     visualizer: {
       activations,
     },
-    
+
     modals: {
-      loss: {
-        show: lossModalData !== null,
-        data: lossModalData,
-      },
-      backprop: {
-        show: backpropSummaryData !== null,
-        data: backpropSummaryData,
-      },
-      comparison: {
-        show: showComparisonModal,
-        data: weightComparisonData,
-      },
+      loss: lossModal,
+      backprop: backpropModal,
+      comparison: comparisonModal,
     },
 
-    // Setters
-    inputSetters: {
-      setGrade,
-      setAttitude,
-      setResponse,
-      setTargetValue,
-    },
-    
-    statsSetters: {
-      setEpoch,
-      setLoss,
-      setLearningRate,
-      setOutput,
-      setSteps,
-    },
-    
-    trainingSetters: {
-      setIsTraining,
-      setAnimationSpeed,
-    },
-    
-    visualizerSetters: {
-      setActivations,
-    },
-    
-    modalSetters: {
-      setLossModalData,
-      setBackpropSummaryData,
-      setShowComparisonModal,
-      setWeightComparisonData,
-    },
+    // Setters - now memoized
+    inputSetters,
+    statsSetters,
+    trainingSetters,
+    visualizerSetters,
+    modalSetters,
 
     // Actions
     visualizerActions: {
     },
-    
+
     modalActions: {
-      openComparisonModal,
-      closeComparisonModal,
+      // No longer needed - use modals directly
     },
   };
 }
