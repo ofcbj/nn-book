@@ -5,7 +5,7 @@
  * State is organized by topic for better clarity and maintainability.
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { ForwardSteps, BackpropSummaryData, WeightComparisonData } from '../lib/types';
 import type { ActivationData } from '../components/ActivationHeatmap';
 import { useModal, type UseModalReturn } from './useModal';
@@ -143,6 +143,37 @@ export function useNetworkState(): UseNetworkStateReturn {
   const backpropModal = useModal<BackpropSummaryData>();
   const comparisonModal = useModal<WeightComparisonData>();
 
+  // Memoize setters to prevent recreating objects every render
+  const inputSetters = useMemo(() => ({
+    setGrade,
+    setAttitude,
+    setResponse,
+    setTargetValue,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const statsSetters = useMemo(() => ({
+    setEpoch,
+    setLoss,
+    setLearningRate,
+    setOutput,
+    setSteps,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const trainingSetters = useMemo(() => ({
+    setIsTraining,
+    setAnimationSpeed,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const visualizerSetters = useMemo(() => ({
+    setActivations,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const modalSetters = useMemo(() => ({
+    setLossModalData: (data: LossModalData | null) => data ? lossModal.open(data) : lossModal.close(),
+    setBackpropSummaryData: (data: BackpropSummaryData | null) => data ? backpropModal.open(data) : backpropModal.close(),
+    setWeightComparisonData: (data: WeightComparisonData | null) => data ? comparisonModal.open(data) : comparisonModal.close(),
+  }), [lossModal.open, lossModal.close, backpropModal.open, backpropModal.close, comparisonModal.open, comparisonModal.close]);
+
   return {
     // Grouped state
     inputs: {
@@ -175,36 +206,12 @@ export function useNetworkState(): UseNetworkStateReturn {
       comparison: comparisonModal,
     },
 
-    // Setters
-    inputSetters: {
-      setGrade,
-      setAttitude,
-      setResponse,
-      setTargetValue,
-    },
-
-    statsSetters: {
-      setEpoch,
-      setLoss,
-      setLearningRate,
-      setOutput,
-      setSteps,
-    },
-
-    trainingSetters: {
-      setIsTraining,
-      setAnimationSpeed,
-    },
-
-    visualizerSetters: {
-      setActivations,
-    },
-
-    modalSetters: {
-      setLossModalData: (data: LossModalData | null) => data ? lossModal.open(data) : lossModal.close(),
-      setBackpropSummaryData: (data: BackpropSummaryData | null) => data ? backpropModal.open(data) : backpropModal.close(),
-      setWeightComparisonData: (data: WeightComparisonData | null) => data ? comparisonModal.open(data) : comparisonModal.close(),
-    },
+    // Setters - now memoized
+    inputSetters,
+    statsSetters,
+    trainingSetters,
+    visualizerSetters,
+    modalSetters,
 
     // Actions
     visualizerActions: {
