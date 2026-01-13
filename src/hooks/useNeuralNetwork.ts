@@ -101,7 +101,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   const state = useNetworkState();
   const animationMachine = useAnimationStateMachine();
   
-  const animationRunner = useNetworkAnimation(
+  const animation = useNetworkAnimation(
     nnRef,
     visualizerRef,
     state,
@@ -113,7 +113,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     visualizerRef,
     state,
     animationMachine,
-    animationRunner
+    animation
   );
   
   const trainingControls = useTrainingControls(
@@ -121,7 +121,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     visualizerRef,
     state,
     animationMachine,
-    animationRunner
+    animation
   );
 
   // =========================================================================
@@ -201,7 +201,7 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
       trainOneEpoch : trainingControls.trainOneEpochWithoutAnimation,
       toggleTraining: trainingControls.toggleTraining,
       reset         : trainingControls.reset,
-      computeAndRefreshDisplay: animationRunner.computeAndRefreshDisplay,
+      computeAndRefreshDisplay: animation.computeAndRefreshDisplay,
       handleCanvasClick: canvasInteraction.handleCanvasClick,
     },
   };

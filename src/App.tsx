@@ -28,14 +28,12 @@ function AppContent() {
   // Initial visualizer
   useEffect(() => {
     actions.computeAndRefreshDisplay();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);  // Run once on mount
+  }, [actions.computeAndRefreshDisplay]);
 
   // Update visualizer when inputs change
   useEffect(() => {
     actions.computeAndRefreshDisplay();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputs.grade, inputs.attitude, inputs.response]);  // Only inputs, not the function
+  }, [inputs.grade, inputs.attitude, inputs.response, actions.computeAndRefreshDisplay]);
 
   // Help modal state
   const [showHelpModal, setShowHelpModal] = useState(false);

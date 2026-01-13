@@ -5,7 +5,6 @@ import type { UseNetworkStateReturn } from './useNetworkState';
 import type { AnimationStateMachine } from './useAnimationStateMachine';
 import type { UseNetworkAnimationReturn } from './useNetworkAnimation';
 import type { ForwardAnimatingState, BackwardAnimatingState, AnimationState } from '../lib/animation';
-import { createBackpropSummaryData } from '../lib/types';
 import { getNextForwardStage, getNextBackpropStage, getNextForwardNeuron, getNextBackwardNeuron, 
 } from './useAnimationStateMachine';
 
@@ -21,7 +20,7 @@ interface AnimationContext {
   nn: NeuralNetwork;
   state: UseNetworkStateReturn;
   animationMachine: AnimationStateMachine;
-  animationRunner: UseNetworkAnimationReturn;
+  animation: UseNetworkAnimationReturn;
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // Data Access Helpers
@@ -49,7 +48,7 @@ function transitionToNextForwardNeuron(
   
   ctx.animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
   ctx.animationMachine.forwardTick(nextNeuron.layer, nextNeuron.index, 'dotProduct', neuronData);
-  ctx.animationRunner.refreshDisplayOnly();  // No recalculation needed - uses pre-calculated data
+  ctx.animation.refreshDisplayOnly();  // No recalculation needed - uses pre-calculated data
   return true;
 }
 
@@ -62,7 +61,7 @@ function transitionToNextBackwardNeuron(
   
   ctx.animationMachine.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
   ctx.animationMachine.backwardTick(nextNeuron.layer, nextNeuron.index, 'error', neuronData);
-  ctx.animationRunner.refreshDisplayOnly();  // No recalculation needed - uses pre-calculated data
+  ctx.animation.refreshDisplayOnly();  // No recalculation needed - uses pre-calculated data
   return true;
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -77,7 +76,7 @@ function handleForwardSameNeuronClick(
   
   if (nextStage) {
     ctx.animationMachine.forwardTick(neuron.layer, neuron.index, nextStage, machineState.neuronData);
-    ctx.animationRunner.refreshDisplayOnly();  // No recalculation needed - just update visualization
+    ctx.animation.refreshDisplayOnly();  // No recalculation needed - just update visualization
     return;
   }
   // All stages done - move to next neuron
@@ -98,7 +97,7 @@ function handleBackwardSameNeuronClick(
   
   if (nextStage) {
     ctx.animationMachine.backwardTick(neuron.layer, neuron.index, nextStage, machineState.neuronData);
-    ctx.animationRunner.refreshDisplayOnly();  // No recalculation needed - just update visualization
+    ctx.animation.refreshDisplayOnly();  // No recalculation needed - just update visualization
     return;
   }
   // All stages done - move to next neuron in backward order
@@ -106,23 +105,8 @@ function handleBackwardSameNeuronClick(
   if (nextNeuron) {
     transitionToNextBackwardNeuron(ctx, nextNeuron);
   } else {
-    // Completed all backward neurons - show modal
-    completeBackwardPass(ctx);
+    ctx.animationMachine.backwardComplete();
   }
-}
-
-// Helper: Complete backward pass and show backprop modal
-function completeBackwardPass(ctx: AnimationContext): void {
-  const nn = ctx.nn;
-  
-  // Create backprop summary data from the neural network
-  if (nn.lastBackpropSteps) {
-    const backpropData = nn.lastBackpropSteps;
-    const summaryData = createBackpropSummaryData(backpropData, ctx.state.stats.learningRate);
-    ctx.state.modalSetters.setBackpropSummaryData(summaryData);
-  }
-  
-  ctx.animationMachine.backwardComplete();
 }
 
 function handleJumpToDifferentNeuron(
@@ -130,7 +114,7 @@ function handleJumpToDifferentNeuron(
   neuron: NeuronLocation,
   machineState: AnimationState
 ): void {
-  ctx.animationRunner.stopAnimation();
+  ctx.animation.shouldStopRef.current = true;
   ctx.animationMachine.jumpToNeuron(neuron.layer, neuron.index);
 
   if (machineState.type === 'forward_animating') {
@@ -145,7 +129,7 @@ function handleJumpToDifferentNeuron(
     }
   }
 
-  ctx.animationRunner.refreshDisplayOnly();  // No recalculation needed - just visualizing existing data
+  ctx.animation.refreshDisplayOnly();  // No recalculation needed - just visualizing existing data
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // Forward Pass Completion
@@ -206,7 +190,7 @@ export function useCanvasInteraction(
   visualizerRef: RefObject<Visualizer | null>,
   state: UseNetworkStateReturn,
   animationMachine: AnimationStateMachine,
-  animationRunner: UseNetworkAnimationReturn
+  animation: UseNetworkAnimationReturn
 ): UseCanvasInteractionReturn {
 
   const handleCanvasClick = useCallback((x?: number, y?: number) => {
@@ -215,7 +199,7 @@ export function useCanvasInteraction(
     const visualizer = visualizerRef.current;
     const nn = nnRef.current;
     const machineState = animationMachine.state;
-    const ctx: AnimationContext = { nn, state, animationMachine, animationRunner };
+    const ctx: AnimationContext = { nn, state, animationMachine, animation };
     // Handle neuron click if coordinates provided
     if (x !== undefined && y !== undefined && visualizer) {
       const neuron = visualizer.findNeuronAtPosition(x, y);
@@ -236,10 +220,9 @@ export function useCanvasInteraction(
         return;
       }
     }
-  }, [animationMachine, animationRunner]);
+  }, [animationMachine, animation]);
 
   return {
     handleCanvasClick,
   };
 }
-
