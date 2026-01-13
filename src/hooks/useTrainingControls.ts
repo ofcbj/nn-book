@@ -30,7 +30,7 @@ export function useTrainingControls(
   visualizerRef                 : RefObject<Visualizer | null>,
   state                         : UseNetworkStateReturn,
   animationMachine              : AnimationStateMachine,
-  animation                     : UseNetworkAnimationReturn
+  animationRunner               : UseNetworkAnimationReturn
 ): UseTrainingControlsReturn {
   const trainingIntervalRef = useRef<number | undefined>(undefined);
 
@@ -79,8 +79,8 @@ export function useTrainingControls(
     // Update stats
     state.statsSetters.setLoss(nn.lastLoss);
     state.statsSetters.setEpoch(prev => prev + 1);
-    animation.computeAndRefreshDisplay();
-  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, state.inputs.targetValue, animation, state.stats.learningRate]);
+    animationRunner.computeAndRefreshDisplay();
+  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, state.inputs.targetValue, animationRunner, state.stats.learningRate]);
   // =========================================================================
   // Train One Step With Animation (Stop/Resume Toggle)
   // =========================================================================
@@ -135,59 +135,105 @@ export function useTrainingControls(
   }, [state.inputs.targetValue, state.modalSetters]);
 
   // =========================================================================
-  // Train One Step With Animation (Stop/Resume Toggle)
+  // Animation State Handlers
   // =========================================================================
-  const trainOneStepWithAnimation = useCallback(async () => {
+  
+  const resumeFromJumpedPosition = useCallback(async () => {
     const machineState = animationMachine.state;
+    const nn = nnRef.current;
     
-    // Case 1: Resume from paused position
-    if (animationMachine.isAnimating && machineState.isJumped) {
-      animation.shouldStopRef.current = false;
-      animationMachine.resume(state.training.animationSpeed);
-      await animation.continueFromJumpedPosition();
-      // If completed forward propagation, prepare for backprop
-      if (machineState.type === 'forward_animating' && !animation.shouldStopRef.current) {
-        const nn = nnRef.current;
-        const { inputs, targetOneHot } = prepareTrainingInputs();
-        const backup = backupWeightsAndBiases(nn);
-        
-        nn.computeBackpropagation(inputs, targetOneHot);
-        restoreWeightsAndBiases(nn, backup, inputs);
-        showLossModal(nn);
-      }
-      return;
+    animationRunner.resumeAnimation();
+    animationMachine.resume(state.training.animationSpeed);
+    await animationRunner.continueFromJumpedPosition();
+    
+    // If completed forward propagation, prepare for backprop
+    const shouldPrepareBackprop = 
+      machineState.type === 'forward_animating' && 
+      !animationRunner.isStopped();
+    
+    if (shouldPrepareBackprop) {
+      const { inputs, targetOneHot } = prepareTrainingInputs();
+      const backup = backupWeightsAndBiases(nn);
+      
+      nn.computeBackpropagation(inputs, targetOneHot);
+      restoreWeightsAndBiases(nn, backup, inputs);
+      showLossModal(nn);
     }
-    // Case 2: Pause running animation
-    if (animationMachine.isAnimating) {
-      animationMachine.pause();
-      animation.shouldStopRef.current = true;
-      return;
-    }
-    // Case 3: Start new animation
-    animation.shouldStopRef.current = false;
-    animationMachine.startTraining();
+  }, [
+    animationMachine,
+    animationRunner,
+    state.training.animationSpeed,
+    prepareTrainingInputs,
+    backupWeightsAndBiases,
+    restoreWeightsAndBiases,
+    showLossModal
+  ]);
+
+  const pauseAnimation = useCallback(async () => {
+    animationMachine.pause();
+    animationRunner.stopAnimation();
+  }, [animationMachine, animationRunner]);
+
+  const startNewAnimation = useCallback(async () => {
 
     const nn = nnRef.current;
+    
+    animationRunner.resumeAnimation();
+
+    animationMachine.startTraining();
+
+    // Wait for React to update state after dispatch
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+
     const { inputs, targetOneHot } = prepareTrainingInputs();
 
     nn.feedforward(inputs);
-    await animation.animateForwardPropagation();
 
-    if (animation.shouldStopRef.current) return;
+    await animationRunner.animateForwardPropagation();
+
+
+    if (animationRunner.isStopped()) return;
 
     const backup = backupWeightsAndBiases(nn);
     nn.train(inputs, targetOneHot);
     restoreWeightsAndBiases(nn, backup, inputs);
     showLossModal(nn);
   }, [
-    state.inputs, 
-    state.training.animationSpeed, 
-    animation, 
-    animationMachine, 
+    animationRunner,
+    animationMachine,
     prepareTrainingInputs,
     backupWeightsAndBiases,
     restoreWeightsAndBiases,
     showLossModal
+  ]);
+
+  // Train One Step With Animation (Stop/Resume Toggle)
+  // =========================================================================
+  const trainOneStepWithAnimation = useCallback(async () => {
+
+    const machineState = animationMachine.state;
+
+    
+    if (animationMachine.isAnimating && machineState.isJumped) {
+
+      await resumeFromJumpedPosition();
+      return;
+    }
+    
+    if (animationMachine.isAnimating) {
+
+      await pauseAnimation();
+      return;
+    }
+    
+
+    await startNewAnimation();
+  }, [
+    animationMachine,
+    resumeFromJumpedPosition,
+    pauseAnimation,
+    startNewAnimation
   ]);
 
   // =========================================================================
@@ -199,7 +245,7 @@ export function useTrainingControls(
 
 
     const nn = nnRef.current;
-    animation.shouldStopRef.current = false;
+    animationRunner.resumeAnimation();
 
     // Store old weights for comparison
     const oldWeights = {
@@ -213,8 +259,8 @@ export function useTrainingControls(
       output: nn.biasOutput.data.map(row => row[0])
     };
 
-    await animation.animateBackwardPropagation(state.training.animationSpeed);
-    await animation.sleep(500, state.training.animationSpeed);
+    await animationRunner.animateBackwardPropagation(state.training.animationSpeed);
+    await animationRunner.sleep(500, state.training.animationSpeed);
 
     // Collect new weights
     const newWeights = {
@@ -233,9 +279,9 @@ export function useTrainingControls(
 
     state.statsSetters.setEpoch(prev => prev + 1);
     state.statsSetters.setLoss(nn.lastLoss);
-    animation.computeAndRefreshDisplay();
+    animationRunner.computeAndRefreshDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMachine, animation, state.stats.learningRate, state.training.animationSpeed]);
+  }, [animationMachine, animationRunner, state.stats.learningRate, state.training.animationSpeed]);
 
   // =========================================================================
   // Close Backprop Modal
@@ -243,9 +289,9 @@ export function useTrainingControls(
   const closeBackpropModal = useCallback(() => {
     state.modalSetters.setBackpropSummaryData(null);
     animationMachine.closeBackpropModal();
-    animation.refreshDisplayOnly();  // No recalculation needed - just closing modal
+    animationRunner.refreshDisplayOnly();  // No recalculation needed - just closing modal
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMachine, animation]);
+  }, [animationMachine, animationRunner]);
 
   // =========================================================================
   // Toggle Training (auto)
@@ -282,7 +328,7 @@ export function useTrainingControls(
       }
     }
 
-    animation.shouldStopRef.current = true;
+    animationRunner.stopAnimation();
     nnRef.current = new NeuralNetwork();
     state.statsSetters.setEpoch(0);
     state.statsSetters.setLoss(0);
@@ -298,9 +344,9 @@ export function useTrainingControls(
     state.inputSetters.setTargetValue(Math.floor(Math.random() * 3)); // 0, 1, or 2
 
     animationMachine.reset();
-    animation.computeAndRefreshDisplay();
+    animationRunner.computeAndRefreshDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.training.isTraining, animation, animationMachine]);
+  }, [state.training.isTraining, animationRunner, animationMachine]);
 
 
   // =========================================================================
@@ -324,3 +370,5 @@ export function useTrainingControls(
     trainingIntervalRef,
   };
 }
+
+

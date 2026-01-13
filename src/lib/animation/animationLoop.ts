@@ -18,7 +18,7 @@ export interface AnimationLoopConfig<TStage extends string, TData> {
   mode: 'forward' | 'backward';
   
   /** Layers to iterate through (in order) */
-  layers: LayerName[];
+  layers: readonly LayerName[];
   
   /** Get neuron indices to iterate for a layer */
   getNeuronIndices: (layer: LayerName) => number[];
@@ -58,6 +58,14 @@ export interface AnimationLoopConfig<TStage extends string, TData> {
   
   /** Speed override for sleep (optional) */
   speedOverride?: number;
+  
+  /** Optional: Resume animation from specific position */
+  resumeFrom?: {
+    /** Index of layer to resume from (0-based) */
+    layerIndex: number;
+    /** Index within neuron array to resume from (0-based) */
+    neuronIndex: number;
+  };
 }
 
 // ============================================================================
@@ -67,6 +75,7 @@ export interface AnimationLoopConfig<TStage extends string, TData> {
 /**
  * Runs the animation loop with the given configuration.
  * Handles forward and backward propagation with a unified loop structure.
+ * Supports resuming from a specific layer and neuron position.
  */
 export async function runAnimationLoop<TStage extends string, TData>(
   config: AnimationLoopConfig<TStage, TData>
@@ -74,8 +83,22 @@ export async function runAnimationLoop<TStage extends string, TData>(
   const data = config.getData();
   if (!data) return;
   
-  for (const layer of config.layers) {
-    const neuronIndices = config.getNeuronIndices(layer);
+  // Determine starting layer index
+  const startLayerIdx = config.resumeFrom?.layerIndex ?? 0;
+  
+  // Iterate through layers starting from resume position
+  for (let layerIdx = startLayerIdx; layerIdx < config.layers.length; layerIdx++) {
+    const layer = config.layers[layerIdx];
+    const allNeuronIndices = config.getNeuronIndices(layer);
+    
+    // Determine starting neuron index within this layer
+    // Only apply resume offset if we're on the starting layer
+    const startNeuronOffset = (layerIdx === startLayerIdx && config.resumeFrom) 
+      ? config.resumeFrom.neuronIndex 
+      : 0;
+    
+    // Slice the neuron indices to start from the correct position
+    const neuronIndices = allNeuronIndices.slice(startNeuronOffset);
     
     for (const neuronIndex of neuronIndices) {
       if (config.shouldStop()) return;

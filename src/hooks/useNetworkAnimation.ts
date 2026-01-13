@@ -7,10 +7,9 @@
 
 import { useCallback, useRef, RefObject } from 'react';
 import type { NeuralNetwork } from '../lib/core';
-import { LAYER_SIZES, FORWARD_LAYER_ORDER, BACKWARD_LAYER_ORDER } from '../lib/core';
+import { LAYER_SIZES, FORWARD_LAYER_ORDER, BACKWARD_LAYER_ORDER, type LayerName } from '../lib/core';
 import type { Visualizer } from '../lib/visualizer';
-import type { ForwardStage, BackpropStage } from '../lib/types';
-import { createBackpropSummaryData } from '../lib/types';
+import { createBackpropSummaryData, type ForwardStage, type BackpropStage } from '../lib/types';
 import type { UseNetworkStateReturn } from './useNetworkState';
 import type { AnimationStateMachine } from './useAnimationStateMachine';
 import {
@@ -30,7 +29,11 @@ export interface UseNetworkAnimationReturn {
   animateBackwardPropagation: (speedOverride?: number) => Promise<void>;
   continueFromJumpedPosition: () => Promise<void>;
   sleep: (ms: number, overrideSpeed?: number) => Promise<void>;
-  shouldStopRef: RefObject<boolean>;
+  shouldStopRef: RefObject<boolean>;  // Kept for backward compatibility
+  // Semantic animation control functions
+  stopAnimation: () => void;
+  resumeAnimation: () => void;
+  isStopped: () => boolean;
   computeAndRefreshDisplay: () => void;
   refreshDisplayOnly: () => void;
 }
@@ -54,9 +57,12 @@ export function useNetworkAnimation(
   const syncVisualizerState = useCallback(() => {
     if (visualizerRef.current) {
       const nn = nnRef.current;
-      const machineState = animationMachine.state;
+      // Use ref to get latest state, not closure!
+      const machineState = animationMachineRef.current.state;
+
 
       if (machineState.type === 'forward_animating') {
+
         visualizerRef.current.setForwardAnimationState(
           machineState.layer, machineState.neuronIndex, machineState.stage, machineState.neuronData
         );
@@ -71,7 +77,7 @@ export function useNetworkAnimation(
 
       visualizerRef.current.update(nn);
     }
-  }, [animationMachine, nnRef, visualizerRef]); // Added nnRef and visualizerRef to dependencies for correctness
+  }, []);  // No dependencies - always use refs for latest values!
 
   // =========================================================================
   // Refresh Display Only (no recalculation)
@@ -80,7 +86,7 @@ export function useNetworkAnimation(
     // Just sync visualizer and update canvas - no feedforward
     syncVisualizerState();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMachine.state, syncVisualizerState]); // Added syncVisualizerState to dependencies for correctness
+  }, [animationMachine.state]);  // Only depend on state, not the function
 
   // =========================================================================
   // Compute and Refresh Display (full recalculation + refresh)
@@ -108,7 +114,7 @@ export function useNetworkAnimation(
     // Sync visualizer and update canvas
     syncVisualizerState();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response, syncVisualizerState]); // Removed animationMachine.state, added syncVisualizerState
+  }, [state.inputs.grade, state.inputs.attitude, state.inputs.response]);  // Removed syncVisualizerState - causes infinite loop
 
   // =========================================================================
   // Sleep utility
@@ -129,6 +135,15 @@ export function useNetworkAnimation(
   // =========================================================================
   const animateForwardPropagation = useCallback(async () => {
     const nn = nnRef.current;
+
+    // Manually trigger first tick to ensure state changes from idle to forward_animating
+    const calcSteps = nn.getCalculationSteps();
+    if (calcSteps) {
+      const firstData = calcSteps.layer1[0];
+
+      animationMachine.forwardTick('layer1', 0, 'connections', firstData);
+      await sleep(FORWARD_STAGE_DURATIONS.connections);
+    }
 
     await runAnimationLoop({
       mode: 'forward',
@@ -205,115 +220,129 @@ export function useNetworkAnimation(
   // =========================================================================
   const continueFromJumpedPosition = useCallback(async () => {
     const machineState = animationMachine.state;
-    if (machineState.type !== 'forward_animating' && machineState.type !== 'backward_animating') return;
+    if (machineState.type !== 'forward_animating' && machineState.type !== 'backward_animating')
+      return;
 
     const nn = nnRef.current;
 
-    if (machineState.type === 'forward_animating') {
-      const calcSteps = nn.getCalculationSteps();
-      if (!calcSteps) return;
+    // Common animation configuration
+    const commonConfig = {
+      shouldStop: () => shouldStopRef.current,
+      sleep,
+      refreshDisplayOnly,
+      computeAndRefreshDisplay,
+    };
 
-      const layers = FORWARD_LAYER_ORDER;
-      const layerData = { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
+    // Mode-specific configurations
+    const animationConfigs = {
+      forward: () => {
+        const calcSteps = nn.getCalculationSteps();
+        if (!calcSteps) return null;
 
-      const baseDelay = 400;
-      const connectionDelay = 150;
-      const stageDurations: Record<ForwardStage, number> = {
-        connections: connectionDelay,
-        dotProduct: baseDelay,
-        bias: baseDelay,
-        activation: baseDelay,
-      };
-
-      const startLayerIdx = layers.indexOf(machineState.layer);
-      let startNeuronIdx = machineState.neuronIndex + 1;
-
-      for (let layerIdx = startLayerIdx; layerIdx < layers.length; layerIdx++) {
-        const layer = layers[layerIdx];
-        const startIdx = layerIdx === startLayerIdx ? startNeuronIdx : 0;
-
-        for (let neuronIndex = startIdx; neuronIndex < LAYER_SIZES[layer]; neuronIndex++) {
-          if (shouldStopRef.current) return;
-
-          const neuronData = layerData[layer][neuronIndex];
-
-          for (const stage of FORWARD_STAGES) {
-            if (shouldStopRef.current) return;
-
-            animationMachine.forwardTick(layer, neuronIndex, stage, neuronData);
-            refreshDisplayOnly();
-            await sleep(stageDurations[stage]);
+        return {
+          mode: 'forward' as const,
+          layers: FORWARD_LAYER_ORDER,
+          getNeuronIndices: forwardNeuronIndices,
+          stages: FORWARD_STAGES,
+          stageDurations: FORWARD_STAGE_DURATIONS,
+          getData: () => {
+            const calcSteps = nn.getCalculationSteps();
+            if (!calcSteps) return null;
+            return { layer1: calcSteps.layer1, layer2: calcSteps.layer2, output: calcSteps.output };
+          },
+          onTick: (layer: LayerName, neuronIndex: number, stage: ForwardStage, data: any) => {
+            animationMachine.forwardTick(layer, neuronIndex, stage, data);
+          },
+          onComplete: () => {
+            animationMachine.forwardComplete();
+          },
+          resumeFrom: {
+            layerIndex: FORWARD_LAYER_ORDER.indexOf(machineState.layer),
+            neuronIndex: machineState.neuronIndex + 1
           }
-        }
-      }
+        };
+      },
 
-      animationMachine.forwardComplete();
+      backward: () => {
+        const backpropData = nn.lastBackpropSteps;
+        if (!backpropData) return null;
 
-    } else if (machineState.type === 'backward_animating') {
-      const backpropData = nn.lastBackpropSteps;
-      if (!backpropData) return;
-
-      const layers = BACKWARD_LAYER_ORDER;
-      const layerStartIndices = { output: LAYER_SIZES.output - 1, layer2: LAYER_SIZES.layer2 - 1, layer1: LAYER_SIZES.layer1 - 1 };
-      const layerData = { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
-
-      const stageDurations: Record<BackpropStage, number> = {
-        error: 300,
-        derivative: 350,
-        gradient: 350,
-        weightDelta: 350,
-        allWeightDeltas: 400,
-        update: 300,
-      };
-
-      const startLayerIdx = layers.indexOf(machineState.layer);
-      let startNeuronIdx = machineState.neuronIndex - 1;
-
-      for (let layerIdx = startLayerIdx; layerIdx < layers.length; layerIdx++) {
-        const layer = layers[layerIdx];
-        const startIdx = layerIdx === startLayerIdx ? startNeuronIdx : layerStartIndices[layer];
-
-        for (let neuronIndex = startIdx; neuronIndex >= 0; neuronIndex--) {
-          if (shouldStopRef.current) return;
-
-          const neuronData = layerData[layer][neuronIndex];
-
-          for (const stage of BACKPROP_STAGES) {
-            if (shouldStopRef.current) return;
-
-            animationMachine.backwardTick(layer, neuronIndex, stage, neuronData);
-            refreshDisplayOnly();
-            await sleep(stageDurations[stage]);
-
+        return {
+          mode: 'backward' as const,
+          layers: BACKWARD_LAYER_ORDER,
+          getNeuronIndices: backwardNeuronIndices,
+          stages: BACKPROP_STAGES,
+          stageDurations: BACKWARD_STAGE_DURATIONS,
+          getData: () => {
+            return { layer1: backpropData.layer1, layer2: backpropData.layer2, output: backpropData.output };
+          },
+          onTick: (layer: LayerName, neuronIndex: number, stage: BackpropStage, data: any) => {
+            animationMachine.backwardTick(layer, neuronIndex, stage, data);
+          },
+          onStageComplete: (layer: LayerName, neuronIndex: number, stage: BackpropStage, data: any) => {
             if (stage === 'update') {
-              nn.updateNeuronWeights(layer, neuronIndex, neuronData.newWeights, neuronData.newBias);
+              nn.updateNeuronWeights(layer, neuronIndex, data.newWeights, data.newBias);
               nn.feedforward(nn.lastInput!.toArray());
-              refreshDisplayOnly();
             }
+          },
+          onComplete: () => {
+            animationMachine.backwardComplete();
+
+            // Summary data only if animation completed (not stopped)
+            if (!shouldStopRef.current) {
+              const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
+              state.modalSetters.setBackpropSummaryData(summaryData);
+            }
+          },
+          resumeFrom: {
+            layerIndex: BACKWARD_LAYER_ORDER.indexOf(machineState.layer),
+            // For backward animation, getNeuronIndices returns reversed array
+            neuronIndex: LAYER_SIZES[machineState.layer] - machineState.neuronIndex
           }
-        }
+        };
       }
+    };
 
-      animationMachine.backwardComplete();
+    // Select and execute appropriate animation configuration
+    const mode = machineState.type === 'forward_animating' ? 'forward' : 'backward';
+    const modeConfig = animationConfigs[mode]();
+    
+    if (!modeConfig) return;
 
-      // Summary data only if animation completed (not stopped)
-      if (!shouldStopRef.current) {
-        const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
-        state.modalSetters.setBackpropSummaryData(summaryData);
-      }
-    }
+    await runAnimationLoop({
+      ...commonConfig,
+      ...modeConfig
+    } as any);  // Type assertion needed due to union type complexity
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationMachine, sleep, computeAndRefreshDisplay, state.stats.learningRate]);
 
   // Store reference for useEffect
   continueFromJumpedPositionRef.current = continueFromJumpedPosition;
 
+  // =========================================================================
+  // Semantic Animation Control Functions
+  // =========================================================================
+  const stopAnimation = useCallback(() => {
+    shouldStopRef.current = true;
+  }, []);
+
+  const resumeAnimation = useCallback(() => {
+    shouldStopRef.current = false;
+  }, []);
+
+  const isStopped = useCallback(() => {
+    return shouldStopRef.current;
+  }, []);
+
   return {
     animateForwardPropagation,
     animateBackwardPropagation,
     continueFromJumpedPosition,
     sleep,
-    shouldStopRef,
+    shouldStopRef,  // Kept for backward compatibility
+    stopAnimation,
+    resumeAnimation,
+    isStopped,
     computeAndRefreshDisplay,
     refreshDisplayOnly,
   };
