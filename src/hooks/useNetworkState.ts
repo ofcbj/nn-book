@@ -8,7 +8,7 @@
 import { useState, useMemo } from 'react';
 import type { ForwardSteps, BackpropSummaryData, WeightComparisonData } from '../lib/types';
 import type { ActivationData } from '../components/ActivationHeatmap';
-import { useModal, type UseModalReturn } from './useModal';
+import { useModal, type UseModalReturn } from './useModalState';
 
 // =============================================================================
 // State Interfaces - Organized by Topic

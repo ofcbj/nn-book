@@ -6,7 +6,10 @@
       "Bash(cat:*)",
       "Bash(git restore:*)",
       "Bash(grep:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(ls:*)",
+      "Read(//usr/local/workspace/nn-book/**)",
+      "Bash(xargs:*)"
     ]
   }
 }

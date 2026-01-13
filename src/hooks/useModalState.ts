@@ -1,8 +1,11 @@
 /**
- * Generic Modal Manager Hook
+ * Generic Modal State Hook
  *
  * Provides consistent modal state management with open/close actions.
  * Eliminates pattern duplication across multiple modals.
+ *
+ * This is a reusable utility hook for managing modal state.
+ * For specific modal business logic, see useModalActions.
  */
 
 import { useState, useCallback } from 'react';
