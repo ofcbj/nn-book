@@ -1,4 +1,4 @@
-// Backpropagation visualizer renderer
+// Backward propagation (backpropagation) visualizer renderer
 import type { NodePosition, BackwardCalculation, BackwardSteps } from '../types';
 import type { AnimationState } from '../animation';
 import type { NeuralNetwork } from '../core';
@@ -10,9 +10,9 @@ import { renderOverlay } from './overlayRenderer';
 // ============================================================================
 
 /**
- * Find the node to highlight based on layer and index.
+ * Get the highlighted node based on layer and index.
  */
-function findNodeToHighlight(
+function getHighlightedNode(
   layer: string,
   index: number,
   nodes: NodePosition[][]
@@ -57,7 +57,7 @@ function drawErrorGlow(
  * This helps visualize which weights are being used in the error calculation.
  * Also draws labels showing the original error values and weights.
  */
-function drawBackpropConnections(
+function drawBackwardConnections(
   ctx: CanvasRenderingContext2D,
   currentNode: NodePosition,
   nextLayerNodes: NodePosition[],
@@ -190,10 +190,10 @@ function drawAllErrorLabels(
 // ============================================================================
 
 /**
- * Draw backpropagation highlight and overlay.
+ * Draw backward propagation (backpropagation) network visualization.
  * Uses separated content generator and overlay renderer modules.
  */
-export function drawBackpropHighlight(
+export function drawBackwardNetwork(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   nodes: NodePosition[][],
@@ -214,7 +214,7 @@ export function drawBackpropHighlight(
   if (animationState.type !== 'backward_animating') return;
 
   const { layer, neuronIndex, neuronData, stage } = animationState;
-  const nodeInfo = findNodeToHighlight(layer, neuronIndex, nodes);
+  const nodeInfo = getHighlightedNode(layer, neuronIndex, nodes);
   if (!nodeInfo) return;
 
   // Draw connection lines during 'error' stage for hidden layers
@@ -228,7 +228,7 @@ export function drawBackpropHighlight(
     const nextLayerNodes = nextLayerMap[layer];
     
     if (nextLayerNodes.length > 0) {
-      drawBackpropConnections(
+      drawBackwardConnections(
         ctx,
         nodeInfo,
         nextLayerNodes,
@@ -254,5 +254,4 @@ export function drawBackpropHighlight(
     ctx.fillText('◄ BACKPROP', nodeInfo.centerX, nodeInfo.y - 35);
   }
 }
-
 

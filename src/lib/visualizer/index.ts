@@ -6,8 +6,8 @@ import type { AnimationState } from '../animation';
 import type { NeuralNetwork, LayerName } from '../core';
 import i18n from '../../i18n';
 import { activationToColor } from './activationColors';
-import { drawBackpropHighlight } from './backpropRenderer';
-import { drawNetwork } from './networkRenderer';
+import { drawBackwardNetwork } from './backwardRenderer';
+import { drawForwardNetwork } from './forwardRenderer';
 import { drawCalculationOverlay as drawCalcOverlay } from './calculationOverlay';
 
 export class Visualizer {
@@ -50,8 +50,8 @@ export class Visualizer {
     }
   }
 
-  drawNetwork(nn: NeuralNetwork, steps: ForwardSteps | null, animationState: AnimationState): void {
-    const nodes = drawNetwork(
+  drawForwardNetwork(nn: NeuralNetwork, steps: ForwardSteps | null, animationState: AnimationState): void {
+    const nodes = drawForwardNetwork(
       this.ctx,
       this.canvas,
       nn,
@@ -61,7 +61,7 @@ export class Visualizer {
       this.drawConnectionsVector.bind(this),
       this.showLoss ? this.drawLossOverlay.bind(this) : null,
       (animationState.type === 'backward_animating' || animationState.type === 'showing_backprop_modal') 
-        ? this.drawBackpropHighlight.bind(this, animationState, this.ctx) : null,
+        ? this.drawBackwardNetwork.bind(this, animationState, this.ctx) : null,
       this.drawCalculationOverlay.bind(this),
       nn
     );
@@ -215,13 +215,13 @@ export class Visualizer {
     ctx.fillText(`Cross-Entropy Loss: ${loss.toFixed(4)}`, width/2, height/2 + 80);
   }
 
-  private drawBackpropHighlight(
+  private drawBackwardNetwork(
     animationState: AnimationState,
     ctx: CanvasRenderingContext2D, 
     nodes: NodePosition[][],
     nn: NeuralNetwork
   ): void {
-    drawBackpropHighlight(
+    drawBackwardNetwork(
       ctx,
       this.canvas,
       nodes,
@@ -232,7 +232,7 @@ export class Visualizer {
 
   update(nn: NeuralNetwork, animationState: AnimationState): void {
     const steps = nn.getCalculationSteps();
-    this.drawNetwork(nn, steps, animationState);
+    this.drawForwardNetwork(nn, steps, animationState);
   }
 
   getActivationColor(value: number): string {

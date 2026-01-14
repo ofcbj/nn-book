@@ -1,4 +1,4 @@
-// Network rendering module
+// Forward propagation rendering module
 import type { ForwardSteps, NodePosition, AnimationPhase, ForwardCalculation, LayerType } from '../types';
 import type { AnimationState } from '../animation';
 import type { NeuralNetwork } from '../core';
@@ -99,7 +99,7 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
 // Main Export
 // =============================================================================
 
-export function drawNetwork(
+export function drawForwardNetwork(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   nn: NeuralNetwork,
@@ -108,7 +108,7 @@ export function drawNetwork(
   animationState: AnimationState,
   drawConnectionsVector: (animationState: AnimationState, ctx: CanvasRenderingContext2D, nodes: NodePosition[][], nn: NeuralNetwork) => void,
   drawLossOverlay: ((ctx: CanvasRenderingContext2D, width: number, height: number) => void) | null,
-  drawBackpropHighlight: ((nodes: NodePosition[][], nn: NeuralNetwork) => void) | null,
+  drawBackwardNetwork: ((nodes: NodePosition[][], nn: NeuralNetwork) => void) | null,
   drawCalculationOverlay: ((animationState: AnimationState, ctx: CanvasRenderingContext2D, x: number, y: number) => void) | null,
   nnForBackprop: NeuralNetwork
 ): NodePosition[][] {
@@ -198,8 +198,8 @@ export function drawNetwork(
     drawLossOverlay(ctx, width, height);
   }
 
-  if (drawBackpropHighlight) {
-    drawBackpropHighlight(nodes, nnForBackprop);
+  if (drawBackwardNetwork) {
+    drawBackwardNetwork(nodes, nnForBackprop);
   }
 
   return nodes;
