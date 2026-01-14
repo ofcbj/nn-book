@@ -5,7 +5,7 @@
  * Change layer sizes here to update the entire application.
  */
 
-import type { ForwardStage, BackpropStage } from '../types';
+import type { ForwardStage, BackwardStage } from '../types';
 
 // =============================================================================
 // Layer Configuration
@@ -126,7 +126,7 @@ export const FORWARD_STAGES: ForwardStage[] = [
 /**
  * Calculation stages for backpropagation animation
  */
-export const BACKPROP_STAGES: BackpropStage[] = [
+export const BACKPROP_STAGES: BackwardStage[] = [
   'error', 'derivative', 'gradient', 'weightDelta', 'allWeightDeltas', 'update'
 ];
 
@@ -144,7 +144,7 @@ export function getNextForwardStage(current: ForwardStage): ForwardStage | null 
 /**
  * Get next backprop stage, or null if at the last stage
  */
-export function getNextBackpropStage(current: BackpropStage): BackpropStage | null {
+export function getNextBackwardStage(current: BackwardStage): BackwardStage | null {
   const idx = BACKPROP_STAGES.indexOf(current);
   if (idx >= 0 && idx < BACKPROP_STAGES.length - 1) {
     return BACKPROP_STAGES[idx + 1];

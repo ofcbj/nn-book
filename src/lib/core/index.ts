@@ -12,7 +12,7 @@ export { NeuralNetwork, sigmoid, dsigmoid, softmax } from './network';
 export {
   backpropOutputLayer,
   backpropHiddenLayer,
-  createBackpropSteps,
+  createBackwardSteps,
 } from './backpropagation';
 export {
   LAYER_NAMES,
@@ -28,6 +28,6 @@ export {
   FORWARD_STAGES,
   BACKPROP_STAGES,
   getNextForwardStage,
-  getNextBackpropStage,
+  getNextBackwardStage,
 } from './networkConfig';
 export type { LayerName } from './networkConfig';

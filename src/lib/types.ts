@@ -28,7 +28,7 @@ export interface NetworkArchitecture {
 /**
  * Single neuron calculation data for visualizer
  */
-export interface NeuronCalculation {
+export interface ForwardCalculation {
   neuronIndex: number;
   className?: string;      // For output neurons
   weights: number[];
@@ -45,9 +45,9 @@ export interface NeuronCalculation {
  */
 export interface ForwardSteps {
   input: number[];
-  layer1: NeuronCalculation[];
-  layer2: NeuronCalculation[];
-  output: NeuronCalculation[];
+  layer1: ForwardCalculation[];
+  layer2: ForwardCalculation[];
+  output: ForwardCalculation[];
 }
 
 /**
@@ -66,7 +66,7 @@ export type ForwardStage = 'connections' | 'dotProduct' | 'bias' | 'activation';
 /**
  * Backpropagation calculation stage during animation
  */
-export type BackpropStage = 'error' | 'derivative' | 'gradient' | 'weightDelta' | 'allWeightDeltas' | 'update';
+export type BackwardStage = 'error' | 'derivative' | 'gradient' | 'weightDelta' | 'allWeightDeltas' | 'update';
 
 /**
  * Loss display information
@@ -81,7 +81,7 @@ export interface LossDisplayData {
 /**
  * Backpropagation visualizer data for a single neuron
  */
-export interface BackpropNeuronData {
+export interface BackwardCalculation {
   neuronIndex: number;
   error: number;              // 이 뉴런이 받은 오류 크기
   gradients: number[];        // 각 가중치에 대한 그래디언트
@@ -103,10 +103,10 @@ export interface BackpropNeuronData {
 /**
  * Complete backpropagation steps for visualizer
  */
-export interface BackpropSteps {
-  layer1: BackpropNeuronData[];
-  layer2: BackpropNeuronData[];
-  output: BackpropNeuronData[];
+export interface BackwardSteps {
+  layer1: BackwardCalculation[];
+  layer2: BackwardCalculation[];
+  output: BackwardCalculation[];
   totalLoss: number;
   targetClass: number;
   predictions: number[];
@@ -168,11 +168,11 @@ export interface WeightComparisonData {
 }
 
 /**
- * Creates a BackpropSummaryData object from BackpropSteps data.
+ * Creates a BackpropSummaryData object from BackwardSteps data.
  * Extracts weights and biases from each layer into a summary format.
  */
 export function createBackpropSummaryData(
-  backpropData: BackpropSteps,
+  backpropData: BackwardSteps,
   learningRate: number
 ): BackpropSummaryData {
   const layers: Array<'layer1' | 'layer2' | 'output'> = ['layer1', 'layer2', 'output'];

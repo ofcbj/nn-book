@@ -1,5 +1,5 @@
 // Network rendering module
-import type { ForwardSteps, NodePosition, AnimationPhase, NeuronCalculation, LayerType } from '../types';
+import type { ForwardSteps, NodePosition, AnimationPhase, ForwardCalculation, LayerType } from '../types';
 import type { AnimationState } from '../animation';
 import type { NeuralNetwork } from '../core';
 import { LAYER_SIZES } from '../core';
@@ -13,7 +13,7 @@ import i18n from '../../i18n';
 
 interface LayerConfig {
   layerName: LayerType;
-  neurons: NeuronCalculation[];
+  neurons: ForwardCalculation[];
   x: number;
   neuronCount: number;
   verticalSpacing: number;

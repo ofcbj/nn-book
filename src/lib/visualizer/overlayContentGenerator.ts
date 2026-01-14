@@ -5,7 +5,7 @@
  * Separates content generation from rendering for better maintainability.
  */
 
-import type { ForwardStage, NeuronCalculation, BackpropStage, BackpropNeuronData } from '../types';
+import type { ForwardStage, ForwardCalculation, BackwardStage, BackwardCalculation } from '../types';
 import i18n from '../../i18n';
 
 // ============================================================================
@@ -24,7 +24,7 @@ export interface OverlayContent {
 
 export function generateForwardContent(
   stage: ForwardStage,
-  data: NeuronCalculation
+  data: ForwardCalculation
 ): OverlayContent {
   switch(stage) {
     case 'connections':
@@ -81,7 +81,7 @@ export function generateForwardContent(
 // ============================================================================
 
 function generateErrorContent(
-  data: BackpropNeuronData,
+  data: BackwardCalculation,
   currentLayer: string
 ): string[] {
   if (currentLayer === 'output') {
@@ -169,8 +169,8 @@ function generateErrorContent(
 }
 
 export function generateBackpropContent(
-  stage: BackpropStage,
-  data: BackpropNeuronData,
+  stage: BackwardStage,
+  data: BackwardCalculation,
   currentLayer: string
 ): OverlayContent {
   const y = data.activation;

@@ -19,7 +19,7 @@ import type { LayerName } from '../lib/core';
 import { LAYER_SIZES, FORWARD_LAYER_ORDER, BACKWARD_LAYER_ORDER } from '../lib/core';
 import type { Visualizer } from '../lib/visualizer';
 import type { UseNetworkStateReturn } from './useNetworkState';
-import type { ForwardStage, BackpropStage, NeuronCalculation, BackpropNeuronData } from '../lib/types';
+import type { ForwardStage, BackwardStage, ForwardCalculation, BackwardCalculation } from '../lib/types';
 import { createBackpropSummaryData } from '../lib/types';
 import { createSnapshot, restoreSnapshot, compareSnapshots } from '../lib/core/networkSnapshot';
 import {
@@ -30,14 +30,14 @@ import {
   isAnimating,
   isPaused,
   getNextForwardStage,
-  getNextBackpropStage,
+  getNextBackwardStage,
   getNextForwardNeuron,
   getNextBackwardNeuron,
   FORWARD_STAGES,
   BACKPROP_STAGES,
   getHighlightedNeuron,
   getForwardStage,
-  getBackpropStage,
+  getBackwardStage,
   getCurrentNeuronData,
   getCurrentBackpropData,
   runAnimationLoop,
@@ -61,9 +61,9 @@ export interface UseAnimationEngineReturn {
   // === Visualization Data ===
   highlightedNeuron: { layer: LayerName; index: number } | null;
   forwardStage: ForwardStage | null;
-  backpropStage: BackpropStage | null;
-  currentNeuronData: NeuronCalculation | null;
-  currentBackpropData: BackpropNeuronData | null;
+  backpropStage: BackwardStage | null;
+  currentNeuronData: ForwardCalculation | null;
+  currentBackpropData: BackwardCalculation | null;
   // === Training Controls ===
   trainOneStepWithAnimation: () => Promise<void>;
   trainOneEpochWithoutAnimation: () => void;
@@ -127,7 +127,7 @@ export function useAnimationEngine(
     layer: LayerName,
     neuronIndex: number,
     stage: ForwardStage,
-    neuronData: NeuronCalculation | null
+    neuronData: ForwardCalculation | null
   ) => {
     dispatch({ type: 'FORWARD_TICK', layer, neuronIndex, stage, neuronData });
   }, []);
@@ -143,8 +143,8 @@ export function useAnimationEngine(
   const backwardTick = useCallback((
     layer       : LayerName,
     neuronIndex : number,
-    stage       : BackpropStage,
-    neuronData  : BackpropNeuronData | null
+    stage       : BackwardStage,
+    neuronData  : BackwardCalculation | null
   ) => {
     dispatch({ type: 'BACKWARD_TICK', layer, neuronIndex, stage, neuronData });
   }, []);
@@ -283,10 +283,10 @@ export function useAnimationEngine(
   }, [animationState.speed, waitForNextStep]);
   
   // Forward propagation animation
-  const animateForwardPropagation = useCallback(async () => {
+  const animateForwardPropagation = useCallback(async (): Promise<boolean> => {
     const nn = nnRef.current;
     
-    await runAnimationLoop({
+    const completed = await runAnimationLoop({
       mode: 'forward',
       layers: ['layer1', 'layer2', 'output'],
       getNeuronIndices: forwardNeuronIndices,
@@ -304,15 +304,16 @@ export function useAnimationEngine(
       sleep,
       computeAndRefreshDisplay,
     });
+    return completed;
   }, [forwardTick, forwardComplete, refreshDisplayOnly, sleep, computeAndRefreshDisplay, nnRef, isAnimationStopped]);
   
   // Backward propagation animation
-  const animateBackwardPropagation = useCallback(async (speedOverride: number = 1.0) => {
+  const animateBackwardPropagation = useCallback(async (speedOverride: number = 1.0): Promise<boolean> => {
     const nn = nnRef.current;
-    const backpropData = nn.lastBackpropSteps;
-    if (!backpropData) return;
+    const backpropData = nn.lastBackwardSteps;
+    if (!backpropData) return false;
 
-    await runAnimationLoop({
+    const completed = await runAnimationLoop({
       mode: 'backward',
       layers: ['output', 'layer2', 'layer1'],
       getNeuronIndices: backwardNeuronIndices,
@@ -336,12 +337,12 @@ export function useAnimationEngine(
       speedOverride,
     });
     // Collect summary data only if animation completed (not stopped)
-    // NOTE: Automatic modal display disabled - user can manually view via UI if needed
-    // if (shouldContinueAnimation()) {
-    //   const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
-    //   state.modalSetters.setBackpropSummaryData(summaryData);
-    // }
-  }, [backwardTick, backwardComplete, sleep, refreshDisplayOnly, computeAndRefreshDisplay, nnRef, state.stats.learningRate, state.modalSetters, isAnimationStopped, shouldContinueAnimation]);
+    if (completed) {
+      const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
+      state.modalSetters.setBackpropSummaryData(summaryData);
+    }
+    return completed;
+  }, [backwardTick, backwardComplete, sleep, refreshDisplayOnly, computeAndRefreshDisplay, nnRef, state.stats.learningRate, state.modalSetters, isAnimationStopped]);
   
   // Helper: Generic animation continuation from jumped position
   /**
@@ -349,7 +350,7 @@ export function useAnimationEngine(
    * This is a unified function that handles both forward and backward animations.
    */
   const continueAnimationFromJumpedPosition = useCallback(async <
-    TData extends NeuronCalculation | BackpropNeuronData,
+    TData extends ForwardCalculation | BackwardCalculation,
     TStage extends string
   >(config: {
     layers: readonly LayerName[];
@@ -421,7 +422,7 @@ export function useAnimationEngine(
       output: calcSteps.output
     };
 
-    await continueAnimationFromJumpedPosition<NeuronCalculation, ForwardStage>({
+    await continueAnimationFromJumpedPosition<ForwardCalculation, ForwardStage>({
       layers: FORWARD_LAYER_ORDER,
       currentLayerIndex: FORWARD_LAYER_ORDER.indexOf(animationState.layer),
       startNeuronIndex: animationState.neuronIndex + 1,
@@ -442,7 +443,7 @@ export function useAnimationEngine(
     if (animationState.type !== 'backward_animating') return;
 
     const nn = nnRef.current;
-    const backpropData = nn.lastBackpropSteps;
+    const backpropData = nn.lastBackwardSteps;
     if (!backpropData) return;
 
     const layerData = {
@@ -451,7 +452,7 @@ export function useAnimationEngine(
       output: backpropData.output
     };
 
-    await continueAnimationFromJumpedPosition<BackpropNeuronData, BackpropStage>({
+    await continueAnimationFromJumpedPosition<BackwardCalculation, BackwardStage>({
       layers: BACKWARD_LAYER_ORDER,
       currentLayerIndex: BACKWARD_LAYER_ORDER.indexOf(animationState.layer),
       startNeuronIndex: animationState.neuronIndex - 1,
@@ -473,9 +474,9 @@ export function useAnimationEngine(
         }
       },
       onAnimationComplete: () => {
-        // NOTE: Automatic modal display disabled - user can manually view via UI if needed
-        // const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
-        // state.modalSetters.setBackpropSummaryData(summaryData);
+        // Show backprop summary when animation completes after resume
+        const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
+        state.modalSetters.setBackpropSummaryData(summaryData);
       },
     });
   }, [animationState, nnRef, backwardTick, backwardComplete, continueAnimationFromJumpedPosition, refreshDisplayOnly, state.stats.learningRate, state.modalSetters]);
@@ -607,7 +608,6 @@ export function useAnimationEngine(
     closeBackpropModalAction,
     refreshDisplayOnly,
     startAnimation,
-    shouldContinueAnimation,
     animationSpeed: state.training.animationSpeed,
   });
 
@@ -620,7 +620,7 @@ export function useAnimationEngine(
   }, [nnRef]);
 
   const getBackwardNeuronData = useCallback((layer: LayerName, index: number) => {
-    const backpropData = nnRef.current.lastBackpropSteps;
+    const backpropData = nnRef.current.lastBackwardSteps;
     if (!backpropData) return null;
     return backpropData[layer]?.[index] ?? null;
   }, [nnRef]);
@@ -642,7 +642,7 @@ export function useAnimationEngine(
       if (neuron && (neuron.layer === 'layer1' || neuron.layer === 'layer2' || neuron.layer === 'output')) {
         const neuronLoc: NeuronLocation = { layer: neuron.layer, index: neuron.index };
 
-        // Same neuron click - advance stage
+        // Case 1: Same neuron clicked during forward animation - advance to next stage/neuron
         if (animationState.type === 'forward_animating' &&
             animationState.layer === neuronLoc.layer &&
             animationState.neuronIndex === neuronLoc.index) {
@@ -667,11 +667,11 @@ export function useAnimationEngine(
           }
           return;
         }
-
-        if (animationState.type === 'backward_animating' &&
-            animationState.layer === neuronLoc.layer &&
-            animationState.neuronIndex === neuronLoc.index) {
-          const nextStage = getNextBackpropStage(animationState.stage);
+        // Case 2: Same neuron clicked during backward animation - advance to next stage/neuron
+        else if (animationState.type === 'backward_animating' &&
+                 animationState.layer === neuronLoc.layer &&
+                 animationState.neuronIndex === neuronLoc.index) {
+          const nextStage = getNextBackwardStage(animationState.stage);
 
           if (nextStage) {
             backwardTick(neuronLoc.layer, neuronLoc.index, nextStage, animationState.neuronData);
@@ -690,7 +690,7 @@ export function useAnimationEngine(
           } else {
             // Backward propagation completed via click-through - show summary
             const nn = nnRef.current;
-            const backpropData = nn.lastBackpropSteps;
+            const backpropData = nn.lastBackwardSteps;
             if (backpropData) {
               const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
               state.modalSetters.setBackpropSummaryData(summaryData);
@@ -700,23 +700,25 @@ export function useAnimationEngine(
           }
           return;
         }
-        // Different neuron clicked - jump
-        stopAnimation();
-        jumpToNeuron(neuronLoc.layer, neuronLoc.index);
+        // Case 3: Different neuron clicked - jump to that neuron
+        else {
+          stopAnimation();
+          jumpToNeuron(neuronLoc.layer, neuronLoc.index);
 
-        if (animationState.type === 'forward_animating') {
-          const neuronData = getForwardNeuronData(neuronLoc.layer, neuronLoc.index);
-          if (neuronData) {
-            forwardTick(neuronLoc.layer, neuronLoc.index, 'dotProduct', neuronData);
+          if (animationState.type === 'forward_animating') {
+            const neuronData = getForwardNeuronData(neuronLoc.layer, neuronLoc.index);
+            if (neuronData) {
+              forwardTick(neuronLoc.layer, neuronLoc.index, 'dotProduct', neuronData);
+            }
+          } else if (animationState.type === 'backward_animating') {
+            const neuronData = getBackwardNeuronData(neuronLoc.layer, neuronLoc.index);
+            if (neuronData) {
+              backwardTick(neuronLoc.layer, neuronLoc.index, 'error', neuronData);
+            }
           }
-        } else if (animationState.type === 'backward_animating') {
-          const neuronData = getBackwardNeuronData(neuronLoc.layer, neuronLoc.index);
-          if (neuronData) {
-            backwardTick(neuronLoc.layer, neuronLoc.index, 'error', neuronData);
-          }
+
+          refreshDisplayOnly();
         }
-
-        refreshDisplayOnly();
       }
     }
   }, [animating, animationState, visualizerRef, nnRef, forwardTick, backwardTick, jumpToNeuron, refreshDisplayOnly, getForwardNeuronData, getBackwardNeuronData, completeForwardPass, backwardComplete, stopAnimation]);
@@ -733,7 +735,7 @@ export function useAnimationEngine(
     // Visualization data
     highlightedNeuron: getHighlightedNeuron(animationState),
     forwardStage: getForwardStage(animationState),
-    backpropStage: getBackpropStage(animationState),
+    backpropStage: getBackwardStage(animationState),
     currentNeuronData: getCurrentNeuronData(animationState),
     currentBackpropData: getCurrentBackpropData(animationState),
     // Training controls

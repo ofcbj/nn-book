@@ -1,14 +1,14 @@
 // Neural Network Implementation with TypeScript
 // Architecture: 3 inputs -> 5 neurons (1차) -> 3 neurons (2차) -> 3 outputs (Softmax)
 
-import type { ForwardSteps, BackpropSteps, NeuronCalculation } from '../types';
+import type { ForwardSteps, BackwardSteps, ForwardCalculation } from '../types';
 import i18n from '../../i18n';
 import { Matrix } from './matrix';
 import { LAYER_SIZES, INPUT_SIZE } from './networkConfig';
 import {
   backpropOutputLayer,
   backpropHiddenLayer,
-  createBackpropSteps
+  createBackwardSteps
 } from './backpropagation';
 
 
@@ -74,7 +74,7 @@ export class NeuralNetwork {
   lastLoss: number = 0;
 
   // Store detailed backprop data for visualizer
-  lastBackpropSteps: BackpropSteps | null = null;
+  lastBackwardSteps: BackwardSteps | null = null;
 
   constructor() {
     // Layer 1: 1차 면접관 (LAYER_SIZES.layer1 neurons, each takes INPUT_SIZE inputs)
@@ -320,7 +320,7 @@ export class NeuralNetwork {
       sum + (t > 0 ? Math.log(Math.max(outputs.data[i][0], 1e-7)) : 0), 0
     );
     // Build detailed backprop steps for visualizer
-    this.lastBackpropSteps = createBackpropSteps({
+    this.lastBackwardSteps = createBackwardSteps({
       activations: {
         inputs,
         hidden1,
@@ -409,7 +409,7 @@ export class NeuralNetwork {
         const activatedValue= config.activatedValues.data[i][0];
         const inputArray    = config.inputs.toArray();
         
-        const neuronData: NeuronCalculation = {
+        const neuronData: ForwardCalculation = {
           neuronIndex: i,
           weights,
           bias,

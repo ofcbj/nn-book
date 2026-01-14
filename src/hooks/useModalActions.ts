@@ -16,14 +16,13 @@ import { createSnapshot, compareSnapshots } from '../lib/core/networkSnapshot';
 export interface UseModalActionsParams {
   nnRef: RefObject<NeuralNetwork>;
   state: UseNetworkStateReturn;
-  animateBackwardPropagation: (speedOverride: number) => Promise<void>;
+  animateBackwardPropagation: (speedOverride: number) => Promise<boolean>;
   sleep: (ms: number, overrideSpeed?: number) => Promise<void>;
   computeAndRefreshDisplay: () => void;
   closeLossModalAction: () => void;
   closeBackpropModalAction: () => void;
   refreshDisplayOnly: () => void;
   startAnimation: () => void;
-  shouldContinueAnimation: () => boolean;
   animationSpeed: number;
 }
 
@@ -43,7 +42,6 @@ export function useModalActions(params: UseModalActionsParams): UseModalActionsR
     closeBackpropModalAction,
     refreshDisplayOnly,
     startAnimation,
-    shouldContinueAnimation,
     animationSpeed,
   } = params;
 
@@ -66,11 +64,12 @@ export function useModalActions(params: UseModalActionsParams): UseModalActionsR
 
     const oldSnapshot = createSnapshot(nn);
 
-    await animateBackwardPropagation(animationSpeed);
+    const completed = await animateBackwardPropagation(animationSpeed);
     await sleep(500, animationSpeed);
 
-    // Set weight comparison data (modal won't auto-open with new setData approach)
-    if (shouldContinueAnimation()) {
+    // Update stats and weight comparison data if animation completed
+    // (even if interrupted by clicking neurons during animation)
+    if (completed) {
       const newSnapshot = createSnapshot(nn);
       createWeightComparisonAfterTraining(oldSnapshot, newSnapshot);
       state.statsSetters.setEpoch(prev => prev + 1);
@@ -89,7 +88,6 @@ export function useModalActions(params: UseModalActionsParams): UseModalActionsR
     computeAndRefreshDisplay,
     nnRef,
     startAnimation,
-    shouldContinueAnimation,
   ]);
 
   // Close backprop modal

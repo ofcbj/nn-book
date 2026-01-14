@@ -5,7 +5,7 @@
  * Uses Strategy pattern to handle differences between modes.
  */
 
-import type { ForwardStage, BackpropStage } from '../types';
+import type { ForwardStage, BackwardStage } from '../types';
 
 // ============================================================================
 // Types
@@ -67,23 +67,25 @@ export interface AnimationLoopConfig<TStage extends string, TData> {
 /**
  * Runs the animation loop with the given configuration.
  * Handles forward and backward propagation with a unified loop structure.
+ * 
+ * @returns true if animation completed successfully, false if interrupted
  */
 export async function runAnimationLoop<TStage extends string, TData>(
   config: AnimationLoopConfig<TStage, TData>
-): Promise<void> {
+): Promise<boolean> {
   const data = config.getData();
-  if (!data) return;
+  if (!data) return false;
   
   for (const layer of config.layers) {
     const neuronIndices = config.getNeuronIndices(layer);
     
     for (const neuronIndex of neuronIndices) {
-      if (config.shouldStop()) return;
+      if (config.shouldStop()) return false;
       
       const neuronData = data[layer][neuronIndex];
       
       for (const stage of config.stages) {
-        if (config.shouldStop()) return;
+        if (config.shouldStop()) return false;
         
         // Update state machine
         config.onTick(layer, neuronIndex, stage, neuronData);
@@ -103,6 +105,7 @@ export async function runAnimationLoop<TStage extends string, TData>(
   
   // Animation complete
   config.onComplete();
+  return true;
 }
 
 // ============================================================================
@@ -124,7 +127,7 @@ export const FORWARD_STAGE_DURATIONS: Record<ForwardStage, number> = {
   activation: 400,
 };
 
-export const BACKWARD_STAGE_DURATIONS: Record<BackpropStage, number> = {
+export const BACKWARD_STAGE_DURATIONS: Record<BackwardStage, number> = {
   error: 300,
   derivative: 350,
   gradient: 350,

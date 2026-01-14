@@ -1,5 +1,5 @@
 // Backpropagation visualizer renderer
-import type { NodePosition, BackpropNeuronData, BackpropSteps } from '../types';
+import type { NodePosition, BackwardCalculation, BackwardSteps } from '../types';
 import type { AnimationState } from '../animation';
 import type { NeuralNetwork } from '../core';
 import { generateBackpropContent } from './overlayContentGenerator';
@@ -143,11 +143,11 @@ function drawBackpropConnections(
 function drawAllErrorLabels(
   ctx: CanvasRenderingContext2D,
   nodes: NodePosition[][],
-  allBackpropData: BackpropSteps
+  allBackpropData: BackwardSteps
 ): void {
   ctx.save();
   
-  const layerData: { nodes: NodePosition[], data: BackpropNeuronData[] }[] = [
+  const layerData: { nodes: NodePosition[], data: BackwardCalculation[] }[] = [
     { nodes: nodes[1] || [], data: allBackpropData.layer1 },
     { nodes: nodes[2] || [], data: allBackpropData.layer2 },
     { nodes: nodes[3] || [], data: allBackpropData.output },
@@ -207,8 +207,8 @@ export function drawBackpropHighlight(
   }
 
   // Draw persistent error labels on all neurons if we have backprop data
-  if (nn.lastBackpropSteps) {
-    drawAllErrorLabels(ctx, nodes, nn.lastBackpropSteps);
+  if (nn.lastBackwardSteps) {
+    drawAllErrorLabels(ctx, nodes, nn.lastBackwardSteps);
   }
   
   if (animationState.type !== 'backward_animating') return;

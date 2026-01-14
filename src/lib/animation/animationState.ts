@@ -5,7 +5,7 @@
  * in a predictable and bug-free manner. All state transitions are explicit.
  */
 
-import type { ForwardStage, BackpropStage, NeuronCalculation, BackpropNeuronData } from '../types';
+import type { ForwardStage, BackwardStage, ForwardCalculation, BackwardCalculation } from '../types';
 import { type LayerName } from '../core';
 
 // ============================================================================
@@ -33,7 +33,7 @@ export interface ForwardAnimatingState extends BaseAnimationState {
   layer: LayerName;
   neuronIndex: number;
   stage: ForwardStage;
-  neuronData: NeuronCalculation | null;
+  neuronData: ForwardCalculation | null;
 }
 
 /** Showing loss modal after forward propagation */
@@ -46,8 +46,8 @@ export interface BackwardAnimatingState extends BaseAnimationState {
   type: 'backward_animating';
   layer: LayerName;
   neuronIndex: number;
-  stage: BackpropStage;
-  neuronData: BackpropNeuronData | null;
+  stage: BackwardStage;
+  neuronData: BackwardCalculation | null;
 }
 
 /** Showing backprop summary modal */
@@ -82,7 +82,7 @@ export type AnimationAction =
       layer: LayerName; 
       neuronIndex: number; 
       stage: ForwardStage;
-      neuronData: NeuronCalculation | null;
+      neuronData: ForwardCalculation | null;
     }
   | { type: 'FORWARD_COMPLETE' }
   | { type: 'CLOSE_LOSS_MODAL' }
@@ -90,8 +90,8 @@ export type AnimationAction =
       type: 'BACKWARD_TICK'; 
       layer: LayerName; 
       neuronIndex: number; 
-      stage: BackpropStage;
-      neuronData: BackpropNeuronData | null;
+      stage: BackwardStage;
+      neuronData: BackwardCalculation | null;
     }
   | { type: 'BACKWARD_COMPLETE' }
   | { type: 'CLOSE_BACKPROP_MODAL' }
@@ -290,7 +290,7 @@ export function getForwardStage(state: AnimationState): ForwardStage | null {
 }
 
 /** Get backward propagation stage for visualizer */
-export function getBackpropStage(state: AnimationState): BackpropStage | null {
+export function getBackwardStage(state: AnimationState): BackwardStage | null {
   if (state.type === 'backward_animating') {
     return state.stage;
   }
@@ -298,7 +298,7 @@ export function getBackpropStage(state: AnimationState): BackpropStage | null {
 }
 
 /** Get current neuron data for calculation overlay */
-export function getCurrentNeuronData(state: AnimationState): NeuronCalculation | null {
+export function getCurrentNeuronData(state: AnimationState): ForwardCalculation | null {
   if (state.type === 'forward_animating') {
     return state.neuronData;
   }
@@ -306,7 +306,7 @@ export function getCurrentNeuronData(state: AnimationState): NeuronCalculation |
 }
 
 /** Get current backprop data for backprop overlay */
-export function getCurrentBackpropData(state: AnimationState): BackpropNeuronData | null {
+export function getCurrentBackpropData(state: AnimationState): BackwardCalculation | null {
   if (state.type === 'backward_animating') {
     return state.neuronData;
   }
@@ -322,7 +322,7 @@ export {
   FORWARD_STAGES,
   BACKPROP_STAGES,
   getNextForwardStage,
-  getNextBackpropStage,
+  getNextBackwardStage,
   getNextForwardNeuron,
   getNextBackwardNeuron,
 } from '../core';

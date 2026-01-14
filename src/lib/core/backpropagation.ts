@@ -1,7 +1,7 @@
 // Backpropagation helper functions for neural network training
 import { Matrix } from './matrix';
 import { dsigmoid } from './network';
-import type { BackpropSteps, BackpropNeuronData } from '../types';
+import type { BackwardSteps, BackwardCalculation } from '../types';
 import { LAYER_SIZES } from './networkConfig';
 import type { LayerName } from './networkConfig';
 
@@ -81,7 +81,7 @@ export function backpropHiddenLayer(
 // =============================================================================
 
 /**
- * Configuration for creating BackpropNeuronData for a single layer
+ * Configuration for creating BackwardCalculation for a single layer
  */
 interface LayerBackpropConfig {
   layerName: LayerName;
@@ -100,9 +100,9 @@ interface LayerBackpropConfig {
 }
 
 /**
- * Create BackpropNeuronData array for a single layer
+ * Create BackwardCalculation array for a single layer
  */
-function createLayerBackpropData(config: LayerBackpropConfig): BackpropNeuronData[] {
+function createLayerBackpropData(config: LayerBackpropConfig): BackwardCalculation[] {
   const {
     layerName,
     activations,
@@ -119,7 +119,7 @@ function createLayerBackpropData(config: LayerBackpropConfig): BackpropNeuronDat
   } = config;
 
   const neuronCount = LAYER_SIZES[layerName];
-  const result: BackpropNeuronData[] = [];
+  const result: BackwardCalculation[] = [];
 
   for (let i = 0; i < neuronCount; i++) {
     const activation = activations.data[i][0];
@@ -127,7 +127,7 @@ function createLayerBackpropData(config: LayerBackpropConfig): BackpropNeuronDat
     const error = errors.data[i][0];
     const gradient = error * derivative;
 
-    const neuronData: BackpropNeuronData = {
+    const neuronData: BackwardCalculation = {
       neuronIndex: i,
       error: error,
       gradients: gradients.data[i],
@@ -156,7 +156,7 @@ function createLayerBackpropData(config: LayerBackpropConfig): BackpropNeuronDat
 }
 
 /**
- * Create BackpropSteps for visualizer
+ * Create BackwardSteps for visualizer
  * 
  * Parameter interfaces for better organization
  */
@@ -181,7 +181,7 @@ interface NewWeightsAndBiases {
   hidden1: LayerWeightData;
 }
 
-// Main parameter interface for createBackpropSteps
+// Main parameter interface for createBackwardSteps
 export interface BackpropData {
   // Layer activations
   activations: {
@@ -232,9 +232,9 @@ export interface BackpropData {
 }
 
 /**
- * Create BackpropSteps for visualizer
+ * Create BackwardSteps for visualizer
  */
-export function createBackpropSteps(data: BackpropData): BackpropSteps {
+export function createBackwardSteps(data: BackpropData): BackwardSteps {
   // Destructure data for easier access
   const { activations, target, errors, gradients, weightDeltas, oldWeights, newWeights, currentWeights, loss } = data;
   
