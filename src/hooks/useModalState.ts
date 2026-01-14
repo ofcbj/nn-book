@@ -18,6 +18,7 @@ export interface ModalState<T> {
 export interface ModalActions<T> {
   open: (data: T) => void;
   close: () => void;
+  setData: (data: T | null) => void; // Set data without opening modal
 }
 
 export type UseModalReturn<T> = ModalState<T> & ModalActions<T>;
@@ -25,28 +26,38 @@ export type UseModalReturn<T> = ModalState<T> & ModalActions<T>;
 /**
  * Generic modal state management hook
  *
- * @returns Modal state (show, data) and actions (open, close)
+ * @returns Modal state (show, data) and actions (open, close, setData)
  *
  * @example
  * const lossModal = useModal<LossData>();
  * lossModal.open({ targetClass: 2, predictions: [0.1, 0.2, 0.7], loss: 0.5 });
+ * lossModal.setData({ ... }); // Set data without opening
  * lossModal.close();
  */
 export function useModal<T>(): UseModalReturn<T> {
-  const [data, setData] = useState<T | null>(null);
+  const [data, setDataInternal] = useState<T | null>(null);
+  const [show, setShow] = useState(false);
 
   const open = useCallback((newData: T) => {
-    setData(newData);
+    setDataInternal(newData);
+    setShow(true);
   }, []);
 
   const close = useCallback(() => {
-    setData(null);
+    setShow(false);
+    // Keep data available even when closed, for "View" button
+  }, []);
+
+  const setData = useCallback((newData: T | null) => {
+    setDataInternal(newData);
+    // Don't change show state
   }, []);
 
   return {
-    show: data !== null,
+    show,
     data,
     open,
     close,
+    setData,
   };
 }

@@ -171,8 +171,8 @@ export function useNetworkState(): UseNetworkStateReturn {
   const modalSetters = useMemo(() => ({
     setLossModalData: (data: LossModalData | null) => data ? lossModal.open(data) : lossModal.close(),
     setBackpropSummaryData: (data: BackpropSummaryData | null) => data ? backpropModal.open(data) : backpropModal.close(),
-    setWeightComparisonData: (data: WeightComparisonData | null) => data ? comparisonModal.open(data) : comparisonModal.close(),
-  }), [lossModal.open, lossModal.close, backpropModal.open, backpropModal.close, comparisonModal.open, comparisonModal.close]);
+    setWeightComparisonData: (data: WeightComparisonData | null) => comparisonModal.setData(data), // Use setData instead of open
+  }), [lossModal.open, lossModal.close, backpropModal.open, backpropModal.close, comparisonModal.setData]);
 
   return {
     // Grouped state

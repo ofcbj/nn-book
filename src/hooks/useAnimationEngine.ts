@@ -241,22 +241,7 @@ export function useAnimationEngine(
   // Sync visualizer state with animation machine
   const syncVisualizerState = useCallback(() => {
     if (visualizerRef.current) {
-      const nn = nnRef.current;
-
-      if (animationState.type === 'forward_animating') {
-        visualizerRef.current.setForwardAnimationState(
-          animationState.layer, animationState.neuronIndex, animationState.stage, 
-          animationState.neuronData
-        );
-      } else if (animationState.type === 'backward_animating') {
-        visualizerRef.current.setBackwardAnimationState(
-          animationState.layer, animationState.neuronIndex, animationState.stage,
-          animationState.neuronData, nn.lastBackpropSteps
-        );
-      } else {
-        visualizerRef.current.clearAnimationState();
-      }
-      visualizerRef.current.update(nn);
+      visualizerRef.current.update(nnRef.current, animationState);
     }
   }, [animationState, nnRef, visualizerRef]);
   
@@ -351,10 +336,11 @@ export function useAnimationEngine(
       speedOverride,
     });
     // Collect summary data only if animation completed (not stopped)
-    if (shouldContinueAnimation()) {
-      const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
-      state.modalSetters.setBackpropSummaryData(summaryData);
-    }
+    // NOTE: Automatic modal display disabled - user can manually view via UI if needed
+    // if (shouldContinueAnimation()) {
+    //   const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
+    //   state.modalSetters.setBackpropSummaryData(summaryData);
+    // }
   }, [backwardTick, backwardComplete, sleep, refreshDisplayOnly, computeAndRefreshDisplay, nnRef, state.stats.learningRate, state.modalSetters, isAnimationStopped, shouldContinueAnimation]);
   
   // Helper: Generic animation continuation from jumped position
@@ -487,9 +473,9 @@ export function useAnimationEngine(
         }
       },
       onAnimationComplete: () => {
-        // Show backprop summary only if animation completed without interruption
-        const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
-        state.modalSetters.setBackpropSummaryData(summaryData);
+        // NOTE: Automatic modal display disabled - user can manually view via UI if needed
+        // const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
+        // state.modalSetters.setBackpropSummaryData(summaryData);
       },
     });
   }, [animationState, nnRef, backwardTick, backwardComplete, continueAnimationFromJumpedPosition, refreshDisplayOnly, state.stats.learningRate, state.modalSetters]);
@@ -702,9 +688,13 @@ export function useAnimationEngine(
               refreshDisplayOnly();
             }
           } else {
-            // Backward propagation completed via click-through
-            // Don't set weight comparison data here - it should only be set
-            // when backward animation naturally completes in closeLossModal
+            // Backward propagation completed via click-through - show summary
+            const nn = nnRef.current;
+            const backpropData = nn.lastBackpropSteps;
+            if (backpropData) {
+              const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
+              state.modalSetters.setBackpropSummaryData(summaryData);
+            }
             backwardComplete();
             refreshDisplayOnly();
           }

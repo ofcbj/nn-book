@@ -69,7 +69,7 @@ export function useModalActions(params: UseModalActionsParams): UseModalActionsR
     await animateBackwardPropagation(animationSpeed);
     await sleep(500, animationSpeed);
 
-    // Only set weight comparison data if animation completed without interruption
+    // Set weight comparison data (modal won't auto-open with new setData approach)
     if (shouldContinueAnimation()) {
       const newSnapshot = createSnapshot(nn);
       createWeightComparisonAfterTraining(oldSnapshot, newSnapshot);

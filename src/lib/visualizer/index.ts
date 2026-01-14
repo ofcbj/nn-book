@@ -1,7 +1,8 @@
 // Visualizer for React - Canvas-based visualizer
 // Modified to work with React refs instead of direct DOM queries
 
-import type { ForwardSteps, NeuronCalculation, AnimationPhase, ForwardStage, NodePosition, LossDisplayData, BackpropNeuronData, BackpropStage, BackpropSteps } from '../types';
+import type { ForwardSteps, NodePosition, LossDisplayData } from '../types';
+import type { AnimationState } from '../animation';
 import type { NeuralNetwork, LayerName } from '../core';
 import i18n from '../../i18n';
 import { activationToColor } from './activationColors';
@@ -17,22 +18,7 @@ export class Visualizer {
     return [i18n.t('controls.grade'), i18n.t('controls.attitude'), i18n.t('controls.response')];
   }
 
-  // Unified animation state (used by both forward & backward)
-  animatingNeuron: AnimationPhase | null = null;
-  animationMode: 'forward' | 'backward' | null = null;
-
-  // Stage properties (type differs, keep separate)
-  forwardStage: ForwardStage | null = null;
-  backpropStage: BackpropStage | null = null;
-
-  // Unified neuron data (union type)
-  currentNeuronData: NeuronCalculation | BackpropNeuronData | null = null;
-
-  // Backward-specific (all layers data)
-  allBackpropData: BackpropSteps | null = null;
-
-  // Legacy properties (to be removed after full migration)
-  activeConnections: number[] = [];
+  // Persistent UI state (not animation-specific)
   showLoss: LossDisplayData | null = null;
 
   // Store node positions for click detection
@@ -53,84 +39,38 @@ export class Visualizer {
     this.canvas.height = this.canvas.offsetHeight;
   }
 
-  /**
-   * Set visualizer state for forward propagation animation.
-   */
-  setForwardAnimationState(
-    layer: AnimationPhase['layer'],
-    index: number,
-    stage: ForwardStage,
-    neuronData: NeuronCalculation | null
-  ): void {
-    this.animatingNeuron = { layer, index };
-    this.animationMode = 'forward';
-    this.forwardStage = stage;
-    this.currentNeuronData = neuronData;
-    this.backpropStage = null;
-    this.allBackpropData = null;
-  }
-
-  /**
-   * Set visualizer state for backward propagation animation.
-   */
-  setBackwardAnimationState(
-    layer: AnimationPhase['layer'],
-    index: number,
-    stage: BackpropStage,
-    neuronData: BackpropNeuronData | null,
-    allBackpropData: BackpropSteps | null
-  ): void {
-    this.animatingNeuron = { layer, index };
-    this.animationMode = 'backward';
-    this.backpropStage = stage;
-    this.currentNeuronData = neuronData;
-    this.forwardStage = null;
-    this.allBackpropData = allBackpropData;
-  }
-
-  /**
-   * Clear all animation state.
-   */
-  clearAnimationState(): void {
-    this.animatingNeuron = null;
-    this.animationMode = null;
-    this.forwardStage = null;
-    this.backpropStage = null;
-    this.currentNeuronData = null;
-    this.allBackpropData = null;
-  }
-
   private drawCalculationOverlay(
+    animationState: AnimationState,
     ctx: CanvasRenderingContext2D,
     x: number,
-    y: number,
-    stage: ForwardStage,
-    neuronData: NeuronCalculation | null
+    y: number
   ): void {
-    drawCalcOverlay(ctx, this.canvas, x, y, stage, neuronData);
+    if (animationState.type === 'forward_animating' && animationState.neuronData) {
+      drawCalcOverlay(ctx, this.canvas, x, y, animationState.stage, animationState.neuronData);
+    }
   }
 
-  drawNetwork(nn: NeuralNetwork, steps: ForwardSteps | null): void {
+  drawNetwork(nn: NeuralNetwork, steps: ForwardSteps | null, animationState: AnimationState): void {
     const nodes = drawNetwork(
       this.ctx,
       this.canvas,
       nn,
       steps,
       this.inputLabels,
-      this.animatingNeuron,
-      this.animationMode,
-      this.forwardStage,
+      animationState,
       this.drawConnectionsVector.bind(this),
       this.showLoss ? this.drawLossOverlay.bind(this) : null,
-      this.animationMode === 'backward' ? this.drawBackpropHighlight.bind(this) : null,
+      (animationState.type === 'backward_animating' || animationState.type === 'showing_backprop_modal') 
+        ? this.drawBackpropHighlight.bind(this, animationState, this.ctx) : null,
       this.drawCalculationOverlay.bind(this),
-      this.currentNeuronData
+      nn
     );
     // Store nodes for click detection
     this.lastNodes = nodes;
   }
 
   private drawConnectionsVector(
+    animationState: AnimationState, // Added animationState parameter
     ctx: CanvasRenderingContext2D, 
     nodes: NodePosition[][], 
     _nn: NeuralNetwork
@@ -152,7 +92,7 @@ export class Visualizer {
 
     // Draw all connections
     connections.forEach(({ from, to, fromCount, toCount, theme }, idx) => {
-      this.drawLayerConnections(ctx, nodes, {
+      this.drawLayerConnections(ctx, nodes, animationState, { // Pass animationState here
         fromLayerIdx: idx,
         toLayerIdx: idx + 1,
         fromLayer: from,
@@ -172,6 +112,7 @@ export class Visualizer {
   private drawLayerConnections(
     ctx: CanvasRenderingContext2D,
     nodes: NodePosition[][],
+    animationState: AnimationState,
     config: {
       fromLayerIdx: number;
       toLayerIdx: number;
@@ -191,7 +132,7 @@ export class Visualizer {
         const from = nodes[fromLayerIdx][i];
         const to = nodes[toLayerIdx][j];
         
-        const isActive = this.isConnectionActive(fromLayer, i, toLayer, j);
+        const isActive = this.isConnectionActive(animationState, fromLayer, i, toLayer, j);
         
         ctx.beginPath();
         ctx.moveTo(from.centerX + from.width / 2, from.centerY);
@@ -215,19 +156,22 @@ export class Visualizer {
   }
 
   private isConnectionActive(
+    animationState: AnimationState,
     _fromLayer: string, 
     _fromIndex: number, 
     toLayer: string, 
     toIndex: number
   ): boolean {
-    // Show active connections when any calculation stage is active (not just 'connections')
-    // This keeps connection lines visible during the entire calculation popup display
-    // ✅ Fixed: Now works for both forward AND backward animations
-    if (!this.animatingNeuron) return false;
+    // Show active connections when any calculation stage is active
+    // ✅ Works for both forward AND backward animations
+    if (animationState.type !== 'forward_animating' && 
+        animationState.type !== 'backward_animating') {
+      return false;
+    }
     
     // Check if this connection leads to the animating neuron
-    return this.animatingNeuron.layer === toLayer && 
-           this.animatingNeuron.index === toIndex;
+    return animationState.layer === toLayer && 
+           animationState.neuronIndex === toIndex;
   }
 
   private drawLossOverlay(ctx: CanvasRenderingContext2D, width: number, height: number): void {
@@ -271,21 +215,24 @@ export class Visualizer {
     ctx.fillText(`Cross-Entropy Loss: ${loss.toFixed(4)}`, width/2, height/2 + 80);
   }
 
-  private drawBackpropHighlight(ctx: CanvasRenderingContext2D, nodes: NodePosition[][]): void {
+  private drawBackpropHighlight(
+    animationState: AnimationState,
+    ctx: CanvasRenderingContext2D, 
+    nodes: NodePosition[][],
+    nn: NeuralNetwork
+  ): void {
     drawBackpropHighlight(
       ctx,
       this.canvas,
       nodes,
-      this.animatingNeuron,
-      this.currentNeuronData as BackpropNeuronData | null,
-      this.backpropStage,
-      this.allBackpropData
+      nn,
+      animationState
     );
   }
 
-  update(nn: NeuralNetwork): void {
+  update(nn: NeuralNetwork, animationState: AnimationState): void {
     const steps = nn.getCalculationSteps();
-    this.drawNetwork(nn, steps);
+    this.drawNetwork(nn, steps, animationState);
   }
 
   getActivationColor(value: number): string {

@@ -3,6 +3,7 @@ import { Box, Paper, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { Visualizer } from '../lib/visualizer';
 import type { NeuralNetwork } from '../lib/core';
+import { initialAnimationState } from '../lib/animation';
 
 interface NetworkCanvasProps {
   nn: NeuralNetwork;
@@ -26,7 +27,7 @@ export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: 
       canvas.height = container.clientHeight;
       
       if (visualizerRef.current) {
-        visualizerRef.current.update(nn);
+        visualizerRef.current.update(nn, initialAnimationState);
       }
     }
   }, [nn]);
@@ -51,7 +52,7 @@ export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: 
 
   useEffect(() => {
     if (visualizerRef.current) {
-      visualizerRef.current.update(nn);
+      visualizerRef.current.update(nn, initialAnimationState);
     }
   }, [nn]);
 
@@ -59,7 +60,7 @@ export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: 
   useEffect(() => {
     const handleLanguageChange = () => {
       if (visualizerRef.current) {
-        visualizerRef.current.update(nn);
+        visualizerRef.current.update(nn, initialAnimationState);
       }
     };
 

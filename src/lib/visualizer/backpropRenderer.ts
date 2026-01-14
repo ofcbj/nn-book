@@ -1,5 +1,7 @@
 // Backpropagation visualizer renderer
-import type { NodePosition, BackpropNeuronData, BackpropStage, AnimationPhase, BackpropSteps } from '../types';
+import type { NodePosition, BackpropNeuronData, BackpropSteps } from '../types';
+import type { AnimationState } from '../animation';
+import type { NeuralNetwork } from '../core';
 import { generateBackpropContent } from './overlayContentGenerator';
 import { renderOverlay } from './overlayRenderer';
 
@@ -195,24 +197,28 @@ export function drawBackpropHighlight(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   nodes: NodePosition[][],
-  animatingNeuron: AnimationPhase | null,
-  currentBackpropData: BackpropNeuronData | null,
-  backpropStage: BackpropStage | null,
-  allBackpropData: BackpropSteps | null = null
+  nn: NeuralNetwork,
+  animationState: AnimationState
 ): void {
+  // Only show backprop highlights during backward animation
+  if (animationState.type !== 'backward_animating' && 
+      animationState.type !== 'showing_backprop_modal') {
+    return;
+  }
+
   // Draw persistent error labels on all neurons if we have backprop data
-  if (allBackpropData) {
-    drawAllErrorLabels(ctx, nodes, allBackpropData);
+  if (nn.lastBackpropSteps) {
+    drawAllErrorLabels(ctx, nodes, nn.lastBackpropSteps);
   }
   
-  if (!animatingNeuron) return;
+  if (animationState.type !== 'backward_animating') return;
 
-  const { layer, index } = animatingNeuron;
-  const nodeInfo = findNodeToHighlight(layer, index, nodes);
+  const { layer, neuronIndex, neuronData, stage } = animationState;
+  const nodeInfo = findNodeToHighlight(layer, neuronIndex, nodes);
   if (!nodeInfo) return;
 
   // Draw connection lines during 'error' stage for hidden layers
-  if (backpropStage === 'error' && layer !== 'output' && currentBackpropData) {
+  if (stage === 'error' && layer !== 'output' && neuronData) {
     // Map layer to next layer nodes
     const nextLayerMap: Record<string, NodePosition[]> = {
       layer1: nodes[2] || [],  // layer2 nodes
@@ -226,19 +232,19 @@ export function drawBackpropHighlight(
         ctx,
         nodeInfo,
         nextLayerNodes,
-        currentBackpropData.nextLayerErrors,
-        currentBackpropData.nextLayerWeights
+        neuronData.nextLayerErrors,
+        neuronData.nextLayerWeights
       );
     }
   }
 
   // Draw error glow
-  const errorMagnitude = currentBackpropData ? Math.abs(currentBackpropData.error) : 0.5;
+  const errorMagnitude = neuronData ? Math.abs(neuronData.error) : 0.5;
   drawErrorGlow(ctx, nodeInfo, errorMagnitude);
 
   // Draw information overlay
-  if (currentBackpropData && backpropStage) {
-    const content = generateBackpropContent(backpropStage, currentBackpropData, layer);
+  if (neuronData && stage) {
+    const content = generateBackpropContent(stage, neuronData, layer);
     renderOverlay(ctx, canvas, nodeInfo, content);
   } else {
     // Fallback label

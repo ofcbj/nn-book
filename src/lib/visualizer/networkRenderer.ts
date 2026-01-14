@@ -1,5 +1,6 @@
 // Network rendering module
-import type { ForwardSteps, NodePosition, AnimationPhase, NeuronCalculation, ForwardStage, LayerType, BackpropNeuronData } from '../types';
+import type { ForwardSteps, NodePosition, AnimationPhase, NeuronCalculation, ForwardStage, LayerType } from '../types';
+import type { AnimationState } from '../animation';
 import type { NeuralNetwork } from '../core';
 import { LAYER_SIZES } from '../core';
 import { drawInputVector, drawNeuronVector } from './drawingUtils';
@@ -22,12 +23,25 @@ interface LayerConfig {
 interface DrawContext {
   ctx: CanvasRenderingContext2D;
   height: number;
-  animatingNeuron: AnimationPhase | null;
-  animationMode: 'forward' | 'backward' | null;
-  forwardStage: ForwardStage | null;
-  currentNeuronData: NeuronCalculation | BackpropNeuronData | null;
-  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: ForwardStage, neuronData: NeuronCalculation | null) => void) | null;
+  animationState: AnimationState;
+  drawCalculationOverlay: ((animationState: AnimationState, ctx: CanvasRenderingContext2D, x: number, y: number) => void) | null;
   activationRange: { min: number; max: number };
+}
+
+// Helper functions to extract data from AnimationState
+function getAnimatingNeuron(state: AnimationState): AnimationPhase | null {
+  if (state.type === 'forward_animating' || state.type === 'backward_animating') {
+    return { layer: state.layer, index: state.neuronIndex };
+  }
+  return null;
+}
+
+function isForwardMode(state: AnimationState): boolean {
+  return state.type === 'forward_animating' || state.type === 'showing_loss_modal';
+}
+
+function isBackwardMode(state: AnimationState): boolean {
+  return state.type === 'backward_animating' || state.type === 'showing_backprop_modal';
 }
 
 // =============================================================================
@@ -39,11 +53,15 @@ interface DrawContext {
  */
 function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePosition[] {
   const { layerName, neurons, x, neuronCount, verticalSpacing, getLabel } = config;
-  const { ctx, height, animatingNeuron, animationMode, forwardStage, currentNeuronData, drawCalculationOverlay, activationRange } = context;
+  const { ctx, height, animationState, drawCalculationOverlay, activationRange } = context;
 
   const nodes: NodePosition[] = [];
   const totalHeight = (neuronCount - 1) * verticalSpacing;
   const startY = (height - totalHeight) / 2;
+
+  const animatingNeuron = getAnimatingNeuron(animationState);
+  const isForward = isForwardMode(animationState);
+  const isBackward = isBackwardMode(animationState);
 
   for (let i = 0; i < neuronCount; i++) {
     const neuron = neurons[i];
@@ -51,8 +69,6 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
 
     // Check if this neuron is currently animating
     const isAnimating = animatingNeuron?.layer === layerName && animatingNeuron.index === i;
-    const isForwardMode = animationMode === 'forward';
-    const isBackwardMode = animationMode === 'backward';
 
     const node = drawNeuronVector(
       ctx,
@@ -63,20 +79,16 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
       neuron.activated,
       getLabel(i),
       layerName,
-      isAnimating && isForwardMode || false,  // highlighted only in forward mode
-      isAnimating && isBackwardMode || false,  // backprop highlighted only in backward mode
+      isAnimating && isForward || false,  // highlighted only in forward mode
+      isAnimating && isBackward || false,  // backprop highlighted only in backward mode
       activationRange
     );
 
     nodes.push(node);
 
     // Show calculation overlay for forward animation only
-    if (isAnimating && isForwardMode && forwardStage && drawCalculationOverlay) {
-      // Type guard: in forward mode, currentNeuronData should be NeuronCalculation
-      const neuronCalc = currentNeuronData as NeuronCalculation | null;
-      if (neuronCalc) {
-        drawCalculationOverlay(ctx, node.centerX, node.centerY, forwardStage, neuronCalc);
-      }
+    if (isAnimating && isForward && drawCalculationOverlay) {
+      drawCalculationOverlay(animationState, ctx, node.centerX, node.centerY);
     }
   }
 
@@ -93,14 +105,12 @@ export function drawNetwork(
   nn: NeuralNetwork,
   steps: ForwardSteps | null,
   inputLabels: string[],
-  animatingNeuron: AnimationPhase | null,
-  animationMode: 'forward' | 'backward' | null,
-  forwardStage: ForwardStage | null,
-  drawConnectionsVector: (ctx: CanvasRenderingContext2D, nodes: NodePosition[][], nn: NeuralNetwork) => void,
+  animationState: AnimationState,
+  drawConnectionsVector: (animationState: AnimationState, ctx: CanvasRenderingContext2D, nodes: NodePosition[][], nn: NeuralNetwork) => void,
   drawLossOverlay: ((ctx: CanvasRenderingContext2D, width: number, height: number) => void) | null,
-  drawBackpropHighlight: ((ctx: CanvasRenderingContext2D, nodes: NodePosition[][]) => void) | null,
-  drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: ForwardStage, neuronData: NeuronCalculation | null) => void) | null,
-  currentNeuronData: NeuronCalculation | BackpropNeuronData | null
+  drawBackpropHighlight: ((nodes: NodePosition[][], nn: NeuralNetwork) => void) | null,
+  drawCalculationOverlay: ((animationState: AnimationState, ctx: CanvasRenderingContext2D, x: number, y: number) => void) | null,
+  nnForBackprop: NeuralNetwork
 ): NodePosition[][] {
   const width = canvas.width;
   const height = canvas.height;
@@ -127,10 +137,7 @@ export function drawNetwork(
   const drawContext: Omit<DrawContext, 'activationRange'> = {
     ctx,
     height,
-    animatingNeuron,
-    animationMode,
-    forwardStage,
-    currentNeuronData,
+    animationState,
     drawCalculationOverlay,
   };
 
@@ -184,7 +191,7 @@ export function drawNetwork(
   });
 
   // Draw connections between layers
-  drawConnectionsVector(ctx, nodes, nn);
+  drawConnectionsVector(animationState, ctx, nodes, nn);
 
   // Draw overlays
   if (drawLossOverlay) {
@@ -192,7 +199,7 @@ export function drawNetwork(
   }
 
   if (drawBackpropHighlight) {
-    drawBackpropHighlight(ctx, nodes);
+    drawBackpropHighlight(nodes, nnForBackprop);
   }
 
   return nodes;
