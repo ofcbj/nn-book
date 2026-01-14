@@ -1,5 +1,5 @@
 // Network rendering module
-import type { ForwardSteps, NodePosition, AnimationPhase, NeuronCalculation, ForwardStage, LayerType } from '../types';
+import type { ForwardSteps, NodePosition, AnimationPhase, NeuronCalculation, LayerType } from '../types';
 import type { AnimationState } from '../animation';
 import type { NeuralNetwork } from '../core';
 import { LAYER_SIZES } from '../core';
