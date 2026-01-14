@@ -195,7 +195,7 @@ export function drawBackpropHighlight(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   nodes: NodePosition[][],
-  backpropPhase: AnimationPhase | null,
+  animatingNeuron: AnimationPhase | null,
   currentBackpropData: BackpropNeuronData | null,
   backpropStage: BackpropStage | null,
   allBackpropData: BackpropSteps | null = null
@@ -205,9 +205,9 @@ export function drawBackpropHighlight(
     drawAllErrorLabels(ctx, nodes, allBackpropData);
   }
   
-  if (!backpropPhase) return;
+  if (!animatingNeuron) return;
 
-  const { layer, index } = backpropPhase;
+  const { layer, index } = animatingNeuron;
   const nodeInfo = findNodeToHighlight(layer, index, nodes);
   if (!nodeInfo) return;
 

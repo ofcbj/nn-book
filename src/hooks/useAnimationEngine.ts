@@ -50,10 +50,6 @@ import {
 } from '../lib/animation/animationLoop';
 import { useModalActions } from './useModalActions';
 
-// =============================================================================
-// Return Type
-// =============================================================================
-
 export interface UseAnimationEngineReturn {
   // === Animation State ===
   state: AnimationState;
@@ -62,62 +58,43 @@ export interface UseAnimationEngineReturn {
   isPaused: boolean;
   isForwardMode: boolean;
   isBackwardMode: boolean;
-
   // === Visualization Data ===
   highlightedNeuron: { layer: LayerName; index: number } | null;
   forwardStage: ForwardStage | null;
   backpropStage: BackpropStage | null;
   currentNeuronData: NeuronCalculation | null;
   currentBackpropData: BackpropNeuronData | null;
-
   // === Training Controls ===
   trainOneStepWithAnimation: () => Promise<void>;
   trainOneEpochWithoutAnimation: () => void;
   toggleTraining: () => void;
   reset: () => void;
   computeAndRefreshDisplay: () => void;
-
   // === Modal Controls ===
   closeLossModal: () => Promise<void>;
   closeBackpropModal: () => void;
-
   // === Canvas Interaction ===
   handleCanvasClick: (x?: number, y?: number) => void;
-
   // === Visualizer ===
   setVisualizer: (v: Visualizer) => void;
-
   // === Utilities ===
   handleLearningRateChange: (v: number) => void;
   trainingIntervalRef: RefObject<number | undefined>;
 }
 
-// =============================================================================
-// Helper Types
-// =============================================================================
-
 type NeuronLocation = { layer: LayerName; index: number };
-
-// =============================================================================
-// Main Hook
-// =============================================================================
 
 export function useAnimationEngine(
   nnRef: RefObject<NeuralNetwork>,
   visualizerRef: RefObject<Visualizer | null>,
   state: UseNetworkStateReturn
 ): UseAnimationEngineReturn {
-
-  // ===========================================================================
   // 1. ANIMATION STATE MACHINE
-  // ===========================================================================
-
-  const [animationState, dispatch] = useReducer(animationReducer, initialAnimationState);
-  const stepResolverRef = useRef<(() => void) | null>(null);
-  const prevSpeedRef = useRef(animationState.speed);
-  const shouldStopRef = useRef(false);
-  const trainingIntervalRef = useRef<number | undefined>(undefined);
-
+  const [animationState, dispatch]= useReducer(animationReducer, initialAnimationState);
+  const stepResolverRef           = useRef<(() => void) | null>(null);
+  const prevSpeedRef              = useRef(animationState.speed);
+  const shouldStopRef             = useRef(false);
+  const trainingIntervalRef       = useRef<number | undefined>(undefined);
   // Auto-resolve step when speed changes from 0 to > 0
   useEffect(() => {
     if (prevSpeedRef.current === 0 && animationState.speed > 0) {
@@ -128,12 +105,10 @@ export function useAnimationEngine(
     }
     prevSpeedRef.current = animationState.speed;
   }, [animationState.speed]);
-
   // FSM action creators
   const startTraining = useCallback(() => {
     dispatch({ type: 'START_TRAINING' });
   }, []);
-
 
   const pause = useCallback(() => {
     dispatch({ type: 'PAUSE' });
@@ -166,10 +141,10 @@ export function useAnimationEngine(
   }, []);
 
   const backwardTick = useCallback((
-    layer: LayerName,
-    neuronIndex: number,
-    stage: BackpropStage,
-    neuronData: BackpropNeuronData | null
+    layer       : LayerName,
+    neuronIndex : number,
+    stage       : BackpropStage,
+    neuronData  : BackpropNeuronData | null
   ) => {
     dispatch({ type: 'BACKWARD_TICK', layer, neuronIndex, stage, neuronData });
   }, []);
@@ -194,17 +169,12 @@ export function useAnimationEngine(
     }
     return Promise.resolve();
   }, [animationState.speed]);
-
   // Derived state
   const animating = isAnimating(animationState);
   const paused = isPaused(animationState);
   const isForwardMode = animationState.type === 'forward_animating' || animationState.type === 'showing_loss_modal';
   const isBackwardMode = animationState.type === 'backward_animating' || animationState.type === 'showing_backprop_modal';
-
-  // ===========================================================================
   // Animation Control Helpers - Meaningful abstractions for shouldStopRef
-  // ===========================================================================
-
   /**
    * Stops the animation by setting the stop flag.
    * Use when pausing or interrupting an animation.
@@ -213,46 +183,31 @@ export function useAnimationEngine(
     shouldStopRef.current = true;
   }, []);
 
-  /**
-   * Starts/resumes the animation by clearing the stop flag.
-   * Use when starting or resuming an animation.
-   */
   const startAnimation = useCallback(() => {
     shouldStopRef.current = false;
   }, []);
 
-  /**
-   * Checks if the animation has been stopped.
-   * Use in conditionals to check if animation was interrupted.
-   */
   const isAnimationStopped = useCallback(() => {
     return shouldStopRef.current;
   }, []);
 
-  /**
-   * Checks if the animation should continue.
-   * Use in animation loops to determine whether to proceed.
-   */
   const shouldContinueAnimation = useCallback(() => {
     return !shouldStopRef.current;
   }, []);
 
-  // ===========================================================================
   // 2. ANIMATION LOOPS & VISUALIZATION
-  // ===========================================================================
-
   // Helper: Get current input array from state
   const getCurrentInputs = useCallback(() => {
     return [state.inputs.grade, state.inputs.attitude, state.inputs.response];
   }, [state.inputs.grade, state.inputs.attitude, state.inputs.response]);
-
+  
   // Helper: Get target one-hot array from state
   const getTargetOneHot = useCallback(() => {
     const oneHot = [0, 0, 0];
     oneHot[state.inputs.targetValue] = 1;
     return oneHot;
   }, [state.inputs.targetValue]);
-
+  
   // Helper: Create weight comparison data after training
   const createWeightComparisonAfterTraining = useCallback((
     oldSnapshot: ReturnType<typeof createSnapshot>,
@@ -261,7 +216,7 @@ export function useAnimationEngine(
     const comparisonData = compareSnapshots(oldSnapshot, newSnapshot, state.stats.learningRate);
     state.modalSetters.setWeightComparisonData(comparisonData);
   }, [state.stats.learningRate, state.modalSetters]);
-
+  
   // Helper: Show loss modal with current predictions
   const showLossModal = useCallback(() => {
     const nn = nnRef.current;
@@ -273,7 +228,7 @@ export function useAnimationEngine(
       loss
     });
   }, [nnRef, state.inputs.targetValue, state.modalSetters]);
-
+  
   // Helper: Compute backprop without applying weights (for preview)
   const computeBackpropPreview = useCallback(() => {
     const nn = nnRef.current;
@@ -282,7 +237,7 @@ export function useAnimationEngine(
     nn.computeBackpropagation(inputs, getTargetOneHot());
     restoreSnapshot(nn, snapshot, inputs);
   }, [nnRef, getCurrentInputs, getTargetOneHot]);
-
+  
   // Sync visualizer state with animation machine
   const syncVisualizerState = useCallback(() => {
     if (visualizerRef.current) {
@@ -290,7 +245,8 @@ export function useAnimationEngine(
 
       if (animationState.type === 'forward_animating') {
         visualizerRef.current.setForwardAnimationState(
-          animationState.layer, animationState.neuronIndex, animationState.stage, animationState.neuronData
+          animationState.layer, animationState.neuronIndex, animationState.stage, 
+          animationState.neuronData
         );
       } else if (animationState.type === 'backward_animating') {
         visualizerRef.current.setBackwardAnimationState(
@@ -300,16 +256,15 @@ export function useAnimationEngine(
       } else {
         visualizerRef.current.clearAnimationState();
       }
-
       visualizerRef.current.update(nn);
     }
   }, [animationState, nnRef, visualizerRef]);
-
+  
   // Refresh display without recalculation
   const refreshDisplayOnly = useCallback(() => {
     syncVisualizerState();
   }, [syncVisualizerState]);
-
+  
   // Compute and refresh display (full recalculation)
   const computeAndRefreshDisplay = useCallback(() => {
     const nn = nnRef.current;
@@ -319,11 +274,10 @@ export function useAnimationEngine(
       state.statsSetters.setOutput(nn.lastOutput.toArray());
     }
     state.statsSetters.setSteps(nn.getCalculationSteps());
-
     // Update activations for heatmap
     if (nn.lastInput && nn.lastHidden1 && nn.lastHidden2 && nn.lastOutput) {
       state.visualizerSetters.setActivations({
-        input: nn.lastInput.toArray(),
+        input : nn.lastInput.toArray(),
         layer1: nn.lastHidden1.toArray(),
         layer2: nn.lastHidden2.toArray(),
         output: nn.lastOutput.toArray(),
@@ -332,7 +286,7 @@ export function useAnimationEngine(
 
     syncVisualizerState();
   }, [getCurrentInputs, syncVisualizerState, nnRef, state.statsSetters, state.visualizerSetters]);
-
+  
   // Sleep utility with pause support
   const sleep = useCallback(async (ms: number, overrideSpeed?: number): Promise<void> => {
     const effectiveSpeed = overrideSpeed ?? animationState.speed;
@@ -342,11 +296,11 @@ export function useAnimationEngine(
       await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
     }
   }, [animationState.speed, waitForNextStep]);
-
+  
   // Forward propagation animation
   const animateForwardPropagation = useCallback(async () => {
     const nn = nnRef.current;
-
+    
     await runAnimationLoop({
       mode: 'forward',
       layers: ['layer1', 'layer2', 'output'],
@@ -366,7 +320,7 @@ export function useAnimationEngine(
       computeAndRefreshDisplay,
     });
   }, [forwardTick, forwardComplete, refreshDisplayOnly, sleep, computeAndRefreshDisplay, nnRef, isAnimationStopped]);
-
+  
   // Backward propagation animation
   const animateBackwardPropagation = useCallback(async (speedOverride: number = 1.0) => {
     const nn = nnRef.current;
@@ -396,18 +350,14 @@ export function useAnimationEngine(
       computeAndRefreshDisplay,
       speedOverride,
     });
-
     // Collect summary data only if animation completed (not stopped)
     if (shouldContinueAnimation()) {
       const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
       state.modalSetters.setBackpropSummaryData(summaryData);
     }
   }, [backwardTick, backwardComplete, sleep, refreshDisplayOnly, computeAndRefreshDisplay, nnRef, state.stats.learningRate, state.modalSetters, isAnimationStopped, shouldContinueAnimation]);
-
-  // ===========================================================================
+  
   // Helper: Generic animation continuation from jumped position
-  // ===========================================================================
-
   /**
    * Animates remaining neurons from the current jumped position.
    * This is a unified function that handles both forward and backward animations.
@@ -434,25 +384,21 @@ export function useAnimationEngine(
       shouldIncrement, layerData, stages, stageDurations,
       onTick, onComplete, onStageComplete, onAnimationComplete
     } = config;
-
     // Animate remaining layers
     for (let layerIdx = currentLayerIndex; layerIdx < layers.length; layerIdx++) {
       const layer = layers[layerIdx];
       const isCurrentLayer = layerIdx === currentLayerIndex;
       const initialNeuronIndex = isCurrentLayer ? startNeuronIndex : getDefaultNeuronIndex(layer);
-
       // Determine iteration direction and bounds
       const shouldContinue = shouldIncrement
         ? (idx: number) => idx < LAYER_SIZES[layer]
         : (idx: number) => idx >= 0;
       const nextIndex = shouldIncrement ? (idx: number) => idx + 1 : (idx: number) => idx - 1;
-
       // Animate each neuron in this layer
       for (let neuronIndex = initialNeuronIndex; shouldContinue(neuronIndex); neuronIndex = nextIndex(neuronIndex)) {
         if (isAnimationStopped()) return;
 
         const neuronData = layerData[layer][neuronIndex];
-
         // Animate each stage of this neuron
         for (const stage of stages) {
           if (isAnimationStopped()) return;
@@ -460,7 +406,6 @@ export function useAnimationEngine(
           onTick(layer, neuronIndex, stage, neuronData);
           refreshDisplayOnly();
           await sleep(stageDurations[stage]);
-
           // Optional callback after each stage completes
           if (onStageComplete) {
             onStageComplete(layer, neuronIndex, stage, neuronData);
@@ -470,16 +415,13 @@ export function useAnimationEngine(
     }
 
     onComplete();
-
     // Optional callback after entire animation completes
     if (shouldContinueAnimation() && onAnimationComplete) {
       onAnimationComplete();
     }
   }, [refreshDisplayOnly, sleep, isAnimationStopped, shouldContinueAnimation]);
 
-  // ===========================================================================
   // Continue forward animation from jumped position
-  // ===========================================================================
   const continueForwardFromJumpedPosition = useCallback(async () => {
     if (animationState.type !== 'forward_animating') return;
 
@@ -509,9 +451,7 @@ export function useAnimationEngine(
     });
   }, [animationState, nnRef, forwardTick, forwardComplete, continueAnimationFromJumpedPosition]);
 
-  // ===========================================================================
   // Continue backward animation from jumped position
-  // ===========================================================================
   const continueBackwardFromJumpedPosition = useCallback(async () => {
     if (animationState.type !== 'backward_animating') return;
 
@@ -553,10 +493,8 @@ export function useAnimationEngine(
       },
     });
   }, [animationState, nnRef, backwardTick, backwardComplete, continueAnimationFromJumpedPosition, refreshDisplayOnly, state.stats.learningRate, state.modalSetters]);
-
-  // ===========================================================================
+  
   // Continue from jumped position (dispatcher)
-  // ===========================================================================
   const continueFromJumpedPosition = useCallback(async () => {
     if (animationState.type === 'forward_animating') {
       await continueForwardFromJumpedPosition();
@@ -565,10 +503,7 @@ export function useAnimationEngine(
     }
   }, [animationState.type, continueForwardFromJumpedPosition, continueBackwardFromJumpedPosition]);
 
-  // ===========================================================================
   // 3. TRAINING CONTROLS
-  // ===========================================================================
-
   const setVisualizer = useCallback((v: Visualizer) => {
     visualizerRef.current = v;
   }, [visualizerRef]);
@@ -600,14 +535,12 @@ export function useAnimationEngine(
       }
       return;
     }
-
     // Case 2: Pause running animation
     if (animating) {
       pause();
       stopAnimation();
       return;
     }
-
     // Case 3: Start new animation
     startAnimation();
     startTraining();
@@ -645,7 +578,6 @@ export function useAnimationEngine(
       }, 50);
     }
   }, [state.training.isTraining, state.trainingSetters, trainOneEpochWithoutAnimation, nnRef]);
-
   // Reset
   const reset = useCallback(() => {
     if (state.training.isTraining) {
@@ -654,7 +586,6 @@ export function useAnimationEngine(
         clearInterval(trainingIntervalRef.current);
       }
     }
-
     stopAnimation();
     nnRef.current = new NeuralNetwork();
     state.statsSetters.setEpoch(0);
@@ -679,10 +610,7 @@ export function useAnimationEngine(
     nnRef.current.learningRate = v;
   }, [state.statsSetters, nnRef]);
 
-  // ===========================================================================
   // 4. MODAL CONTROLS
-  // ===========================================================================
-
   const modalControls = useModalActions({
     nnRef,
     state,
@@ -697,10 +625,7 @@ export function useAnimationEngine(
     animationSpeed: state.training.animationSpeed,
   });
 
-  // ===========================================================================
   // 5. CANVAS INTERACTION
-  // ===========================================================================
-
   // Helper: Get neuron data
   const getForwardNeuronData = useCallback((layer: LayerName, index: number) => {
     const calcSteps = nnRef.current.getCalculationSteps();
@@ -724,9 +649,7 @@ export function useAnimationEngine(
   // Canvas click handler
   const handleCanvasClick = useCallback((x?: number, y?: number) => {
     if (!animating) return;
-
     const visualizer = visualizerRef.current;
-
     if (x !== undefined && y !== undefined && visualizer) {
       const neuron = visualizer.findNeuronAtPosition(x, y);
 
@@ -787,7 +710,6 @@ export function useAnimationEngine(
           }
           return;
         }
-
         // Different neuron clicked - jump
         stopAnimation();
         jumpToNeuron(neuronLoc.layer, neuronLoc.index);
@@ -809,10 +731,7 @@ export function useAnimationEngine(
     }
   }, [animating, animationState, visualizerRef, nnRef, forwardTick, backwardTick, jumpToNeuron, refreshDisplayOnly, getForwardNeuronData, getBackwardNeuronData, completeForwardPass, backwardComplete, stopAnimation]);
 
-  // ===========================================================================
   // RETURN
-  // ===========================================================================
-
   return {
     // Animation state
     state: animationState,
@@ -821,31 +740,25 @@ export function useAnimationEngine(
     isPaused: paused,
     isForwardMode,
     isBackwardMode,
-
     // Visualization data
     highlightedNeuron: getHighlightedNeuron(animationState),
     forwardStage: getForwardStage(animationState),
     backpropStage: getBackpropStage(animationState),
     currentNeuronData: getCurrentNeuronData(animationState),
     currentBackpropData: getCurrentBackpropData(animationState),
-
     // Training controls
     trainOneStepWithAnimation,
     trainOneEpochWithoutAnimation,
     toggleTraining,
     reset,
     computeAndRefreshDisplay,
-
     // Modal controls
     closeLossModal: modalControls.closeLossModal,
     closeBackpropModal: modalControls.closeBackpropModal,
-
     // Canvas interaction
     handleCanvasClick,
-
     // Visualizer
     setVisualizer,
-
     // Utilities
     handleLearningRateChange,
     trainingIntervalRef,

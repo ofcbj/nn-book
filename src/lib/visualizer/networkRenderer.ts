@@ -1,5 +1,5 @@
 // Network rendering module
-import type { ForwardSteps, NodePosition, AnimationPhase, NeuronCalculation, ForwardStage, LayerType } from '../types';
+import type { ForwardSteps, NodePosition, AnimationPhase, NeuronCalculation, ForwardStage, LayerType, BackpropNeuronData } from '../types';
 import type { NeuralNetwork } from '../core';
 import { LAYER_SIZES } from '../core';
 import { drawInputVector, drawNeuronVector } from './drawingUtils';
@@ -22,10 +22,10 @@ interface LayerConfig {
 interface DrawContext {
   ctx: CanvasRenderingContext2D;
   height: number;
-  highlightedNeuron: AnimationPhase | null;
-  backpropPhase: AnimationPhase | null;
-  ForwardStage: ForwardStage | null;
-  currentNeuronData: NeuronCalculation | null;
+  animatingNeuron: AnimationPhase | null;
+  animationMode: 'forward' | 'backward' | null;
+  forwardStage: ForwardStage | null;
+  currentNeuronData: NeuronCalculation | BackpropNeuronData | null;
   drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: ForwardStage, neuronData: NeuronCalculation | null) => void) | null;
   activationRange: { min: number; max: number };
 }
@@ -39,7 +39,7 @@ interface DrawContext {
  */
 function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePosition[] {
   const { layerName, neurons, x, neuronCount, verticalSpacing, getLabel } = config;
-  const { ctx, height, highlightedNeuron, backpropPhase, ForwardStage, currentNeuronData, drawCalculationOverlay, activationRange } = context;
+  const { ctx, height, animatingNeuron, animationMode, forwardStage, currentNeuronData, drawCalculationOverlay, activationRange } = context;
 
   const nodes: NodePosition[] = [];
   const totalHeight = (neuronCount - 1) * verticalSpacing;
@@ -49,8 +49,10 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
     const neuron = neurons[i];
     const y = startY + i * verticalSpacing;
 
-    const isHighlighted = highlightedNeuron?.layer === layerName && highlightedNeuron.index === i;
-    const isBackpropHighlighted = backpropPhase?.layer === layerName && backpropPhase.index === i;
+    // Check if this neuron is currently animating
+    const isAnimating = animatingNeuron?.layer === layerName && animatingNeuron.index === i;
+    const isForwardMode = animationMode === 'forward';
+    const isBackwardMode = animationMode === 'backward';
 
     const node = drawNeuronVector(
       ctx,
@@ -61,16 +63,20 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
       neuron.activated,
       getLabel(i),
       layerName,
-      isHighlighted || false,
-      isBackpropHighlighted || false,
+      isAnimating && isForwardMode || false,  // highlighted only in forward mode
+      isAnimating && isBackwardMode || false,  // backprop highlighted only in backward mode
       activationRange
     );
 
     nodes.push(node);
 
-    // Show calculation overlay for highlighted neuron (after node is created)
-    if (isHighlighted && ForwardStage && currentNeuronData && drawCalculationOverlay) {
-      drawCalculationOverlay(ctx, node.centerX, node.centerY, ForwardStage, currentNeuronData);
+    // Show calculation overlay for forward animation only
+    if (isAnimating && isForwardMode && forwardStage && drawCalculationOverlay) {
+      // Type guard: in forward mode, currentNeuronData should be NeuronCalculation
+      const neuronCalc = currentNeuronData as NeuronCalculation | null;
+      if (neuronCalc) {
+        drawCalculationOverlay(ctx, node.centerX, node.centerY, forwardStage, neuronCalc);
+      }
     }
   }
 
@@ -87,14 +93,14 @@ export function drawNetwork(
   nn: NeuralNetwork,
   steps: ForwardSteps | null,
   inputLabels: string[],
-  highlightedNeuron: AnimationPhase | null,
-  backpropPhase: AnimationPhase | null,
-  ForwardStage: ForwardStage | null,
+  animatingNeuron: AnimationPhase | null,
+  animationMode: 'forward' | 'backward' | null,
+  forwardStage: ForwardStage | null,
   drawConnectionsVector: (ctx: CanvasRenderingContext2D, nodes: NodePosition[][], nn: NeuralNetwork) => void,
   drawLossOverlay: ((ctx: CanvasRenderingContext2D, width: number, height: number) => void) | null,
   drawBackpropHighlight: ((ctx: CanvasRenderingContext2D, nodes: NodePosition[][]) => void) | null,
   drawCalculationOverlay: ((ctx: CanvasRenderingContext2D, x: number, y: number, stage: ForwardStage, neuronData: NeuronCalculation | null) => void) | null,
-  currentNeuronData: NeuronCalculation | null
+  currentNeuronData: NeuronCalculation | BackpropNeuronData | null
 ): NodePosition[][] {
   const width = canvas.width;
   const height = canvas.height;
@@ -121,9 +127,9 @@ export function drawNetwork(
   const drawContext: Omit<DrawContext, 'activationRange'> = {
     ctx,
     height,
-    highlightedNeuron,
-    backpropPhase,
-    ForwardStage,
+    animatingNeuron,
+    animationMode,
+    forwardStage,
     currentNeuronData,
     drawCalculationOverlay,
   };

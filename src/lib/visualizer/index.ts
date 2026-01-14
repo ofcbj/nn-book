@@ -16,19 +16,24 @@ export class Visualizer {
   get inputLabels(): string[] {
     return [i18n.t('controls.grade'), i18n.t('controls.attitude'), i18n.t('controls.response')];
   }
-  highlightedNeuron: AnimationPhase | null = null;
 
-  // Calculation animation properties
-  ForwardStage: ForwardStage | null = null;
-  activeConnections: number[] = [];
-  currentNeuronData: NeuronCalculation | null = null;
+  // Unified animation state (used by both forward & backward)
+  animatingNeuron: AnimationPhase | null = null;
+  animationMode: 'forward' | 'backward' | null = null;
 
-  // Backpropagation visualizer
-  showLoss: LossDisplayData | null = null;
-  backpropPhase: AnimationPhase | null = null;
-  currentBackpropData: BackpropNeuronData | null = null;
+  // Stage properties (type differs, keep separate)
+  forwardStage: ForwardStage | null = null;
   backpropStage: BackpropStage | null = null;
-  allBackpropData: BackpropSteps | null = null;  // All backprop data for persistent error labels
+
+  // Unified neuron data (union type)
+  currentNeuronData: NeuronCalculation | BackpropNeuronData | null = null;
+
+  // Backward-specific (all layers data)
+  allBackpropData: BackpropSteps | null = null;
+
+  // Legacy properties (to be removed after full migration)
+  activeConnections: number[] = [];
+  showLoss: LossDisplayData | null = null;
 
   // Store node positions for click detection
   private lastNodes: NodePosition[][] = [];
@@ -57,11 +62,10 @@ export class Visualizer {
     stage: ForwardStage,
     neuronData: NeuronCalculation | null
   ): void {
-    this.highlightedNeuron = { layer, index };
-    this.ForwardStage = stage;
+    this.animatingNeuron = { layer, index };
+    this.animationMode = 'forward';
+    this.forwardStage = stage;
     this.currentNeuronData = neuronData;
-    this.backpropPhase = null;
-    this.currentBackpropData = null;
     this.backpropStage = null;
     this.allBackpropData = null;
   }
@@ -76,12 +80,11 @@ export class Visualizer {
     neuronData: BackpropNeuronData | null,
     allBackpropData: BackpropSteps | null
   ): void {
-    this.highlightedNeuron = null;
-    this.ForwardStage = null;
-    this.currentNeuronData = null;
-    this.backpropPhase = { layer, index };
-    this.currentBackpropData = neuronData;
+    this.animatingNeuron = { layer, index };
+    this.animationMode = 'backward';
     this.backpropStage = stage;
+    this.currentNeuronData = neuronData;
+    this.forwardStage = null;
     this.allBackpropData = allBackpropData;
   }
 
@@ -89,12 +92,11 @@ export class Visualizer {
    * Clear all animation state.
    */
   clearAnimationState(): void {
-    this.highlightedNeuron = null;
-    this.ForwardStage = null;
-    this.currentNeuronData = null;
-    this.backpropPhase = null;
-    this.currentBackpropData = null;
+    this.animatingNeuron = null;
+    this.animationMode = null;
+    this.forwardStage = null;
     this.backpropStage = null;
+    this.currentNeuronData = null;
     this.allBackpropData = null;
   }
 
@@ -115,12 +117,12 @@ export class Visualizer {
       nn,
       steps,
       this.inputLabels,
-      this.highlightedNeuron,
-      this.backpropPhase,
-      this.ForwardStage,
+      this.animatingNeuron,
+      this.animationMode,
+      this.forwardStage,
       this.drawConnectionsVector.bind(this),
       this.showLoss ? this.drawLossOverlay.bind(this) : null,
-      this.backpropPhase ? this.drawBackpropHighlight.bind(this) : null,
+      this.animationMode === 'backward' ? this.drawBackpropHighlight.bind(this) : null,
       this.drawCalculationOverlay.bind(this),
       this.currentNeuronData
     );
@@ -220,11 +222,12 @@ export class Visualizer {
   ): boolean {
     // Show active connections when any calculation stage is active (not just 'connections')
     // This keeps connection lines visible during the entire calculation popup display
-    if (!this.highlightedNeuron) return false;
+    // ✅ Fixed: Now works for both forward AND backward animations
+    if (!this.animatingNeuron) return false;
     
-    // Check if this connection leads to the highlighted neuron
-    return this.highlightedNeuron.layer === toLayer && 
-           this.highlightedNeuron.index === toIndex;
+    // Check if this connection leads to the animating neuron
+    return this.animatingNeuron.layer === toLayer && 
+           this.animatingNeuron.index === toIndex;
   }
 
   private drawLossOverlay(ctx: CanvasRenderingContext2D, width: number, height: number): void {
@@ -273,8 +276,8 @@ export class Visualizer {
       ctx,
       this.canvas,
       nodes,
-      this.backpropPhase,
-      this.currentBackpropData,
+      this.animatingNeuron,
+      this.currentNeuronData as BackpropNeuronData | null,
       this.backpropStage,
       this.allBackpropData
     );
