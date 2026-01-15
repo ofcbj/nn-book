@@ -69,16 +69,6 @@ export type ForwardStage = 'connections' | 'dotProduct' | 'bias' | 'activation';
 export type BackwardStage = 'error' | 'derivative' | 'gradient' | 'weightDelta' | 'allWeightDeltas' | 'update';
 
 /**
- * Loss display information
- */
-export interface LossDisplayData {
-  targetClass: number;
-  targetName: string;
-  predictions: number[];
-  loss: number;
-}
-
-/**
  * Backpropagation visualizer data for a single neuron
  */
 export interface BackwardCalculation {

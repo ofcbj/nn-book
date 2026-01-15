@@ -7,7 +7,7 @@
 
 import type { NeuralNetwork } from './network';
 import type { WeightComparisonData } from '../types';
-import { createWeightComparisonData } from '../visualizer/weightComparison';
+import { createWeightComparisonData } from './weightComparison';
 
 export interface NetworkSnapshot {
   weights: {

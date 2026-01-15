@@ -31,3 +31,4 @@ export {
   getNextBackwardStage,
 } from './networkConfig';
 export type { LayerName } from './networkConfig';
+export { createWeightComparisonData } from './weightComparison';

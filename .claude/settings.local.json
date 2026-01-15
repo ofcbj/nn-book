@@ -10,6 +10,9 @@
       "Bash(ls:*)",
       "Read(//usr/local/workspace/nn-book/**)",
       "Bash(xargs:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\src\\nn-book\\src\\lib\\visualizer"
     ]
   }
 }

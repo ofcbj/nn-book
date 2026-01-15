@@ -136,3 +136,55 @@ export const CONNECTION_STYLES = {
   defaultColor: 'rgba(100, 100, 100, 0.3)',
   activeColor: 'rgba(74, 222, 128, 0.8)',
 } as const;
+
+// =============================================================================
+// Activation Color Mapping
+// =============================================================================
+
+type RGB = [number, number, number];
+
+const ACTIVATION_COLORS = {
+  low: [59, 130, 246] as RGB,     // Blue
+  mid: [234, 179, 8] as RGB,      // Yellow
+  high: [239, 68, 68] as RGB,     // Red
+  invalid: [100, 100, 100] as RGB, // Gray
+};
+
+function interpolateColor(color1: RGB, color2: RGB, factor: number): RGB {
+  return [
+    Math.round(color1[0] + (color2[0] - color1[0]) * factor),
+    Math.round(color1[1] + (color2[1] - color1[1]) * factor),
+    Math.round(color1[2] + (color2[2] - color1[2]) * factor),
+  ];
+}
+
+/**
+ * Converts activation value (0-1) to RGB color string.
+ * Uses a diverging color scale: Blue (0) → Yellow (0.5) → Red (1)
+ */
+export function activationToColor(value: number): string {
+  if (isNaN(value) || value === undefined || value === null) {
+    const [r, g, b] = ACTIVATION_COLORS.invalid;
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  const clamped = Math.max(0, Math.min(1, value));
+  const rgb = clamped < 0.5
+    ? interpolateColor(ACTIVATION_COLORS.low, ACTIVATION_COLORS.mid, clamped / 0.5)
+    : interpolateColor(ACTIVATION_COLORS.mid, ACTIVATION_COLORS.high, (clamped - 0.5) / 0.5);
+
+  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+}
+
+/** Gets activation color with alpha transparency */
+export function activationToColorWithAlpha(value: number, alpha: number = 0.8): string {
+  return activationToColor(value).replace('rgb', 'rgba').replace(')', `, ${alpha})`);
+}
+
+/** Returns color stops for gradient legend */
+export function getColorStops(steps: number = 10): Array<{ value: number; color: string }> {
+  return Array.from({ length: steps + 1 }, (_, i) => ({
+    value: i / steps,
+    color: activationToColor(i / steps),
+  }));
+}

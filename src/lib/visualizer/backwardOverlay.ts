@@ -1,9 +1,10 @@
-// Backward propagation (backpropagation) visualizer renderer
+// Backward propagation overlay renderer
 import type { NodePosition, BackwardCalculation, BackwardSteps } from '../types';
 import type { AnimationState } from '../animation';
 import type { NeuralNetwork } from '../core';
 import { generateBackpropContent } from './overlayContentGenerator';
 import { renderOverlay } from './overlayRenderer';
+import { drawTextWithBackground } from './drawingUtils';
 
 // ============================================================================
 // Helper Functions
@@ -89,18 +90,10 @@ function drawBackwardConnections(
     if (nextLayerWeights && nextLayerWeights[idx] !== undefined) {
       const midX = (startX + endX) / 2;
       const midY = (startY + endY) / 2;
-      
-      // Background for weight label
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-      const weightText = `W=${nextLayerWeights[idx].toFixed(3)}`;
-      const textWidth = ctx.measureText(weightText).width;
-      ctx.fillRect(midX - textWidth / 2 - 4, midY - 8, textWidth + 8, 16);
-      
-      // Weight text
-      ctx.font = 'bold 10px monospace';
-      ctx.fillStyle = '#fbbf24';
-      ctx.textAlign = 'center';
-      ctx.fillText(weightText, midX, midY + 4);
+      drawTextWithBackground(ctx, `W=${nextLayerWeights[idx].toFixed(3)}`, midX, midY, {
+        bgColor: 'rgba(0, 0, 0, 0.85)',
+        textColor: '#fbbf24',
+      });
     }
   });
   
@@ -108,31 +101,18 @@ function drawBackwardConnections(
   if (nextLayerErrors) {
     nextLayerNodes.forEach((nextNode, idx) => {
       if (nextLayerErrors[idx] !== undefined) {
-        const errorValue = nextLayerErrors[idx];
-        
-        // Position label below the neuron
         const labelX = nextNode.centerX;
         const labelY = nextNode.y + nextNode.height + 18;
-        
-        // Background
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
-        const errorText = `err=${errorValue.toFixed(4)}`;
-        ctx.font = 'bold 11px monospace';
-        const textWidth = ctx.measureText(errorText).width;
-        
-        // Rounded rectangle background
-        ctx.beginPath();
-        ctx.roundRect(labelX - textWidth / 2 - 6, labelY - 10, textWidth + 12, 18, 4);
-        ctx.fill();
-        
-        // Error text
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.fillText(errorText, labelX, labelY + 3);
+        drawTextWithBackground(ctx, `err=${nextLayerErrors[idx].toFixed(4)}`, labelX, labelY, {
+          bgColor: 'rgba(239, 68, 68, 0.9)',
+          font: 'bold 11px monospace',
+          padding: { x: 6, y: 10 },
+          borderRadius: 4,
+        });
       }
     });
   }
-  
+
   ctx.restore();
 }
 
@@ -157,27 +137,13 @@ function drawAllErrorLabels(
     layerNodes.forEach((node, idx) => {
       if (data[idx]) {
         const errorValue = data[idx].error;
-        
-        // Position label below the neuron
         const labelX = node.centerX;
         const labelY = node.y + node.height + 14;
-        
-        // Background with semi-transparent red
         const errorMagnitude = Math.min(Math.abs(errorValue) * 2, 1);
-        ctx.fillStyle = `rgba(239, 68, 68, ${0.5 + errorMagnitude * 0.4})`;
-        const errorText = `δ=${errorValue.toFixed(3)}`;
-        ctx.font = 'bold 10px monospace';
-        const textWidth = ctx.measureText(errorText).width;
-        
-        // Rounded rectangle background
-        ctx.beginPath();
-        ctx.roundRect(labelX - textWidth / 2 - 4, labelY - 8, textWidth + 8, 14, 3);
-        ctx.fill();
-        
-        // Error text
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.fillText(errorText, labelX, labelY + 2);
+
+        drawTextWithBackground(ctx, `δ=${errorValue.toFixed(3)}`, labelX, labelY, {
+          bgColor: `rgba(239, 68, 68, ${0.5 + errorMagnitude * 0.4})`,
+        });
       }
     });
   });
@@ -190,10 +156,10 @@ function drawAllErrorLabels(
 // ============================================================================
 
 /**
- * Draw backward propagation (backpropagation) network visualization.
- * Uses separated content generator and overlay renderer modules.
+ * Draw backward propagation overlay visualization.
+ * Shows error values, connection weights, and backprop calculations.
  */
-export function drawBackwardNetwork(
+export function drawBackwardOverlay(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   nodes: NodePosition[][],

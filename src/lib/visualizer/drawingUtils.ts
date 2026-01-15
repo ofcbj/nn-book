@@ -7,6 +7,56 @@ import i18n from '../../i18n';
 // Text Rendering Helpers
 // =============================================================================
 
+export interface LabelStyle {
+  bgColor: string;
+  textColor: string;
+  font: string;
+  padding: { x: number; y: number };
+  borderRadius: number;
+}
+
+const DEFAULT_LABEL_STYLE: LabelStyle = {
+  bgColor: 'rgba(0, 0, 0, 0.85)',
+  textColor: '#ffffff',
+  font: 'bold 10px monospace',
+  padding: { x: 4, y: 8 },
+  borderRadius: 3,
+};
+
+/**
+ * Draw text with rounded rectangle background.
+ * Consolidates repeated label rendering patterns.
+ */
+export function drawTextWithBackground(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  style: Partial<LabelStyle> = {}
+): void {
+  const s = { ...DEFAULT_LABEL_STYLE, ...style };
+
+  ctx.font = s.font;
+  const textWidth = ctx.measureText(text).width;
+
+  // Background
+  ctx.fillStyle = s.bgColor;
+  ctx.beginPath();
+  ctx.roundRect(
+    x - textWidth / 2 - s.padding.x,
+    y - s.padding.y,
+    textWidth + s.padding.x * 2,
+    s.padding.y * 2 - 2,
+    s.borderRadius
+  );
+  ctx.fill();
+
+  // Text
+  ctx.fillStyle = s.textColor;
+  ctx.textAlign = 'center';
+  ctx.fillText(text, x, y + 3);
+}
+
 /** Draw centered text */
 function drawCenteredText(
   ctx: CanvasRenderingContext2D,
