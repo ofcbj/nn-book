@@ -2,6 +2,11 @@
 import type { NodePosition, LayerType } from '../types';
 import type { LayerName } from '../core';
 import i18n from '../../i18n';
+import {
+  INPUT_BOX,
+  NEURON_BOX,
+  LAYER_COLORS,
+} from './uiConfig';
 
 // =============================================================================
 // Text Rendering Helpers
@@ -57,46 +62,17 @@ export function drawTextWithBackground(
   ctx.fillText(text, x, y + 3);
 }
 
-/** Draw centered text */
-function drawCenteredText(
+/** Generic text drawing with configurable alignment and style */
+function drawText(
   ctx: CanvasRenderingContext2D,
   text: string,
   x: number,
   y: number,
-  style: { font: string; fillStyle: string }
+  options: { font?: string; color: string; align?: CanvasTextAlign }
 ): void {
-  ctx.font = style.font;
-  ctx.fillStyle = style.fillStyle;
-  ctx.textAlign = 'center';
-  ctx.fillText(text, x, y);
-}
-
-/** Draw left-aligned label */
-function drawLabel(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  color: string
-): void {
-  ctx.font = '12px monospace';
-  ctx.fillStyle = color;
-  ctx.textAlign = 'left';
-  ctx.fillText(text, x, y);
-}
-
-/** Draw value text */
-function drawValue(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  color: string,
-  font: string = '12px monospace'
-): void {
-  ctx.font = font;
-  ctx.fillStyle = color;
-  ctx.textAlign = 'left';
+  ctx.font = options.font ?? '12px monospace';
+  ctx.fillStyle = options.color;
+  ctx.textAlign = options.align ?? 'left';
   ctx.fillText(text, x, y);
 }
 
@@ -122,12 +98,6 @@ function drawWeightsVector(
   
   ctx.fillText(vectorStr, x, y);
 }
-
-import {
-  INPUT_BOX,
-  NEURON_BOX,
-  LAYER_COLORS,
-} from './uiConfig';
 
 export function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
@@ -292,24 +262,28 @@ export function drawNeuronVector(
   ctx.stroke();
 
   // === 2. Draw neuron label ===
-  drawCenteredText(ctx, label, x, centerY + 16, {
+  drawText(ctx, label, x, centerY + 16, {
     font: 'bold 11px sans-serif',
-    fillStyle: '#ffffff'
+    color: '#ffffff',
+    align: 'center'
   });
 
   // === 3. Draw weights vector (W: [...]) ===
   const weightsY = centerY + 35;
-  drawLabel(ctx, 'W:', centerX + 8, weightsY, '#cbd5e1');
+  drawText(ctx, 'W:', centerX + 8, weightsY, { color: '#cbd5e1' });
   drawWeightsVector(ctx, weights, centerX + 24, weightsY, width);
 
   // === 4. Draw bias value (b: X.XX) ===
   const biasY = centerY + 50;
-  drawLabel(ctx, 'b:', centerX + 8, biasY, '#cbd5e1');
-  drawValue(ctx, bias.toFixed(2), centerX + 24, biasY, '#fbbf24');
+  drawText(ctx, 'b:', centerX + 8, biasY, { color: '#cbd5e1' });
+  drawText(ctx, bias.toFixed(2), centerX + 24, biasY, { color: '#fbbf24' });
 
   // === 5. Draw activation output (σ=X.XXX) ===
   const activationY = centerY + 68;
-  drawValue(ctx, `σ=${activation.toFixed(3)}`, centerX + 70, activationY, '#34d399', 'bold 12px monospace');
+  drawText(ctx, `σ=${activation.toFixed(3)}`, centerX + 70, activationY, {
+    font: 'bold 12px monospace',
+    color: '#34d399'
+  });
 
   return { x: centerX, y: centerY, width, height, centerX: x, centerY: y };
 }

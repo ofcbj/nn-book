@@ -16,7 +16,7 @@
 import { useReducer, useCallback, useRef, RefObject, useEffect } from 'react';
 import { NeuralNetwork } from '../lib/core';
 import type { LayerName } from '../lib/core';
-import { LAYER_SIZES, FORWARD_LAYER_ORDER, BACKWARD_LAYER_ORDER } from '../lib/core';
+import { LAYER_SIZES, FORWARD_LAYER_ORDER, BACKWARD_LAYER_ORDER, getForwardNeuronIndices, getBackwardNeuronIndices } from '../lib/core';
 import type { Visualizer } from '../lib/visualizer';
 import type { UseNetworkStateReturn } from './useNetworkState';
 import type { ForwardStage, BackwardStage, ForwardCalculation, BackwardCalculation } from '../lib/types';
@@ -43,8 +43,6 @@ import {
   runAnimationLoop,
 } from '../lib/animation';
 import {
-  forwardNeuronIndices,
-  backwardNeuronIndices,
   FORWARD_STAGE_DURATIONS,
   BACKWARD_STAGE_DURATIONS,
 } from '../lib/animation/animationLoop';
@@ -289,7 +287,7 @@ export function useAnimationEngine(
     const completed = await runAnimationLoop({
       mode: 'forward',
       layers: ['layer1', 'layer2', 'output'],
-      getNeuronIndices: forwardNeuronIndices,
+      getNeuronIndices: getForwardNeuronIndices,
       stages: FORWARD_STAGES,
       stageDurations: FORWARD_STAGE_DURATIONS,
       getData: () => {
@@ -316,7 +314,7 @@ export function useAnimationEngine(
     const completed = await runAnimationLoop({
       mode: 'backward',
       layers: ['output', 'layer2', 'layer1'],
-      getNeuronIndices: backwardNeuronIndices,
+      getNeuronIndices: getBackwardNeuronIndices,
       stages: BACKPROP_STAGES,
       stageDurations: BACKWARD_STAGE_DURATIONS,
       getData: () => {

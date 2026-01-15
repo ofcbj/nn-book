@@ -1,6 +1,7 @@
 // Network rendering module - draws the base neural network structure
 import type { ForwardSteps, NodePosition, AnimationPhase, ForwardCalculation, LayerType } from '../types';
 import type { AnimationState } from '../animation';
+import { isForwardMode, isBackwardMode } from '../animation';
 import type { NeuralNetwork } from '../core';
 import { LAYER_SIZES } from '../core';
 import { drawInputVector, drawNeuronVector } from './drawingUtils';
@@ -42,14 +43,6 @@ function getAnimatingNeuron(state: AnimationState): AnimationPhase | null {
     return { layer: state.layer, index: state.neuronIndex };
   }
   return null;
-}
-
-function isForwardMode(state: AnimationState): boolean {
-  return state.type === 'forward_animating' || state.type === 'showing_loss_modal';
-}
-
-function isBackwardMode(state: AnimationState): boolean {
-  return state.type === 'backward_animating' || state.type === 'showing_backprop_modal';
 }
 
 function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePosition[] {

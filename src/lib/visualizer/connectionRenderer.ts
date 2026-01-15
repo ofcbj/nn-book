@@ -1,6 +1,7 @@
 // Connection rendering between neural network layers
 import type { NodePosition } from '../types';
 import type { AnimationState } from '../animation';
+import { LAYER_SIZES } from '../core';
 
 // ============================================================================
 // Types
@@ -100,9 +101,9 @@ export function drawConnections(
   animationState: AnimationState
 ): void {
   const connections = [
-    { from: 'input', to: 'layer1', fromCount: 1, toCount: 5, theme: CONNECTION_COLORS.input },
-    { from: 'layer1', to: 'layer2', fromCount: 5, toCount: 3, theme: CONNECTION_COLORS.layer1 },
-    { from: 'layer2', to: 'output', fromCount: 3, toCount: 3, theme: CONNECTION_COLORS.layer2 },
+    { from: 'input', to: 'layer1', fromCount: 1, toCount: LAYER_SIZES.layer1, theme: CONNECTION_COLORS.input },
+    { from: 'layer1', to: 'layer2', fromCount: LAYER_SIZES.layer1, toCount: LAYER_SIZES.layer2, theme: CONNECTION_COLORS.layer1 },
+    { from: 'layer2', to: 'output', fromCount: LAYER_SIZES.layer2, toCount: LAYER_SIZES.output, theme: CONNECTION_COLORS.layer2 },
   ] as const;
 
   connections.forEach(({ from, to, fromCount, toCount, theme }, idx) => {

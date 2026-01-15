@@ -109,14 +109,6 @@ export async function runAnimationLoop<TStage extends string, TData>(
 }
 
 // ============================================================================
-// Configuration - imported from core/networkConfig
-// ============================================================================
-
-import { getForwardNeuronIndices, getBackwardNeuronIndices } from '../core';
-
-export { getForwardNeuronIndices as forwardNeuronIndices, getBackwardNeuronIndices as backwardNeuronIndices };
-
-// ============================================================================
 // Stage Durations
 // ============================================================================
 

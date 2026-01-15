@@ -67,6 +67,13 @@ export const VERTICAL_SPACING = {
   output: 125,
 } as const;
 
+/** Layer name to node array index mapping */
+export const LAYER_NODE_INDEX: Record<string, number> = {
+  layer1: 1,
+  layer2: 2,
+  output: 3,
+};
+
 // =============================================================================
 // Layer Colors
 // =============================================================================

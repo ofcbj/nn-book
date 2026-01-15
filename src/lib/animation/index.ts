@@ -11,6 +11,8 @@ export {
   initialAnimationState,
   isAnimating,
   isPaused,
+  isForwardMode,
+  isBackwardMode,
   getNextForwardStage,
   getNextBackwardStage,
   getNextForwardNeuron,

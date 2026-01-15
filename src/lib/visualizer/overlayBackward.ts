@@ -5,6 +5,7 @@ import type { NeuralNetwork } from '../core';
 import { generateBackpropContent } from './overlayContentGenerator';
 import { renderOverlay } from './overlayRenderer';
 import { drawTextWithBackground } from './drawingUtils';
+import { LAYER_NODE_INDEX } from './uiConfig';
 
 // ============================================================================
 // Helper Functions
@@ -18,13 +19,7 @@ function getHighlightedNode(
   index: number,
   nodes: NodePosition[][]
 ): NodePosition | null {
-  const layerIndexMap: Record<string, number> = {
-    layer1: 1,
-    layer2: 2,
-    output: 3
-  };
-
-  const layerIdx = layerIndexMap[layer];
+  const layerIdx = LAYER_NODE_INDEX[layer];
   return layerIdx !== undefined && nodes[layerIdx] ? nodes[layerIdx][index] : null;
 }
 

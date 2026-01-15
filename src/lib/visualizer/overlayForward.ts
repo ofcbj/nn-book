@@ -3,6 +3,7 @@ import type { NodePosition } from '../types';
 import type { AnimationState } from '../animation';
 import { generateForwardContent } from './overlayContentGenerator';
 import { renderOverlay } from './overlayRenderer';
+import { LAYER_NODE_INDEX } from './uiConfig';
 
 /**
  * Draw forward propagation calculation overlay.
@@ -19,8 +20,7 @@ export function drawForwardOverlay(
   const { layer, neuronIndex, stage, neuronData } = animationState;
 
   // Find the animating neuron's position
-  const layerIndexMap: Record<string, number> = { layer1: 1, layer2: 2, output: 3 };
-  const layerIdx = layerIndexMap[layer];
+  const layerIdx = LAYER_NODE_INDEX[layer];
   if (layerIdx === undefined || !nodes[layerIdx]) return;
 
   const nodeInfo = nodes[layerIdx][neuronIndex];

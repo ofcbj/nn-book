@@ -9,7 +9,9 @@
       "Bash(npm run build:*)",
       "Bash(ls:*)",
       "Read(//usr/local/workspace/nn-book/**)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(wc:*)",
+      "Bash(git mv:*)"
     ],
     "additionalDirectories": [
       "c:\\src\\nn-book\\src\\lib\\visualizer"

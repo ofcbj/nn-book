@@ -6,8 +6,8 @@ import i18n from '../../i18n';
 import { activationToColor } from './uiConfig';
 import { drawNetwork } from './networkRenderer';
 import { drawConnections } from './connectionRenderer';
-import { drawForwardOverlay } from './forwardOverlay';
-import { drawBackwardOverlay } from './backwardOverlay';
+import { drawForwardOverlay } from './overlayForward';
+import { drawBackwardOverlay } from './overlayBackward';
 
 export class Visualizer {
   private canvas: HTMLCanvasElement;
