@@ -88,25 +88,15 @@ export function useAnimationEngine(
 ): UseAnimationEngineReturn {
   // 1. ANIMATION STATE MACHINE
   const [animationState, dispatch]= useReducer(animationReducer, initialAnimationState);
-  const stepResolverRef           = useRef<(() => void) | null>(null);
-  const prevSpeedRef              = useRef(animationState.speed);
+  const animationStateRef         = useRef(animationState);  // Always-current ref for async access
   const interruptReasonRef        = useRef<InterruptReason>('none'); // Synced with FSM
   const trainingIntervalRef       = useRef<number | undefined>(undefined);
 
-  // Sync interruptReasonRef with FSM state (ref is needed for async loop access)
+  // Sync refs with FSM state (refs are needed for async loop access)
   useEffect(() => {
+    animationStateRef.current = animationState;
     interruptReasonRef.current = animationState.interruptReason;
-  }, [animationState.interruptReason]);
-  // Auto-resolve step when speed changes from 0 to > 0
-  useEffect(() => {
-    if (prevSpeedRef.current === 0 && animationState.speed > 0) {
-      if (stepResolverRef.current) {
-        stepResolverRef.current();
-        stepResolverRef.current = null;
-      }
-    }
-    prevSpeedRef.current = animationState.speed;
-  }, [animationState.speed]);
+  }, [animationState]);
   // FSM action creators
   const startTraining = useCallback(() => {
     dispatch({ type: 'START_TRAINING' });
@@ -122,7 +112,6 @@ export function useAnimationEngine(
 
   const fsmReset = useCallback(() => {
     dispatch({ type: 'RESET' });
-    stepResolverRef.current = null;
   }, []);
 
   const forwardTick = useCallback((
@@ -163,14 +152,6 @@ export function useAnimationEngine(
     dispatch({ type: 'JUMP_TO_NEURON', layer, neuronIndex });
   }, []);
 
-  const waitForNextStep = useCallback((): Promise<void> => {
-    if (animationState.speed === 0) {
-      return new Promise<void>(resolve => {
-        stepResolverRef.current = resolve;
-      });
-    }
-    return Promise.resolve();
-  }, [animationState.speed]);
   // Derived state
   const animating = isAnimating(animationState);
   const paused = isPaused(animationState);
@@ -213,12 +194,12 @@ export function useAnimationEngine(
     });
   }, [nnRef, state.inputs.targetValue, state.modalSetters]);
 
-  // Sync visualizer state with animation machine
+  // Sync visualizer state with animation machine (uses ref to avoid stale closure)
   const syncVisualizerState = useCallback(() => {
     if (visualizerRef.current) {
-      visualizerRef.current.update(nnRef.current, animationState);
+      visualizerRef.current.update(nnRef.current, animationStateRef.current);
     }
-  }, [animationState, nnRef, visualizerRef]);
+  }, [nnRef, visualizerRef]);
   
   // Refresh display without recalculation
   const refreshDisplayOnly = useCallback(() => {
@@ -247,15 +228,11 @@ export function useAnimationEngine(
     syncVisualizerState();
   }, [getCurrentInputs, syncVisualizerState, nnRef, state.statsSetters, state.visualizerSetters]);
   
-  // Sleep utility with pause support
+  // Sleep utility for animation timing
   const sleep = useCallback(async (ms: number, overrideSpeed?: number): Promise<void> => {
     const effectiveSpeed = overrideSpeed ?? animationState.speed;
-    if (effectiveSpeed === 0) {
-      await waitForNextStep();
-    } else {
-      await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
-    }
-  }, [animationState.speed, waitForNextStep]);
+    await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
+  }, [animationState.speed]);
 
   // Forward propagation animation (unified: can start from beginning or from a specific position)
   const animateForwardPropagation = useCallback(async (
@@ -385,25 +362,23 @@ export function useAnimationEngine(
   // Train one step with animation
   const trainOneStepWithAnimation = useCallback(async () => {
     // Case 1: Resume from paused position (continue from next neuron)
-    if (animating && paused) {
-      // Manually clear ref before dispatch to prevent race condition
-      interruptReasonRef.current = 'none';
-      resume(state.training.animationSpeed);
-      await continueFromJumpedPosition();
-      return;
-    }
-    // Case 2: Pause running animation
     if (animating) {
-      pause();
-      return;
+      if (paused) {
+        // Manually clear ref before dispatch to prevent race condition
+        interruptReasonRef.current = 'none';
+        resume(state.training.animationSpeed);
+        await continueFromJumpedPosition();
+      } else {
+        pause();
+      }
+    } else {
+      // Case 3: Start new animation
+      startTraining();
+      const nn = nnRef.current;
+      nn.feedforward(getCurrentInputs());
+      await animateForwardPropagation();
+    // Loss modal is shown inside animateForwardPropagation if completed      
     }
-    // Case 3: Start new animation
-    startTraining();
-
-    const nn = nnRef.current;
-    nn.feedforward(getCurrentInputs());
-    await animateForwardPropagation();
-    // Loss modal is shown inside animateForwardPropagation if completed
   }, [animating, paused, state.training.animationSpeed, getCurrentInputs, resume, continueFromJumpedPosition, pause, startTraining, animateForwardPropagation, nnRef]);
 
   // Toggle auto training
