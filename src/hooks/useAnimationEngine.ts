@@ -93,8 +93,8 @@ export function useAnimationEngine(
 
   // Sync refs with FSM state (refs are needed for async loop access)
   useEffect(() => {
-    animationStateRef.current = animationState;
-    interruptReasonRef.current = animationState.interruptReason;
+    animationStateRef.current   = animationState;
+    interruptReasonRef.current  = animationState.interruptReason;
   }, [animationState]);
   // FSM action creators (grouped for cleaner code)
   const fsmActions = useMemo(() => ({
@@ -181,7 +181,7 @@ export function useAnimationEngine(
     if (nn.lastOutput) {
       state.statsSetters.setOutput(nn.lastOutput.toArray());
     }
-    state.statsSetters.setSteps(nn.getCalculationSteps());
+    state.statsSetters.setSteps(nn.getForwardSteps());
     // Update activations for heatmap
     if (nn.lastInput && nn.lastHidden1 && nn.lastHidden2 && nn.lastOutput) {
       state.visualizerSetters.setActivations({
@@ -205,15 +205,16 @@ export function useAnimationEngine(
   const animateForwardPropagation = useCallback(async (
     startFrom?: { layer: LayerName; neuronIndex: number }
   ): Promise<boolean> => {
-    const nn        = nnRef.current;
-  const inputs = getCurrentInputs();
-    const calcSteps = nn.getCalculationSteps();
-    if (!calcSteps) return false;
+    const nn          = nnRef.current;
+    const inputs      = getCurrentInputs();
+    const forwardSteps= nn.getForwardSteps();
+    if (!forwardSteps) 
+      return false;
 
     const layerData = {
-      layer1: calcSteps.layer1,
-      layer2: calcSteps.layer2,
-      output: calcSteps.output
+      layer1: forwardSteps.layer1,
+      layer2: forwardSteps.layer2,
+      output: forwardSteps.output
     };
 
     const completed = await runAnimationLoop({
@@ -242,10 +243,8 @@ export function useAnimationEngine(
 
     return completed;
   }, [fsmActions, refreshDisplayOnly, sleep, computeAndRefreshDisplay, nnRef, shouldPauseAnimation, getCurrentInputs, getTargetOneHot, showLossModal]);
-  
   // Backward propagation animation (unified: can start from beginning or from a specific position)
   const animateBackwardPropagation = useCallback(async (
-    speedOverride: number = 1.0,
     startFrom?: { layer: LayerName; neuronIndex: number }
   ): Promise<boolean> => {
     const nn = nnRef.current;
@@ -281,7 +280,7 @@ export function useAnimationEngine(
       sleep             : sleep,
       refreshDisplayOnly: refreshDisplayOnly,
       computeAndRefreshDisplay: computeAndRefreshDisplay,
-      speedOverride     : speedOverride,
+      speedOverride     : state.training.animationSpeed,
       startFrom         : startFrom,
     });
 
@@ -291,7 +290,7 @@ export function useAnimationEngine(
       state.modalSetters.setBackpropSummaryData(summaryData);
     }
     return completed;
-  }, [fsmActions, sleep, refreshDisplayOnly, computeAndRefreshDisplay, nnRef, state.stats.learningRate, state.modalSetters, shouldPauseAnimation]);
+  }, [fsmActions, sleep, refreshDisplayOnly, computeAndRefreshDisplay, nnRef, state.stats.learningRate, state.modalSetters, shouldPauseAnimation, state.training.animationSpeed]);
   
   // Continue from jumped position (dispatcher)
   const continueFromJumpedPosition = useCallback(async () => {
@@ -301,12 +300,12 @@ export function useAnimationEngine(
         neuronIndex: animationState.neuronIndex
       });
     } else if (animationState.type === 'backward_animating') {
-      await animateBackwardPropagation(state.training.animationSpeed, {
+      await animateBackwardPropagation({
         layer: animationState.layer,
         neuronIndex: animationState.neuronIndex
       });
     }
-  }, [animationState, animateForwardPropagation, animateBackwardPropagation, state.training.animationSpeed]);
+  }, [animationState, animateForwardPropagation, animateBackwardPropagation]);
 
   // 3. TRAINING CONTROLS
   const setVisualizer = useCallback((v: Visualizer) => {
@@ -318,9 +317,10 @@ export function useAnimationEngine(
     const nn = nnRef.current;
     const oldSnapshot = createSnapshot(nn);
     nn.train(getCurrentInputs(), getTargetOneHot());
+    
     const newSnapshot = createSnapshot(nn);
-
     createWeightComparisonAfterTraining(oldSnapshot, newSnapshot);
+    
     state.statsSetters.setLoss(nn.lastLoss);
     state.statsSetters.setEpoch(prev => prev + 1);
     computeAndRefreshDisplay();
@@ -393,10 +393,9 @@ export function useAnimationEngine(
 
     const nn = nnRef.current;
     const oldSnapshot = createSnapshot(nn);
-    const animationSpeed = state.training.animationSpeed;
 
-    const completed = await animateBackwardPropagation(animationSpeed);
-    await sleep(500, animationSpeed);
+    const completed = await animateBackwardPropagation();
+    await sleep(500, state.training.animationSpeed);
 
     // Update stats and weight comparison data if animation completed
     if (completed) {
@@ -428,24 +427,13 @@ export function useAnimationEngine(
   }, [state.modalSetters, fsmActions, refreshDisplayOnly]);
 
   // 5. CANVAS INTERACTION
-  // Helper: Get neuron data
-  const getForwardNeuronData = useCallback((layer: LayerName, index: number) => {
-    const calcSteps = nnRef.current.getCalculationSteps();
-    if (!calcSteps) return null;
-    return calcSteps[layer]?.[index] ?? null;
-  }, [nnRef]);
-
-  const getBackwardNeuronData = useCallback((layer: LayerName, index: number) => {
-    const backpropData = nnRef.current.lastBackwardSteps;
-    if (!backpropData) return null;
-    return backpropData[layer]?.[index] ?? null;
-  }, [nnRef]);
 
   // Helper: Complete forward pass (used by canvas click handler)
   const completeForwardPass = useCallback(() => {
     const nn      = nnRef.current;
     const inputs  = getCurrentInputs();
     const snapshot= createSnapshot(nn);
+    
     nn.train(inputs, getTargetOneHot());
     restoreSnapshot(nn, snapshot, inputs);
     fsmActions.forwardComplete();
@@ -476,7 +464,7 @@ export function useAnimationEngine(
           } else {
             const nextNeuron = getNextForwardNeuron(neuronLoc.layer, neuronLoc.index);
             if (nextNeuron) {
-              const neuronData = getForwardNeuronData(nextNeuron.layer, nextNeuron.index);
+              const neuronData = nnRef.current.getForwardNeuronData(nextNeuron.layer, nextNeuron.index);
               if (neuronData) {
                 fsmActions.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
                 fsmActions.forwardTick(nextNeuron.layer, nextNeuron.index, 'dotProduct', neuronData);
@@ -499,7 +487,7 @@ export function useAnimationEngine(
           } else {
             const nextNeuron = getNextBackwardNeuron(neuronLoc.layer, neuronLoc.index);
             if (nextNeuron) {
-              const neuronData = getBackwardNeuronData(nextNeuron.layer, nextNeuron.index);
+              const neuronData = nnRef.current.getBackwardNeuronData(nextNeuron.layer, nextNeuron.index);
               if (neuronData) {
                 fsmActions.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
                 fsmActions.backwardTick(nextNeuron.layer, nextNeuron.index, 'error', neuronData);
@@ -518,17 +506,16 @@ export function useAnimationEngine(
             }
           }
         }
-        // Case 3: Different neuron clicked - jump to that neuron
         else {
           fsmActions.jumpToNeuron(neuronLoc.layer, neuronLoc.index);
 
           if (animationState.type === 'forward_animating') {
-            const neuronData = getForwardNeuronData(neuronLoc.layer, neuronLoc.index);
+            const neuronData = nnRef.current.getForwardNeuronData(neuronLoc.layer, neuronLoc.index);
             if (neuronData) {
               fsmActions.forwardTick(neuronLoc.layer, neuronLoc.index, 'dotProduct', neuronData);
             }
           } else if (animationState.type === 'backward_animating') {
-            const neuronData = getBackwardNeuronData(neuronLoc.layer, neuronLoc.index);
+            const neuronData = nnRef.current.getBackwardNeuronData(neuronLoc.layer, neuronLoc.index);
             if (neuronData) {
               fsmActions.backwardTick(neuronLoc.layer, neuronLoc.index, 'error', neuronData);
             }
@@ -537,7 +524,7 @@ export function useAnimationEngine(
         }
       }
     }
-  }, [isAnimating, animationState, visualizerRef, nnRef, fsmActions, refreshDisplayOnly, getForwardNeuronData, getBackwardNeuronData, completeForwardPass, state.stats.learningRate, state.modalSetters]);
+  }, [isAnimating, animationState, visualizerRef, nnRef, fsmActions, refreshDisplayOnly, completeForwardPass, state.stats.learningRate, state.modalSetters]);
 
   // RETURN
   return {

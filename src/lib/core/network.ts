@@ -1,7 +1,7 @@
 // Neural Network Implementation with TypeScript
 // Architecture: 3 inputs -> 5 neurons (1차) -> 3 neurons (2차) -> 3 outputs (Softmax)
 
-import type { ForwardSteps, BackwardSteps, ForwardCalculation } from '../types';
+import type { ForwardSteps, BackwardSteps, ForwardCalculation, BackwardCalculation } from '../types';
 import i18n from '../../i18n';
 import { Matrix } from './matrix';
 import { LAYER_SIZES, INPUT_SIZE } from './networkConfig';
@@ -361,7 +361,7 @@ export class NeuralNetwork {
     });
   }
 
-  getCalculationSteps(): ForwardSteps | null {
+  getForwardSteps(): ForwardSteps | null {
     if (!this.lastInput) return null;
     
     const steps: ForwardSteps = {
@@ -450,4 +450,28 @@ export class NeuralNetwork {
     config.weights.data[neuronIndex] = newWeights;
     config.bias.data[neuronIndex][0] = newBias;
   }
+
+  /**
+   * Get forward propagation data for a specific neuron.
+   */
+  getForwardNeuronData(
+    layer: 'layer1' | 'layer2' | 'output',
+    index: number
+  ): ForwardCalculation | null {
+    const steps = this.getForwardSteps();
+    if (!steps) return null;
+    return steps[layer]?.[index] ?? null;
+  }
+
+  /**
+   * Get backward propagation data for a specific neuron.
+   */
+  getBackwardNeuronData(
+    layer: 'layer1' | 'layer2' | 'output',
+    index: number
+  ): BackwardCalculation | null {
+    if (!this.lastBackwardSteps) return null;
+    return this.lastBackwardSteps[layer]?.[index] ?? null;
+  }
 }
+

@@ -57,7 +57,7 @@ export class Visualizer {
    * Convenience method that gets steps from network and draws
    */
   update(nn: NeuralNetwork, animationState: AnimationState): void {
-    const steps = nn.getCalculationSteps();
+    const steps = nn.getForwardSteps();
     this.draw(nn, steps, animationState);
   }
 
