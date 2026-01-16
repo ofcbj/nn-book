@@ -5,7 +5,7 @@
  * State is organized by topic for better clarity and maintainability.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { ForwardSteps, BackpropSummaryData, WeightComparisonData } from '../lib/types';
 import type { ActivationData } from '../components/ActivationHeatmap';
 import { useModal, type UseModalReturn } from './useModalState';
@@ -111,6 +111,9 @@ export interface UseNetworkStateReturn {
   // Actions
   visualizerActions : VisualizerActions;
   modalActions      : ModalActions;
+  
+  // Reset
+  resetAllState     : () => void;
 }
 
 // =============================================================================
@@ -171,8 +174,27 @@ export function useNetworkState(): UseNetworkStateReturn {
   const modalSetters = useMemo(() => ({
     setLossModalData: (data: LossModalData | null) => data ? lossModal.open(data) : lossModal.close(),
     setBackpropSummaryData: (data: BackpropSummaryData | null) => data ? backpropModal.open(data) : backpropModal.close(),
-    setWeightComparisonData: (data: WeightComparisonData | null) => comparisonModal.setData(data), // Use setData instead of open
+    setWeightComparisonData: (data: WeightComparisonData | null) => comparisonModal.setData(data),
   }), [lossModal.open, lossModal.close, backpropModal.open, backpropModal.close, comparisonModal.setData]);
+
+  // Reset all state to initial values
+  const resetAllState = useCallback(() => {
+    // Stats
+    setEpoch(0);
+    setLoss(0);
+    setOutput(null);
+    
+    // Modals
+    lossModal.close();
+    backpropModal.close();
+    comparisonModal.close();
+    
+    // Inputs - randomize
+    setGrade(Math.random());
+    setAttitude(Math.random());
+    setResponse(Math.random());
+    setTargetValue(Math.floor(Math.random() * 3));
+  }, [lossModal.close, backpropModal.close, comparisonModal.close]);
 
   return {
     // Grouped state
@@ -220,5 +242,8 @@ export function useNetworkState(): UseNetworkStateReturn {
     modalActions: {
       // No longer needed - use modals directly
     },
+    
+    // Reset
+    resetAllState,
   };
 }

@@ -38,8 +38,8 @@ import {
   getHighlightedNeuron,
   getForwardStage,
   getBackwardStage,
-  getCurrentNeuronData,
-  getCurrentBackpropData,
+  getCurrentForwardData,
+  getCurrentBackwardData,
   InterruptReason,
   runAnimationLoop,
 } from '../lib/animation';
@@ -51,32 +51,32 @@ import { useModalActions } from './useModalActions';
 
 export interface UseAnimationEngineReturn {
   // === Animation State ===
-  state: AnimationState;
-  dispatch: React.Dispatch<AnimationAction>;
-  isAnimating: boolean;
-  isPaused: boolean;
+  state               : AnimationState;
+  dispatch            : React.Dispatch<AnimationAction>;
+  isAnimating         : boolean;
+  isPaused            : boolean;
   // === Visualization Data ===
-  highlightedNeuron: { layer: LayerName; index: number } | null;
-  forwardStage: ForwardStage | null;
-  backpropStage: BackwardStage | null;
-  currentNeuronData: ForwardCalculation | null;
-  currentBackpropData: BackwardCalculation | null;
+  highlightedNeuron   : { layer: LayerName; index: number } | null;
+  forwardStage        : ForwardStage | null;
+  backpropStage       : BackwardStage | null;
+  currentForwardData  : ForwardCalculation | null;
+  currentBackwardData  : BackwardCalculation | null;
   // === Training Controls ===
-  trainOneStepWithAnimation: () => Promise<void>;
-  trainOneEpochWithoutAnimation: () => void;
-  toggleTraining: () => void;
-  reset: () => void;
-  computeAndRefreshDisplay: () => void;
+  trainOneStepWithAnimation      : () => Promise<void>;
+  trainOneEpochWithoutAnimation  : () => void;
+  toggleTraining                 : () => void;
+  reset                          : () => void;
+  computeAndRefreshDisplay       : () => void;
   // === Modal Controls ===
-  closeLossModal: () => Promise<void>;
-  closeBackpropModal: () => void;
+  closeLossModal                 : () => Promise<void>;
+  closeBackpropModal             : () => void;
   // === Canvas Interaction ===
-  handleCanvasClick: (x?: number, y?: number) => void;
+  handleCanvasClick              : (x?: number, y?: number) => void;
   // === Visualizer ===
-  setVisualizer: (v: Visualizer) => void;
+  setVisualizer                  : (v: Visualizer) => void;
   // === Utilities ===
-  handleLearningRateChange: (v: number) => void;
-  trainingIntervalRef: RefObject<number | undefined>;
+  handleLearningRateChange       : (v: number) => void;
+  trainingIntervalRef            : RefObject<number | undefined>;
 }
 
 type NeuronLocation = { layer: LayerName; index: number };
@@ -366,26 +366,19 @@ export function useAnimationEngine(
   }, [state.training.isTraining, state.trainingSetters, trainOneEpochWithoutAnimation, nnRef, clearTrainingInterval]);
   // Reset
   const reset = useCallback(() => {
+    // Stop auto training if running
     if (state.training.isTraining) {
       state.trainingSetters.setIsTraining(false);
       clearTrainingInterval();
     }
+    // Reset network
     nnRef.current = new NeuralNetwork();
-    state.statsSetters.setEpoch(0);
-    state.statsSetters.setLoss(0);
-    state.statsSetters.setOutput(null);
-    state.modalSetters.setLossModalData(null);
-    state.modalSetters.setBackpropSummaryData(null);
-    state.modalSetters.setWeightComparisonData(null);
-
-    state.inputSetters.setGrade(Math.random());
-    state.inputSetters.setAttitude(Math.random());
-    state.inputSetters.setResponse(Math.random());
-    state.inputSetters.setTargetValue(Math.floor(Math.random() * 3));
-
+    // Reset all state (stats, modals, inputs)
+    state.resetAllState();
+    // Reset FSM and refresh
     fsmActions.reset();
     computeAndRefreshDisplay();
-  }, [state.training.isTraining, state.trainingSetters, state.statsSetters, state.modalSetters, state.inputSetters, fsmActions, computeAndRefreshDisplay, nnRef, clearTrainingInterval]);
+  }, [state.training.isTraining, state.trainingSetters, state.resetAllState, fsmActions, computeAndRefreshDisplay, nnRef, clearTrainingInterval]);
 
   // Learning rate change
   const handleLearningRateChange = useCallback((v: number) => {
@@ -512,7 +505,6 @@ export function useAnimationEngine(
               fsmActions.backwardTick(neuronLoc.layer, neuronLoc.index, 'error', neuronData);
             }
           }
-
           refreshDisplayOnly();
         }
       }
@@ -530,8 +522,8 @@ export function useAnimationEngine(
     highlightedNeuron: getHighlightedNeuron(animationState),
     forwardStage: getForwardStage(animationState),
     backpropStage: getBackwardStage(animationState),
-    currentNeuronData: getCurrentNeuronData(animationState),
-    currentBackpropData: getCurrentBackpropData(animationState),
+    currentForwardData: getCurrentForwardData(animationState),
+    currentBackwardData: getCurrentBackwardData(animationState),
     // Training controls
     trainOneStepWithAnimation,
     trainOneEpochWithoutAnimation,

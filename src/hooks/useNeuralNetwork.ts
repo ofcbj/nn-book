@@ -153,12 +153,12 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   }), [state.visualizer]);
 
   const actions = useMemo(() => ({
-    trainOneStep: engine.trainOneStepWithAnimation,
-    trainOneEpoch: engine.trainOneEpochWithoutAnimation,
-    toggleTraining: engine.toggleTraining,
-    reset: engine.reset,
+    trainOneStep            : engine.trainOneStepWithAnimation,
+    trainOneEpoch           : engine.trainOneEpochWithoutAnimation,
+    toggleTraining          : engine.toggleTraining,
+    reset                   : engine.reset,
     computeAndRefreshDisplay: engine.computeAndRefreshDisplay,
-    handleCanvasClick: engine.handleCanvasClick,
+    handleCanvasClick       : engine.handleCanvasClick,
   }), [engine.trainOneStepWithAnimation, engine.trainOneEpochWithoutAnimation, 
     engine.toggleTraining, engine.reset, engine.computeAndRefreshDisplay, engine.handleCanvasClick]);
 

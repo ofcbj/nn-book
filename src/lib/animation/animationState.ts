@@ -32,11 +32,11 @@ export interface IdleState extends BaseAnimationState {
 
 /** Forward propagation animation */
 export interface ForwardAnimatingState extends BaseAnimationState {
-  type: 'forward_animating';
-  layer: LayerName;
-  neuronIndex: number;
-  stage: ForwardStage;
-  neuronData: ForwardCalculation | null;
+  type        : 'forward_animating';
+  layer       : LayerName;
+  neuronIndex : number;
+  stage       : ForwardStage;
+  neuronData  : ForwardCalculation | null;
 }
 
 /** Showing loss modal after forward propagation */
@@ -46,11 +46,11 @@ export interface ShowingLossModalState extends BaseAnimationState {
 
 /** Backward propagation animation */
 export interface BackwardAnimatingState extends BaseAnimationState {
-  type: 'backward_animating';
-  layer: LayerName;
-  neuronIndex: number;
-  stage: BackwardStage;
-  neuronData: BackwardCalculation | null;
+  type        : 'backward_animating';
+  layer       : LayerName;
+  neuronIndex : number;
+  stage       : BackwardStage;
+  neuronData  : BackwardCalculation | null;
 }
 
 /** Showing backprop summary modal */
@@ -73,7 +73,7 @@ export type AnimationAction =
   | { type: 'START_TRAINING' }
   | { type: 'SET_SPEED'; speed: number }
   | { type: 'PAUSE' }
-  | { type: 'RESUME'; speed: number }
+  | { type: 'RESUME' }
   | { type: 'NEXT_STEP' }
   | { 
       type: 'JUMP_TO_NEURON'; 
@@ -115,7 +115,7 @@ export const initialAnimationState: AnimationState = {
 // ============================================================================
 
 export function animationReducer(
-  state: AnimationState,
+  state : AnimationState,
   action: AnimationAction
 ): AnimationState {
   switch (action.type) {
@@ -129,7 +129,7 @@ export function animationReducer(
       return { ...state, interruptReason: 'paused' };
 
     case 'RESUME':
-      return { ...state, speed: action.speed > 0 ? action.speed : 1.0, interruptReason: 'none' };
+      return { ...state, interruptReason: 'none' };
 
     case 'RESET':
       return initialAnimationState;
@@ -140,13 +140,13 @@ export function animationReducer(
     case 'START_TRAINING':
       if (state.type !== 'idle') return state;
       return {
-        type: 'forward_animating',
-        layer: 'layer1',
-        neuronIndex: 0,
-        stage: 'connections',
-        neuronData: null,
-        speed: state.speed,
-        interruptReason: 'none',
+        type              : 'forward_animating',
+        layer             : 'layer1',
+        neuronIndex       : 0,
+        stage             : 'connections',
+        neuronData        : null,
+        speed             : state.speed,
+        interruptReason   : 'none',
       };
 
     // -------------------------------------------------------------------------
@@ -156,10 +156,10 @@ export function animationReducer(
       if (state.type !== 'forward_animating') return state;
       return {
         ...state,
-        layer: action.layer,
-        neuronIndex: action.neuronIndex,
-        stage: action.stage,
-        neuronData: action.neuronData,
+        layer             : action.layer,
+        neuronIndex       : action.neuronIndex,
+        stage             : action.stage,
+        neuronData        : action.neuronData,
       };
 
     case 'JUMP_TO_NEURON':
@@ -167,19 +167,19 @@ export function animationReducer(
       if (state.type === 'forward_animating') {
         return {
           ...state,
-          layer: action.layer,
-          neuronIndex: action.neuronIndex,
-          stage: 'connections', // Reset to first stage
-          interruptReason: 'jumped',
+          layer           : action.layer,
+          neuronIndex     : action.neuronIndex,
+          stage           : 'connections', // Reset to first stage
+          interruptReason : 'jumped',
         };
       }
       if (state.type === 'backward_animating') {
         return {
           ...state,
-          layer: action.layer,
-          neuronIndex: action.neuronIndex,
-          stage: 'error', // Reset to first backprop stage
-          interruptReason: 'jumped',
+          layer           : action.layer,
+          neuronIndex     : action.neuronIndex,
+          stage           : 'error', // Reset to first backprop stage
+          interruptReason : 'jumped',
         };
       }
       return state;
@@ -187,9 +187,9 @@ export function animationReducer(
     case 'FORWARD_COMPLETE':
       if (state.type !== 'forward_animating') return state;
       return {
-        type: 'showing_loss_modal',
-        speed: state.speed,
-        interruptReason: 'none',
+        type              : 'showing_loss_modal',
+        speed             : state.speed,
+        interruptReason   : 'none',
       };
 
     // -------------------------------------------------------------------------
@@ -198,13 +198,13 @@ export function animationReducer(
     case 'CLOSE_LOSS_MODAL':
       if (state.type !== 'showing_loss_modal') return state;
       return {
-        type: 'backward_animating',
-        layer: 'output',
-        neuronIndex: 2, // Start from last output neuron
-        stage: 'error',
-        neuronData: null,
-        speed: state.speed > 0 ? state.speed : 1.0, // Ensure non-zero speed
-        interruptReason: 'none',
+        type              : 'backward_animating',
+        layer             : 'output',
+        neuronIndex       : 2, // Start from last output neuron
+        stage             : 'error',
+        neuronData        : null,
+        speed             : state.speed,
+        interruptReason   : 'none',
       };
 
     // -------------------------------------------------------------------------
@@ -214,18 +214,18 @@ export function animationReducer(
       if (state.type !== 'backward_animating') return state;
       return {
         ...state,
-        layer: action.layer,
-        neuronIndex: action.neuronIndex,
-        stage: action.stage,
-        neuronData: action.neuronData,
+        layer             : action.layer,
+        neuronIndex       : action.neuronIndex,
+        stage             : action.stage,
+        neuronData        : action.neuronData,
       };
 
     case 'BACKWARD_COMPLETE':
       if (state.type !== 'backward_animating') return state;
       return {
-        type: 'showing_backprop_modal',
-        speed: state.speed,
-        interruptReason: 'none',
+        type              : 'showing_backprop_modal',
+        speed             : state.speed,
+        interruptReason   : 'none',
       };
 
     // -------------------------------------------------------------------------
@@ -234,9 +234,9 @@ export function animationReducer(
     case 'CLOSE_BACKPROP_MODAL':
       if (state.type !== 'showing_backprop_modal') return state;
       return {
-        type: 'idle',
-        speed: state.speed,
-        interruptReason: 'none',
+        type              : 'idle',
+        speed             : state.speed,
+        interruptReason   : 'none',
       };
 
     case 'NEXT_STEP':
@@ -301,7 +301,7 @@ export function getBackwardStage(state: AnimationState): BackwardStage | null {
 }
 
 /** Get current neuron data for calculation overlay */
-export function getCurrentNeuronData(state: AnimationState): ForwardCalculation | null {
+export function getCurrentForwardData(state: AnimationState): ForwardCalculation | null {
   if (state.type === 'forward_animating') {
     return state.neuronData;
   }
@@ -309,7 +309,7 @@ export function getCurrentNeuronData(state: AnimationState): ForwardCalculation 
 }
 
 /** Get current backprop data for backprop overlay */
-export function getCurrentBackpropData(state: AnimationState): BackwardCalculation | null {
+export function getCurrentBackwardData(state: AnimationState): BackwardCalculation | null {
   if (state.type === 'backward_animating') {
     return state.neuronData;
   }
