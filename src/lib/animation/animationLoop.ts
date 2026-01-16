@@ -16,48 +16,51 @@ import type { LayerName } from '../core';
 export interface AnimationLoopConfig<TStage extends string, TData> {
   /** Mode identifier */
   mode: 'forward' | 'backward';
-  
+
   /** Layers to iterate through (in order) */
   layers: LayerName[];
-  
+
   /** Get neuron indices to iterate for a layer */
   getNeuronIndices: (layer: LayerName) => number[];
-  
+
   /** Stages to iterate through for each neuron */
   stages: TStage[];
-  
+
   /** Duration for each stage (in ms) */
   stageDurations: Record<TStage, number>;
-  
+
   /** Get data for all layers */
   getData: () => Record<LayerName, TData[]> | null;
-  
+
   /** Called for each stage tick */
   onTick: (layer: LayerName, neuronIndex: number, stage: TStage, data: TData) => void;
-  
+
   /** Called after visualizer update for each stage */
   onAfterVisualizer?: () => void;
-  
+
   /** Called after a stage completes (e.g., for weight updates) */
   onStageComplete?: (layer: LayerName, neuronIndex: number, stage: TStage, data: TData) => void;
-  
+
   /** Called when entire animation completes */
   onComplete: () => void;
-  
+
   /** Check if animation should stop */
   shouldStop: () => boolean;
-  
+
   /** Sleep function (respects pause state) */
   sleep: (ms: number, speedOverride?: number) => Promise<void>;
-  
+
   /** Refresh display without recalculation (preferred) */
   refreshDisplayOnly: () => void;
-  
+
   /** Compute network and refresh display (legacy, kept for compatibility) */
   computeAndRefreshDisplay: () => void;
-  
+
   /** Speed override for sleep (optional) */
   speedOverride?: number;
+
+  /** Optional: Start from a specific position (for resume after pause/jump) */
+  startFrom?: { layer: LayerName; neuronIndex: number };
 }
 
 // ============================================================================
@@ -67,7 +70,8 @@ export interface AnimationLoopConfig<TStage extends string, TData> {
 /**
  * Runs the animation loop with the given configuration.
  * Handles forward and backward propagation with a unified loop structure.
- * 
+ * Supports starting from a specific position (for resume after pause/jump).
+ *
  * @returns true if animation completed successfully, false if interrupted
  */
 export async function runAnimationLoop<TStage extends string, TData>(
@@ -75,34 +79,51 @@ export async function runAnimationLoop<TStage extends string, TData>(
 ): Promise<boolean> {
   const data = config.getData();
   if (!data) return false;
-  
-  for (const layer of config.layers) {
+
+  const { startFrom, layers } = config;
+
+  // Calculate starting position
+  const startLayerIdx = startFrom ? layers.indexOf(startFrom.layer) : 0;
+
+  for (let layerIdx = startLayerIdx; layerIdx < layers.length; layerIdx++) {
+    const layer = layers[layerIdx];
     const neuronIndices = config.getNeuronIndices(layer);
-    
+    const isStartLayer = startFrom && layerIdx === startLayerIdx;
+
     for (const neuronIndex of neuronIndices) {
+      // Skip neurons before startFrom position
+      if (isStartLayer && startFrom) {
+        // For forward: skip neurons <= startFrom.neuronIndex
+        // For backward: skip neurons >= startFrom.neuronIndex
+        const shouldSkip = config.mode === 'forward'
+          ? neuronIndex <= startFrom.neuronIndex
+          : neuronIndex >= startFrom.neuronIndex;
+        if (shouldSkip) continue;
+      }
+
       if (config.shouldStop()) return false;
-      
+
       const neuronData = data[layer][neuronIndex];
-      
+
       for (const stage of config.stages) {
         if (config.shouldStop()) return false;
-        
+
         // Update state machine
         config.onTick(layer, neuronIndex, stage, neuronData);
-        
+
         // Compute network and refresh display
         config.computeAndRefreshDisplay();
         config.onAfterVisualizer?.();
-        
+
         // Wait for appropriate duration
         await config.sleep(config.stageDurations[stage], config.speedOverride);
-        
+
         // Handle post-stage processing (e.g., weight updates for backward)
         config.onStageComplete?.(layer, neuronIndex, stage, neuronData);
       }
     }
   }
-  
+
   // Animation complete
   config.onComplete();
   return true;

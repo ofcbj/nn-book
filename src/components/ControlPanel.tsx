@@ -19,7 +19,7 @@ interface ControlPanelProps {
   onReset         : () => void;
   // State
   isAnimating     : boolean;
-  isJumped        : boolean;
+  isPaused        : boolean;
 }
 
 export default function ControlPanel({
@@ -36,7 +36,7 @@ export default function ControlPanel({
   onStep,
   onReset,
   isAnimating,
-  isJumped,
+  isPaused,
 }: ControlPanelProps) {
   const { t } = useTranslation();
   const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
@@ -208,13 +208,13 @@ export default function ControlPanel({
           fullWidth
           onClick={onStep}
           sx={{ 
-            bgcolor: isJumped ? 'success.main' : (isAnimating ? 'warning.main' : 'primary.main'),
+            bgcolor: isPaused ? 'success.main' : (isAnimating ? 'warning.main' : 'primary.main'),
             '&:hover': {
-              bgcolor: isJumped ? 'success.dark' : (isAnimating ? 'warning.dark' : 'primary.dark'),
+              bgcolor: isPaused ? 'success.dark' : (isAnimating ? 'warning.dark' : 'primary.dark'),
             }
           }}
         >
-          {isJumped ? t('controls.resume') : (isAnimating ? t('controls.pause') : t('controls.start'))}
+          {isPaused ? t('controls.resume') : (isAnimating ? t('controls.pause') : t('controls.start'))}
         </Button>
       </Box>
     </Paper>

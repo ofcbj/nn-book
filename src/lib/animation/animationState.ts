@@ -14,12 +14,15 @@ import { type LayerName } from '../core';
 
 export type AnimationMode = 'forward' | 'backward';
 
+/** Interrupt reason - replaces isJumped and shouldStopRef */
+export type InterruptReason = 'none' | 'paused' | 'jumped';
+
 /** Base state shared by all animation states */
 interface BaseAnimationState {
-  /** Speed multiplier (0 = paused) */
+  /** Speed multiplier for animation */
   speed: number;
-  /** Whether user jumped to a specific neuron */
-  isJumped: boolean;
+  /** Reason for interrupt (none = running, paused = user paused, jumped = clicked neuron) */
+  interruptReason: InterruptReason;
 }
 
 /** Idle - No animation running */
@@ -104,7 +107,7 @@ export type AnimationAction =
 export const initialAnimationState: AnimationState = {
   type: 'idle',
   speed: 1.0,
-  isJumped: false,
+  interruptReason: 'none',
 };
 
 // ============================================================================
@@ -123,10 +126,10 @@ export function animationReducer(
       return { ...state, speed: action.speed };
 
     case 'PAUSE':
-      return { ...state, isJumped: true };
+      return { ...state, interruptReason: 'paused' };
 
     case 'RESUME':
-      return { ...state, speed: action.speed > 0 ? action.speed : 1.0, isJumped: false };
+      return { ...state, speed: action.speed > 0 ? action.speed : 1.0, interruptReason: 'none' };
 
     case 'RESET':
       return initialAnimationState;
@@ -143,7 +146,7 @@ export function animationReducer(
         stage: 'connections',
         neuronData: null,
         speed: state.speed,
-        isJumped: false,
+        interruptReason: 'none',
       };
 
     // -------------------------------------------------------------------------
@@ -167,7 +170,7 @@ export function animationReducer(
           layer: action.layer,
           neuronIndex: action.neuronIndex,
           stage: 'connections', // Reset to first stage
-          isJumped: true,
+          interruptReason: 'jumped',
         };
       }
       if (state.type === 'backward_animating') {
@@ -176,7 +179,7 @@ export function animationReducer(
           layer: action.layer,
           neuronIndex: action.neuronIndex,
           stage: 'error', // Reset to first backprop stage
-          isJumped: true,
+          interruptReason: 'jumped',
         };
       }
       return state;
@@ -186,7 +189,7 @@ export function animationReducer(
       return {
         type: 'showing_loss_modal',
         speed: state.speed,
-        isJumped: false,
+        interruptReason: 'none',
       };
 
     // -------------------------------------------------------------------------
@@ -201,7 +204,7 @@ export function animationReducer(
         stage: 'error',
         neuronData: null,
         speed: state.speed > 0 ? state.speed : 1.0, // Ensure non-zero speed
-        isJumped: false,
+        interruptReason: 'none',
       };
 
     // -------------------------------------------------------------------------
@@ -222,7 +225,7 @@ export function animationReducer(
       return {
         type: 'showing_backprop_modal',
         speed: state.speed,
-        isJumped: false,
+        interruptReason: 'none',
       };
 
     // -------------------------------------------------------------------------
@@ -233,7 +236,7 @@ export function animationReducer(
       return {
         type: 'idle',
         speed: state.speed,
-        isJumped: false,
+        interruptReason: 'none',
       };
 
     case 'NEXT_STEP':
@@ -255,9 +258,9 @@ export function isAnimating(state: AnimationState): boolean {
   return state.type === 'forward_animating' || state.type === 'backward_animating';
 }
 
-/** Check if animation is paused (speed is 0 and animating) */
+/** Check if animation is paused (either by user pause or neuron jump) */
 export function isPaused(state: AnimationState): boolean {
-  return isAnimating(state) && state.speed === 0;
+  return isAnimating(state) && state.interruptReason !== 'none';
 }
 
 /** Check if we're in forward propagation mode */

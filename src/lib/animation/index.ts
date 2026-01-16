@@ -30,6 +30,7 @@ export type {
   AnimationAction,
   ForwardAnimatingState,
   BackwardAnimatingState,
+  InterruptReason,
 } from './animationState';
 
 export {

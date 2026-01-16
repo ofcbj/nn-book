@@ -22,7 +22,6 @@ export interface UseModalActionsParams {
   closeLossModalAction: () => void;
   closeBackpropModalAction: () => void;
   refreshDisplayOnly: () => void;
-  startAnimation: () => void;
   animationSpeed: number;
 }
 
@@ -41,7 +40,6 @@ export function useModalActions(params: UseModalActionsParams): UseModalActionsR
     closeLossModalAction,
     closeBackpropModalAction,
     refreshDisplayOnly,
-    startAnimation,
     animationSpeed,
   } = params;
 
@@ -60,7 +58,6 @@ export function useModalActions(params: UseModalActionsParams): UseModalActionsR
     closeLossModalAction();
 
     const nn = nnRef.current;
-    startAnimation();
 
     const oldSnapshot = createSnapshot(nn);
 
@@ -87,7 +84,6 @@ export function useModalActions(params: UseModalActionsParams): UseModalActionsR
     sleep,
     computeAndRefreshDisplay,
     nnRef,
-    startAnimation,
   ]);
 
   // Close backprop modal

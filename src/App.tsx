@@ -67,7 +67,7 @@ function AppContent() {
               onStep={actions.trainOneStep}
               onReset={actions.reset}
               isAnimating={training.isAnimating}
-              isJumped={training.isJumped}
+              isPaused={training.isPaused}
             />
           </Box>
           {/* Center: Network Visualizer */}

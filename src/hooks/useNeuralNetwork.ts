@@ -73,7 +73,7 @@ export interface UseNeuralNetworkReturn {
   training: {
     isTraining: boolean;
     isAnimating: boolean;
-    isJumped: boolean;
+    isPaused: boolean;
   };
   modals: ModalState;
   visualizer: VisualizerState;
@@ -125,8 +125,8 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
   const training = useMemo(() => ({
     isTraining: state.training.isTraining,
     isAnimating: engine.isAnimating,
-    isJumped: engine.state.isJumped,
-  }), [state.training.isTraining, engine.isAnimating, engine.state.isJumped]);
+    isPaused: engine.state.interruptReason !== 'none',
+  }), [state.training.isTraining, engine.isAnimating, engine.state.interruptReason]);
 
   const modals = useMemo(() => ({
     loss: {
@@ -159,7 +159,8 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     reset: engine.reset,
     computeAndRefreshDisplay: engine.computeAndRefreshDisplay,
     handleCanvasClick: engine.handleCanvasClick,
-  }), [engine.trainOneStepWithAnimation, engine.trainOneEpochWithoutAnimation, engine.toggleTraining, engine.reset, engine.computeAndRefreshDisplay, engine.handleCanvasClick]);
+  }), [engine.trainOneStepWithAnimation, engine.trainOneEpochWithoutAnimation, 
+    engine.toggleTraining, engine.reset, engine.computeAndRefreshDisplay, engine.handleCanvasClick]);
 
   return {
     network,
