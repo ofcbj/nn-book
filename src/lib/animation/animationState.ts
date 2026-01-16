@@ -290,15 +290,15 @@ export function getBackwardStage(state: AnimationState): BackwardStage | null {
 }
 
 /** Get current neuron data for calculation overlay */
-export function getCurrentForwardData(state: AnimationState): ForwardCalculation | null {
+export function getCurrentForwardNeuronData(state: AnimationState): ForwardCalculation | null {
   if (state.type === 'forward_animating') {
     return state.neuronData;
   }
   return null;
 }
 
-/** Get current backprop data for backprop overlay */
-export function getCurrentBackwardData(state: AnimationState): BackwardCalculation | null {
+/** Get current backprop neuron data for backprop overlay */
+export function getCurrentBackwardNeuronData(state: AnimationState): BackwardCalculation | null {
   if (state.type === 'backward_animating') {
     return state.neuronData;
   }

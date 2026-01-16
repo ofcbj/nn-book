@@ -22,8 +22,8 @@ export {
   getHighlightedNeuron,
   getForwardStage,
   getBackwardStage,
-  getCurrentForwardData,
-  getCurrentBackwardData,
+  getCurrentForwardNeuronData,
+  getCurrentBackwardNeuronData,
 } from './animationState';
 export type { 
   AnimationState, 

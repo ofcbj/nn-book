@@ -22,26 +22,11 @@ import type { UseNetworkStateReturn } from './useNetworkState';
 import type { ForwardStage, BackwardStage, ForwardCalculation, BackwardCalculation } from '../lib/types';
 import { createBackpropSummaryData } from '../lib/types';
 import { createSnapshot, restoreSnapshot, compareSnapshots } from '../lib/core/networkSnapshot';
-import {
-  AnimationState,
-  AnimationAction,
-  animationReducer,
-  initialAnimationState,
-  checkAnimating,
-  checkPaused,
-  getNextForwardStage,
-  getNextBackwardStage,
-  getNextForwardNeuron,
-  getNextBackwardNeuron,
-  FORWARD_STAGES,
-  BACKPROP_STAGES,
-  getHighlightedNeuron,
-  getForwardStage,
-  getBackwardStage,
-  getCurrentForwardData,
-  getCurrentBackwardData,
-  InterruptReason,
-  runAnimationLoop,
+import { AnimationState, AnimationAction, animationReducer, initialAnimationState, checkAnimating, checkPaused, 
+  getNextForwardStage, getNextBackwardStage, getForwardStage, getBackwardStage,
+  getNextForwardNeuron, getNextBackwardNeuron, getHighlightedNeuron,
+  getCurrentForwardNeuronData, getCurrentBackwardNeuronData,
+  FORWARD_STAGES, BACKPROP_STAGES, InterruptReason, runAnimationLoop
 } from '../lib/animation';
 import {
   FORWARD_STAGE_DURATIONS,
@@ -537,8 +522,8 @@ export function useAnimationEngine(
     highlightedNeuron   : getHighlightedNeuron(animationState),
     forwardStage        : getForwardStage(animationState),
     backpropStage       : getBackwardStage(animationState),
-    currentForwardData  : getCurrentForwardData(animationState),
-    currentBackwardData : getCurrentBackwardData(animationState),
+    currentForwardData  : getCurrentForwardNeuronData(animationState),
+    currentBackwardData : getCurrentBackwardNeuronData(animationState),
     // Training controls
     trainOneStepWithAnimation,
     trainOneEpochWithoutAnimation,
