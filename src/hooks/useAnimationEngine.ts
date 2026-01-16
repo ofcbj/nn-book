@@ -5,12 +5,12 @@
  * - Animation State Machine (FSM for animation states)
  * - Animation Loops (forward/backward propagation animation)
  * - Training Controls (train step/epoch, reset)
+ * - Modal Controls (loss modal, backprop modal)
  * - Canvas Interaction (neuron click handling)
  *
- * Modal lifecycle is handled by useModalActions hook.
  * State management is handled by useNetworkState hook.
  *
- * Architecture: 5 hooks → 3 hooks (useNetworkState + useAnimationEngine + useModalActions)
+ * Architecture: 5 hooks → 2 hooks (useNetworkState + useAnimationEngine)
  */
 
 import { useReducer, useCallback, useRef, RefObject, useEffect, useMemo } from 'react';
@@ -47,7 +47,6 @@ import {
   FORWARD_STAGE_DURATIONS,
   BACKWARD_STAGE_DURATIONS,
 } from '../lib/animation/animationLoop';
-import { useModalActions } from './useModalActions';
 
 export interface UseAnimationEngineReturn {
   // === Animation State ===
@@ -387,17 +386,46 @@ export function useAnimationEngine(
   }, [state.statsSetters, nnRef]);
 
   // 4. MODAL CONTROLS
-  const modalControls = useModalActions({
-    nnRef,
-    state,
+  // Close loss modal - start backward propagation
+  const closeLossModal = useCallback(async () => {
+    state.modalSetters.setLossModalData(null);
+    fsmActions.closeLossModal();
+
+    const nn = nnRef.current;
+    const oldSnapshot = createSnapshot(nn);
+    const animationSpeed = state.training.animationSpeed;
+
+    const completed = await animateBackwardPropagation(animationSpeed);
+    await sleep(500, animationSpeed);
+
+    // Update stats and weight comparison data if animation completed
+    if (completed) {
+      const newSnapshot = createSnapshot(nn);
+      const comparisonData = compareSnapshots(oldSnapshot, newSnapshot, state.stats.learningRate);
+      state.modalSetters.setWeightComparisonData(comparisonData);
+      state.statsSetters.setEpoch(prev => prev + 1);
+      state.statsSetters.setLoss(nn.lastLoss);
+    }
+
+    computeAndRefreshDisplay();
+  }, [
+    state.modalSetters,
+    state.statsSetters,
+    state.training.animationSpeed,
+    state.stats.learningRate,
+    fsmActions,
     animateBackwardPropagation,
     sleep,
     computeAndRefreshDisplay,
-    closeLossModalAction: fsmActions.closeLossModal,
-    closeBackpropModalAction: fsmActions.closeBackpropModal,
-    refreshDisplayOnly,
-    animationSpeed: state.training.animationSpeed,
-  });
+    nnRef,
+  ]);
+
+  // Close backprop modal
+  const closeBackpropModal = useCallback(() => {
+    state.modalSetters.setBackpropSummaryData(null);
+    fsmActions.closeBackpropModal();
+    refreshDisplayOnly();
+  }, [state.modalSetters, fsmActions, refreshDisplayOnly]);
 
   // 5. CANVAS INTERACTION
   // Helper: Get neuron data
@@ -415,9 +443,9 @@ export function useAnimationEngine(
 
   // Helper: Complete forward pass (used by canvas click handler)
   const completeForwardPass = useCallback(() => {
-    const nn = nnRef.current;
-    const inputs = getCurrentInputs();
-    const snapshot = createSnapshot(nn);
+    const nn      = nnRef.current;
+    const inputs  = getCurrentInputs();
+    const snapshot= createSnapshot(nn);
     nn.train(inputs, getTargetOneHot());
     restoreSnapshot(nn, snapshot, inputs);
     fsmActions.forwardComplete();
@@ -531,8 +559,8 @@ export function useAnimationEngine(
     reset,
     computeAndRefreshDisplay,
     // Modal controls
-    closeLossModal    : modalControls.closeLossModal,
-    closeBackpropModal: modalControls.closeBackpropModal,
+    closeLossModal,
+    closeBackpropModal,
     // Canvas interaction
     handleCanvasClick,
     // Visualizer
