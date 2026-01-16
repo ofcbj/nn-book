@@ -95,22 +95,22 @@ export interface ModalActions {
 // =============================================================================
 
 export interface UseNetworkStateReturn {
-  inputs: InputState;
-  stats: NetworkStats;
-  training: TrainingConfig;
-  visualizer: VisualizerState;
-  modals: ModalState;
+  inputs            : InputState;
+  stats             : NetworkStats;
+  training          : TrainingConfig;
+  visualizer        : VisualizerState;
+  modals            : ModalState;
   
   // Setters
-  inputSetters: InputSetters;
-  statsSetters: StatsSetters;
-  trainingSetters: TrainingSetters;
-  visualizerSetters: VisualizerSetters;
-  modalSetters: ModalSetters;
+  inputSetters      : InputSetters;
+  statsSetters      : StatsSetters;
+  trainingSetters   : TrainingSetters;
+  visualizerSetters : VisualizerSetters;
+  modalSetters      : ModalSetters;
   
   // Actions
-  visualizerActions: VisualizerActions;
-  modalActions: ModalActions;
+  visualizerActions : VisualizerActions;
+  modalActions      : ModalActions;
 }
 
 // =============================================================================

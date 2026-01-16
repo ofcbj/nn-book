@@ -13,7 +13,7 @@
  * Architecture: 5 hooks → 3 hooks (useNetworkState + useAnimationEngine + useModalActions)
  */
 
-import { useReducer, useCallback, useRef, RefObject, useEffect } from 'react';
+import { useReducer, useCallback, useRef, RefObject, useEffect, useMemo } from 'react';
 import { NeuralNetwork } from '../lib/core';
 import type { LayerName } from '../lib/core';
 import { getForwardNeuronIndices, getBackwardNeuronIndices } from '../lib/core';
@@ -97,67 +97,40 @@ export function useAnimationEngine(
     animationStateRef.current = animationState;
     interruptReasonRef.current = animationState.interruptReason;
   }, [animationState]);
-  // FSM action creators
-  const startTraining = useCallback(() => {
-    dispatch({ type: 'START_TRAINING' });
-  }, []);
-
-  const pause = useCallback(() => {
-    dispatch({ type: 'PAUSE' });
-  }, []);
-
-  const resume = useCallback((speed?: number) => {
-    dispatch({ type: 'RESUME', speed: speed ?? 1.0 });
-  }, []);
-
-  const fsmReset = useCallback(() => {
-    dispatch({ type: 'RESET' });
-  }, []);
-
-  const forwardTick = useCallback((
-    layer: LayerName,
-    neuronIndex: number,
-    stage: ForwardStage,
-    neuronData: ForwardCalculation | null
-  ) => {
-    dispatch({ type: 'FORWARD_TICK', layer, neuronIndex, stage, neuronData });
-  }, []);
-
-  const forwardComplete = useCallback(() => {
-    dispatch({ type: 'FORWARD_COMPLETE' });
-  }, []);
-
-  const closeLossModalAction = useCallback(() => {
-    dispatch({ type: 'CLOSE_LOSS_MODAL' });
-  }, []);
-
-  const backwardTick = useCallback((
-    layer       : LayerName,
-    neuronIndex : number,
-    stage       : BackwardStage,
-    neuronData  : BackwardCalculation | null
-  ) => {
-    dispatch({ type: 'BACKWARD_TICK', layer, neuronIndex, stage, neuronData });
-  }, []);
-
-  const backwardComplete = useCallback(() => {
-    dispatch({ type: 'BACKWARD_COMPLETE' });
-  }, []);
-
-  const closeBackpropModalAction = useCallback(() => {
-    dispatch({ type: 'CLOSE_BACKPROP_MODAL' });
-  }, []);
-
-  const jumpToNeuron = useCallback((layer: LayerName, neuronIndex: number) => {
-    dispatch({ type: 'JUMP_TO_NEURON', layer, neuronIndex });
-  }, []);
+  // FSM action creators (grouped for cleaner code)
+  const fsmActions = useMemo(() => ({
+    startTraining     : () => dispatch({ type: 'START_TRAINING' }),
+    pause             : () => dispatch({ type: 'PAUSE' }),
+    resume            : (speed?: number) => dispatch({ type: 'RESUME', speed: speed ?? 1.0 }),
+    reset             : () => dispatch({ type: 'RESET' }),
+    jumpToNeuron      : (layer: LayerName, neuronIndex: number) =>
+      dispatch({ type: 'JUMP_TO_NEURON', layer, neuronIndex }),    
+    
+    forwardTick       : (layer: LayerName, neuronIndex: number, stage: ForwardStage, neuronData: ForwardCalculation | null) =>
+      dispatch({ type: 'FORWARD_TICK', layer, neuronIndex, stage, neuronData }),
+    forwardComplete   : () => dispatch({ type: 'FORWARD_COMPLETE' }),
+    closeLossModal    : () => dispatch({ type: 'CLOSE_LOSS_MODAL' }),
+    
+    backwardTick      : (layer: LayerName, neuronIndex: number, stage: BackwardStage, neuronData: BackwardCalculation | null) =>
+      dispatch({ type: 'BACKWARD_TICK', layer, neuronIndex, stage, neuronData }),
+    backwardComplete  : () => dispatch({ type: 'BACKWARD_COMPLETE' }),
+    closeBackpropModal: () => dispatch({ type: 'CLOSE_BACKPROP_MODAL' }),
+  }), []);
 
   // Derived state
-  const animating = isAnimating(animationState);
-  const paused = isPaused(animationState);
+  const animating     = isAnimating(animationState);
+  const paused        = isPaused(animationState);
+
   // Animation Control Helpers
   const shouldPauseAnimation = useCallback(() => {
     return interruptReasonRef.current !== 'none';
+  }, []);
+
+  const clearTrainingInterval = useCallback(() => {
+    if (trainingIntervalRef.current) {
+      clearInterval(trainingIntervalRef.current);
+      trainingIntervalRef.current = undefined;
+    }
   }, []);
 
   // 2. ANIMATION LOOPS & VISUALIZATION
@@ -194,17 +167,12 @@ export function useAnimationEngine(
     });
   }, [nnRef, state.inputs.targetValue, state.modalSetters]);
 
-  // Sync visualizer state with animation machine (uses ref to avoid stale closure)
-  const syncVisualizerState = useCallback(() => {
+  // Refresh display without recalculation (uses ref to avoid stale closure)
+  const refreshDisplayOnly = useCallback(() => {
     if (visualizerRef.current) {
       visualizerRef.current.update(nnRef.current, animationStateRef.current);
     }
   }, [nnRef, visualizerRef]);
-  
-  // Refresh display without recalculation
-  const refreshDisplayOnly = useCallback(() => {
-    syncVisualizerState();
-  }, [syncVisualizerState]);
   
   // Compute and refresh display (full recalculation)
   const computeAndRefreshDisplay = useCallback(() => {
@@ -225,8 +193,8 @@ export function useAnimationEngine(
       });
     }
 
-    syncVisualizerState();
-  }, [getCurrentInputs, syncVisualizerState, nnRef, state.statsSetters, state.visualizerSetters]);
+    refreshDisplayOnly();
+  }, [getCurrentInputs, refreshDisplayOnly, nnRef, state.statsSetters, state.visualizerSetters]);
   
   // Sleep utility for animation timing
   const sleep = useCallback(async (ms: number, overrideSpeed?: number): Promise<void> => {
@@ -250,19 +218,19 @@ export function useAnimationEngine(
     };
 
     const completed = await runAnimationLoop({
-      mode: 'forward',
-      layers: ['layer1', 'layer2', 'output'],
-      getNeuronIndices: getForwardNeuronIndices,
-      stages: FORWARD_STAGES,
-      stageDurations: FORWARD_STAGE_DURATIONS,
-      getData: () => layerData,
-      onTick: forwardTick,
-      onComplete: forwardComplete,
-      refreshDisplayOnly,
-      shouldStop: shouldPauseAnimation,
-      sleep,
-      computeAndRefreshDisplay,
-      startFrom,
+      mode              : 'forward',
+      layers            : ['layer1', 'layer2', 'output'],
+      getNeuronIndices  : getForwardNeuronIndices,
+      stages            : FORWARD_STAGES,
+      stageDurations    : FORWARD_STAGE_DURATIONS,
+      getData           : () => layerData,
+      onTick            : fsmActions.forwardTick,
+      onComplete        : fsmActions.forwardComplete,
+      refreshDisplayOnly: refreshDisplayOnly,
+      shouldStop        : shouldPauseAnimation,
+      sleep             : sleep,
+      computeAndRefreshDisplay: computeAndRefreshDisplay,
+      startFrom         : startFrom,
     });
 
     // Show loss modal if animation completed
@@ -274,7 +242,7 @@ export function useAnimationEngine(
     }
 
     return completed;
-  }, [forwardTick, forwardComplete, refreshDisplayOnly, sleep, computeAndRefreshDisplay, nnRef, shouldPauseAnimation, getCurrentInputs, getTargetOneHot, showLossModal]);
+  }, [fsmActions, refreshDisplayOnly, sleep, computeAndRefreshDisplay, nnRef, shouldPauseAnimation, getCurrentInputs, getTargetOneHot, showLossModal]);
   
   // Backward propagation animation (unified: can start from beginning or from a specific position)
   const animateBackwardPropagation = useCallback(async (
@@ -301,21 +269,21 @@ export function useAnimationEngine(
     };
 
     const completed = await runAnimationLoop({
-      mode: 'backward',
-      layers: ['output', 'layer2', 'layer1'],
-      getNeuronIndices: getBackwardNeuronIndices,
-      stages: BACKPROP_STAGES,
-      stageDurations: BACKWARD_STAGE_DURATIONS,
-      getData: () => layerData,
-      onTick: backwardTick,
-      onStageComplete: handleStageComplete,
-      onComplete: backwardComplete,
-      shouldStop: shouldPauseAnimation,
-      sleep,
-      refreshDisplayOnly,
-      computeAndRefreshDisplay,
-      speedOverride,
-      startFrom,
+      mode              : 'backward',
+      layers            : ['output', 'layer2', 'layer1'],
+      getNeuronIndices  : getBackwardNeuronIndices,
+      stages            : BACKPROP_STAGES,
+      stageDurations    : BACKWARD_STAGE_DURATIONS,
+      getData           : () => layerData,
+      onTick            : fsmActions.backwardTick,
+      onStageComplete   : handleStageComplete,
+      onComplete        : fsmActions.backwardComplete,
+      shouldStop        : shouldPauseAnimation,
+      sleep             : sleep,
+      refreshDisplayOnly: refreshDisplayOnly,
+      computeAndRefreshDisplay: computeAndRefreshDisplay,
+      speedOverride     : speedOverride,
+      startFrom         : startFrom,
     });
 
     // Collect summary data only if animation completed (not stopped)
@@ -324,7 +292,7 @@ export function useAnimationEngine(
       state.modalSetters.setBackpropSummaryData(summaryData);
     }
     return completed;
-  }, [backwardTick, backwardComplete, sleep, refreshDisplayOnly, computeAndRefreshDisplay, nnRef, state.stats.learningRate, state.modalSetters, shouldPauseAnimation]);
+  }, [fsmActions, sleep, refreshDisplayOnly, computeAndRefreshDisplay, nnRef, state.stats.learningRate, state.modalSetters, shouldPauseAnimation]);
   
   // Continue from jumped position (dispatcher)
   const continueFromJumpedPosition = useCallback(async () => {
@@ -361,53 +329,46 @@ export function useAnimationEngine(
 
   // Train one step with animation
   const trainOneStepWithAnimation = useCallback(async () => {
-    // Case 1: Resume from paused position (continue from next neuron)
     if (animating) {
       if (paused) {
-        // Manually clear ref before dispatch to prevent race condition
+        // Resume from paused position
         interruptReasonRef.current = 'none';
-        resume(state.training.animationSpeed);
+        fsmActions.resume(state.training.animationSpeed);
         await continueFromJumpedPosition();
       } else {
-        pause();
+        // Pause running animation
+        fsmActions.pause();
       }
     } else {
-      // Case 3: Start new animation
-      startTraining();
+      // Start new animation
+      fsmActions.startTraining();
       const nn = nnRef.current;
       nn.feedforward(getCurrentInputs());
       await animateForwardPropagation();
-    // Loss modal is shown inside animateForwardPropagation if completed      
     }
-  }, [animating, paused, state.training.animationSpeed, getCurrentInputs, resume, continueFromJumpedPosition, pause, startTraining, animateForwardPropagation, nnRef]);
+  }, [animating, paused, state.training.animationSpeed, getCurrentInputs, fsmActions, continueFromJumpedPosition, animateForwardPropagation, nnRef]);
 
   // Toggle auto training
   const toggleTraining = useCallback(() => {
     if (state.training.isTraining) {
       state.trainingSetters.setIsTraining(false);
-      if (trainingIntervalRef.current) {
-        clearInterval(trainingIntervalRef.current);
-      }
+      clearTrainingInterval();
     } else {
       state.trainingSetters.setIsTraining(true);
       trainingIntervalRef.current = window.setInterval(() => {
         trainOneEpochWithoutAnimation();
         if (nnRef.current.lastLoss < 0.001) {
           state.trainingSetters.setIsTraining(false);
-          if (trainingIntervalRef.current) {
-            clearInterval(trainingIntervalRef.current);
-          }
+          clearTrainingInterval();
         }
       }, 50);
     }
-  }, [state.training.isTraining, state.trainingSetters, trainOneEpochWithoutAnimation, nnRef]);
+  }, [state.training.isTraining, state.trainingSetters, trainOneEpochWithoutAnimation, nnRef, clearTrainingInterval]);
   // Reset
   const reset = useCallback(() => {
     if (state.training.isTraining) {
       state.trainingSetters.setIsTraining(false);
-      if (trainingIntervalRef.current) {
-        clearInterval(trainingIntervalRef.current);
-      }
+      clearTrainingInterval();
     }
     nnRef.current = new NeuralNetwork();
     state.statsSetters.setEpoch(0);
@@ -422,9 +383,9 @@ export function useAnimationEngine(
     state.inputSetters.setResponse(Math.random());
     state.inputSetters.setTargetValue(Math.floor(Math.random() * 3));
 
-    fsmReset();
+    fsmActions.reset();
     computeAndRefreshDisplay();
-  }, [state.training.isTraining, state.trainingSetters, state.statsSetters, state.modalSetters, state.inputSetters, fsmReset, computeAndRefreshDisplay, nnRef]);
+  }, [state.training.isTraining, state.trainingSetters, state.statsSetters, state.modalSetters, state.inputSetters, fsmActions, computeAndRefreshDisplay, nnRef, clearTrainingInterval]);
 
   // Learning rate change
   const handleLearningRateChange = useCallback((v: number) => {
@@ -439,8 +400,8 @@ export function useAnimationEngine(
     animateBackwardPropagation,
     sleep,
     computeAndRefreshDisplay,
-    closeLossModalAction,
-    closeBackpropModalAction,
+    closeLossModalAction: fsmActions.closeLossModal,
+    closeBackpropModalAction: fsmActions.closeBackpropModal,
     refreshDisplayOnly,
     animationSpeed: state.training.animationSpeed,
   });
@@ -466,9 +427,9 @@ export function useAnimationEngine(
     const snapshot = createSnapshot(nn);
     nn.train(inputs, getTargetOneHot());
     restoreSnapshot(nn, snapshot, inputs);
-    forwardComplete();
+    fsmActions.forwardComplete();
     showLossModal();
-  }, [nnRef, getCurrentInputs, getTargetOneHot, showLossModal, forwardComplete]);
+  }, [nnRef, getCurrentInputs, getTargetOneHot, showLossModal, fsmActions]);
 
   // Canvas click handler
   const handleCanvasClick = useCallback((x?: number, y?: number) => {
@@ -489,15 +450,15 @@ export function useAnimationEngine(
           const nextStage = getNextForwardStage(animationState.stage);
 
           if (nextStage) {
-            forwardTick(neuronLoc.layer, neuronLoc.index, nextStage, animationState.neuronData);
+            fsmActions.forwardTick(neuronLoc.layer, neuronLoc.index, nextStage, animationState.neuronData);
             refreshDisplayOnly();
           } else {
             const nextNeuron = getNextForwardNeuron(neuronLoc.layer, neuronLoc.index);
             if (nextNeuron) {
               const neuronData = getForwardNeuronData(nextNeuron.layer, nextNeuron.index);
               if (neuronData) {
-                jumpToNeuron(nextNeuron.layer, nextNeuron.index);
-                forwardTick(nextNeuron.layer, nextNeuron.index, 'dotProduct', neuronData);
+                fsmActions.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
+                fsmActions.forwardTick(nextNeuron.layer, nextNeuron.index, 'dotProduct', neuronData);
                 refreshDisplayOnly();
               }
             } else {
@@ -512,15 +473,15 @@ export function useAnimationEngine(
           const nextStage = getNextBackwardStage(animationState.stage);
 
           if (nextStage) {
-            backwardTick(neuronLoc.layer, neuronLoc.index, nextStage, animationState.neuronData);
+            fsmActions.backwardTick(neuronLoc.layer, neuronLoc.index, nextStage, animationState.neuronData);
             refreshDisplayOnly();
           } else {
             const nextNeuron = getNextBackwardNeuron(neuronLoc.layer, neuronLoc.index);
             if (nextNeuron) {
               const neuronData = getBackwardNeuronData(nextNeuron.layer, nextNeuron.index);
               if (neuronData) {
-                jumpToNeuron(nextNeuron.layer, nextNeuron.index);
-                backwardTick(nextNeuron.layer, nextNeuron.index, 'error', neuronData);
+                fsmActions.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
+                fsmActions.backwardTick(nextNeuron.layer, nextNeuron.index, 'error', neuronData);
                 refreshDisplayOnly();
               }
             } else {
@@ -531,24 +492,24 @@ export function useAnimationEngine(
                 const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
                 state.modalSetters.setBackpropSummaryData(summaryData);
               }
-              backwardComplete();
+              fsmActions.backwardComplete();
               refreshDisplayOnly();
             }
           }
         }
         // Case 3: Different neuron clicked - jump to that neuron
         else {
-          jumpToNeuron(neuronLoc.layer, neuronLoc.index);
+          fsmActions.jumpToNeuron(neuronLoc.layer, neuronLoc.index);
 
           if (animationState.type === 'forward_animating') {
             const neuronData = getForwardNeuronData(neuronLoc.layer, neuronLoc.index);
             if (neuronData) {
-              forwardTick(neuronLoc.layer, neuronLoc.index, 'dotProduct', neuronData);
+              fsmActions.forwardTick(neuronLoc.layer, neuronLoc.index, 'dotProduct', neuronData);
             }
           } else if (animationState.type === 'backward_animating') {
             const neuronData = getBackwardNeuronData(neuronLoc.layer, neuronLoc.index);
             if (neuronData) {
-              backwardTick(neuronLoc.layer, neuronLoc.index, 'error', neuronData);
+              fsmActions.backwardTick(neuronLoc.layer, neuronLoc.index, 'error', neuronData);
             }
           }
 
@@ -556,7 +517,7 @@ export function useAnimationEngine(
         }
       }
     }
-  }, [animating, animationState, visualizerRef, nnRef, forwardTick, backwardTick, jumpToNeuron, refreshDisplayOnly, getForwardNeuronData, getBackwardNeuronData, completeForwardPass, backwardComplete]);
+  }, [animating, animationState, visualizerRef, nnRef, fsmActions, refreshDisplayOnly, getForwardNeuronData, getBackwardNeuronData, completeForwardPass, state.stats.learningRate, state.modalSetters]);
 
   // RETURN
   return {
