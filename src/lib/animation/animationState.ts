@@ -19,8 +19,6 @@ export type InterruptReason = 'none' | 'paused' | 'jumped';
 
 /** Base state shared by all animation states */
 interface BaseAnimationState {
-  /** Speed multiplier for animation */
-  speed: number;
   /** Reason for interrupt (none = running, paused = user paused, jumped = clicked neuron) */
   interruptReason: InterruptReason;
 }
@@ -71,7 +69,6 @@ export type AnimationState =
 
 export type AnimationAction =
   | { type: 'START_TRAINING' }
-  | { type: 'SET_SPEED'; speed: number }
   | { type: 'PAUSE' }
   | { type: 'RESUME' }
   | { type: 'NEXT_STEP' }
@@ -106,7 +103,6 @@ export type AnimationAction =
 
 export const initialAnimationState: AnimationState = {
   type: 'idle',
-  speed: 1.0,
   interruptReason: 'none',
 };
 
@@ -122,8 +118,6 @@ export function animationReducer(
     // -------------------------------------------------------------------------
     // Global Actions (work in any state)
     // -------------------------------------------------------------------------
-    case 'SET_SPEED':
-      return { ...state, speed: action.speed };
 
     case 'PAUSE':
       return { ...state, interruptReason: 'paused' };
@@ -145,7 +139,6 @@ export function animationReducer(
         neuronIndex       : 0,
         stage             : 'connections',
         neuronData        : null,
-        speed             : state.speed,
         interruptReason   : 'none',
       };
 
@@ -188,7 +181,6 @@ export function animationReducer(
       if (state.type !== 'forward_animating') return state;
       return {
         type              : 'showing_loss_modal',
-        speed             : state.speed,
         interruptReason   : 'none',
       };
 
@@ -203,7 +195,6 @@ export function animationReducer(
         neuronIndex       : 2, // Start from last output neuron
         stage             : 'error',
         neuronData        : null,
-        speed             : state.speed,
         interruptReason   : 'none',
       };
 
@@ -224,7 +215,6 @@ export function animationReducer(
       if (state.type !== 'backward_animating') return state;
       return {
         type              : 'showing_backprop_modal',
-        speed             : state.speed,
         interruptReason   : 'none',
       };
 
@@ -235,7 +225,6 @@ export function animationReducer(
       if (state.type !== 'showing_backprop_modal') return state;
       return {
         type              : 'idle',
-        speed             : state.speed,
         interruptReason   : 'none',
       };
 
@@ -254,22 +243,22 @@ export function animationReducer(
 // ============================================================================
 
 /** Check if animation is currently running (not idle and not showing modal) */
-export function isAnimating(state: AnimationState): boolean {
+export function checkAnimating(state: AnimationState): boolean {
   return state.type === 'forward_animating' || state.type === 'backward_animating';
 }
 
 /** Check if animation is paused (either by user pause or neuron jump) */
-export function isPaused(state: AnimationState): boolean {
-  return isAnimating(state) && state.interruptReason !== 'none';
+export function checkPaused(state: AnimationState): boolean {
+  return checkAnimating(state) && state.interruptReason !== 'none';
 }
 
 /** Check if we're in forward propagation mode */
-export function isForwardMode(state: AnimationState): boolean {
+export function checkForwardMode(state: AnimationState): boolean {
   return state.type === 'forward_animating' || state.type === 'showing_loss_modal';
 }
 
 /** Check if we're in backward propagation mode */
-export function isBackwardMode(state: AnimationState): boolean {
+export function checkBackwardMode(state: AnimationState): boolean {
   return state.type === 'backward_animating' || state.type === 'showing_backprop_modal';
 }
 

@@ -1,7 +1,7 @@
 // Network rendering module - draws the base neural network structure
 import type { ForwardSteps, NodePosition, AnimationPhase, ForwardCalculation, LayerType } from '../types';
 import type { AnimationState } from '../animation';
-import { isForwardMode, isBackwardMode } from '../animation';
+import { checkForwardMode, checkBackwardMode } from '../animation';
 import type { NeuralNetwork } from '../core';
 import { LAYER_SIZES } from '../core';
 import { drawInputVector, drawNeuronVector } from './drawingUtils';
@@ -13,18 +13,18 @@ import i18n from '../../i18n';
 // =============================================================================
 
 interface LayerConfig {
-  layerName: LayerType;
-  neurons: ForwardCalculation[];
-  x: number;
-  neuronCount: number;
+  layerName      : LayerType;
+  neurons        : ForwardCalculation[];
+  x              : number;
+  neuronCount    : number;
   verticalSpacing: number;
-  getLabel: (index: number) => string;
+  getLabel       : (index: number) => string;
 }
 
 interface DrawContext {
-  ctx: CanvasRenderingContext2D;
-  height: number;
-  animationState: AnimationState;
+  ctx            : CanvasRenderingContext2D;
+  height         : number;
+  animationState : AnimationState;
   activationRange: { min: number; max: number };
 }
 
@@ -54,8 +54,8 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
   const startY = (height - totalHeight) / 2;
 
   const animatingNeuron = getAnimatingNeuron(animationState);
-  const isForward = isForwardMode(animationState);
-  const isBackward = isBackwardMode(animationState);
+  const isForward   = checkForwardMode(animationState);
+  const isBackward  = checkBackwardMode(animationState);
 
   for (let i = 0; i < neuronCount; i++) {
     const neuron = neurons[i];
