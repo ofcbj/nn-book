@@ -22,10 +22,12 @@ import type { UseNetworkStateReturn } from './useNetworkState';
 import type { ForwardStage, BackwardStage, ForwardCalculation, BackwardCalculation } from '../lib/types';
 import { createBackpropSummaryData } from '../lib/types';
 import { createSnapshot, restoreSnapshot, compareSnapshots } from '../lib/core/networkSnapshot';
-import { AnimationState, AnimationAction, animationReducer, initialAnimationState, checkAnimating, checkPaused, 
+import { AnimationState, AnimationAction, animationReducer, 
+  initialAnimationState, checkAnimating, checkPaused, 
   getNextForwardStage, getNextBackwardStage, getForwardStage, getBackwardStage,
   getNextForwardNeuron, getNextBackwardNeuron, getHighlightedNeuron,
   getCurrentForwardNeuronData, getCurrentBackwardNeuronData,
+  isForwardAnimatingAtNeuron, isBackwardAnimatingAtNeuron,
   FORWARD_STAGES, BACKPROP_STAGES, InterruptReason, runAnimationLoop
 } from '../lib/animation';
 import {
@@ -381,7 +383,6 @@ export function useAnimationEngine(
 
     const completed = await animateBackwardPropagation();
     await sleep(500, state.training.animationSpeed);
-
     // Update stats and weight comparison data if animation completed
     if (completed) {
       const newSnapshot = createSnapshot(nn);
@@ -438,56 +439,58 @@ export function useAnimationEngine(
         const neuronLoc: NeuronLocation = { layer: neuron.layer, index: neuron.index };
 
         // Case 1: Same neuron clicked during forward animation - advance to next stage/neuron
-        if (animationState.type === 'forward_animating' &&
-            animationState.layer === neuronLoc.layer &&
-            animationState.neuronIndex === neuronLoc.index) {
-          const nextStage = getNextForwardStage(animationState.stage);
+        if (isForwardAnimatingAtNeuron(animationState, neuronLoc.layer, neuronLoc.index)) {
+          // Type narrowing: we know animationState is ForwardAnimatingState here
+          if (animationState.type === 'forward_animating') {
+            const nextStage = getNextForwardStage(animationState.stage);
 
-          if (nextStage) {
-            fsmActions.forwardTick(neuronLoc.layer, neuronLoc.index, nextStage, animationState.neuronData);
-            refreshDisplayOnly();
-          } else {
-            const nextNeuron = getNextForwardNeuron(neuronLoc.layer, neuronLoc.index);
-            if (nextNeuron) {
-              const neuronData = nnRef.current.getForwardNeuronData(nextNeuron.layer, nextNeuron.index);
-              if (neuronData) {
-                fsmActions.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
-                fsmActions.forwardTick(nextNeuron.layer, nextNeuron.index, 'dotProduct', neuronData);
-                refreshDisplayOnly();
-              }
+            if (nextStage) {
+              fsmActions.forwardTick(neuronLoc.layer, neuronLoc.index, nextStage, animationState.neuronData);
+              refreshDisplayOnly();
             } else {
-              completeForwardPass();
+              const nextNeuron = getNextForwardNeuron(neuronLoc.layer, neuronLoc.index);
+              if (nextNeuron) {
+                const neuronData = nnRef.current.getForwardNeuronData(nextNeuron.layer, nextNeuron.index);
+                if (neuronData) {
+                  fsmActions.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
+                  fsmActions.forwardTick(nextNeuron.layer, nextNeuron.index, 'dotProduct', neuronData);
+                  refreshDisplayOnly();
+                }
+              } else {
+                completeForwardPass();
+              }
             }
           }
         }
         // Case 2: Same neuron clicked during backward animation - advance to next stage/neuron
-        else if (animationState.type === 'backward_animating' &&
-                 animationState.layer === neuronLoc.layer &&
-                 animationState.neuronIndex === neuronLoc.index) {
-          const nextStage = getNextBackwardStage(animationState.stage);
+        else if (isBackwardAnimatingAtNeuron(animationState, neuronLoc.layer, neuronLoc.index)) {
+          // Type narrowing: we know animationState is BackwardAnimatingState here
+          if (animationState.type === 'backward_animating') {
+            const nextStage = getNextBackwardStage(animationState.stage);
 
-          if (nextStage) {
-            fsmActions.backwardTick(neuronLoc.layer, neuronLoc.index, nextStage, animationState.neuronData);
-            refreshDisplayOnly();
-          } else {
-            const nextNeuron = getNextBackwardNeuron(neuronLoc.layer, neuronLoc.index);
-            if (nextNeuron) {
-              const neuronData = nnRef.current.getBackwardNeuronData(nextNeuron.layer, nextNeuron.index);
-              if (neuronData) {
-                fsmActions.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
-                fsmActions.backwardTick(nextNeuron.layer, nextNeuron.index, 'error', neuronData);
+            if (nextStage) {
+              fsmActions.backwardTick(neuronLoc.layer, neuronLoc.index, nextStage, animationState.neuronData);
+              refreshDisplayOnly();
+            } else {
+              const nextNeuron = getNextBackwardNeuron(neuronLoc.layer, neuronLoc.index);
+              if (nextNeuron) {
+                const neuronData = nnRef.current.getBackwardNeuronData(nextNeuron.layer, nextNeuron.index);
+                if (neuronData) {
+                  fsmActions.jumpToNeuron(nextNeuron.layer, nextNeuron.index);
+                  fsmActions.backwardTick(nextNeuron.layer, nextNeuron.index, 'error', neuronData);
+                  refreshDisplayOnly();
+                }
+              } else {
+                // Backward propagation completed via click-through - show summary
+                const nn = nnRef.current;
+                const backpropData = nn.lastBackwardSteps;
+                if (backpropData) {
+                  const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
+                  state.modalSetters.setBackpropSummaryData(summaryData);
+                }
+                fsmActions.backwardComplete();
                 refreshDisplayOnly();
               }
-            } else {
-              // Backward propagation completed via click-through - show summary
-              const nn = nnRef.current;
-              const backpropData = nn.lastBackwardSteps;
-              if (backpropData) {
-                const summaryData = createBackpropSummaryData(backpropData, state.stats.learningRate);
-                state.modalSetters.setBackpropSummaryData(summaryData);
-              }
-              fsmActions.backwardComplete();
-              refreshDisplayOnly();
             }
           }
         }

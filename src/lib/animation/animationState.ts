@@ -306,6 +306,44 @@ export function getCurrentBackwardNeuronData(state: AnimationState): BackwardCal
 }
 
 // ============================================================================
+// Neuron Location Matching Helpers
+// ============================================================================
+
+/** Check if animation state matches a specific neuron location */
+export function isAnimatingAtNeuron(
+  state: AnimationState,
+  layer: LayerName,
+  neuronIndex: number
+): boolean {
+  if (state.type === 'forward_animating' || state.type === 'backward_animating') {
+    return state.layer === layer && state.neuronIndex === neuronIndex;
+  }
+  return false;
+}
+
+/** Check if forward animation is at a specific neuron */
+export function isForwardAnimatingAtNeuron(
+  state: AnimationState,
+  layer: LayerName,
+  neuronIndex: number
+): boolean {
+  return state.type === 'forward_animating' && 
+         state.layer === layer && 
+         state.neuronIndex === neuronIndex;
+}
+
+/** Check if backward animation is at a specific neuron */
+export function isBackwardAnimatingAtNeuron(
+  state: AnimationState,
+  layer: LayerName,
+  neuronIndex: number
+): boolean {
+  return state.type === 'backward_animating' && 
+         state.layer === layer && 
+         state.neuronIndex === neuronIndex;
+}
+
+// ============================================================================
 // Re-exports from core/networkConfig
 // (Centralized configuration for layers, stages, and navigation)
 // ============================================================================
