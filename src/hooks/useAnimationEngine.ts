@@ -80,8 +80,8 @@ export function useAnimationEngine(
 
   // Sync refs with FSM state (refs are needed for async loop access)
   useEffect(() => {
-    animationStateRef.current   = animationState;
-    interruptReasonRef.current  = animationState.interruptReason;
+    animationStateRef.current     = animationState;
+    interruptReasonRef.current    = animationState.interruptReason;
   }, [animationState]);
   // FSM action creators (grouped for cleaner code)
   const fsmActions = useMemo(() => ({
@@ -188,12 +188,25 @@ export function useAnimationEngine(
     await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
   }, [state.training.animationSpeed]);
 
+  // Helper: Complete forward pass (used by canvas click handler and animation loop)
+  const completeForwardPass = useCallback((options?: { skipForwardComplete?: boolean }) => {
+    const nn      = nnRef.current;
+    const inputs  = getCurrentInputs();
+    const snapshot= createSnapshot(nn);
+
+    nn.train(inputs, getTargetOneHot());
+    restoreSnapshot(nn, snapshot, inputs);
+    if (!options?.skipForwardComplete) {
+      fsmActions.forwardComplete();
+    }
+    showLossModal();
+  }, [nnRef, getCurrentInputs, getTargetOneHot, showLossModal, fsmActions]);
+
   // Forward propagation animation (unified: can start from beginning or from a specific position)
   const animateForwardPropagation = useCallback(async (
     startFrom?: { layer: LayerName; neuronIndex: number }
   ): Promise<boolean> => {
     const nn          = nnRef.current;
-    const inputs      = getCurrentInputs();
     const forwardSteps= nn.getForwardSteps();
     if (!forwardSteps) 
       return false;
@@ -222,14 +235,11 @@ export function useAnimationEngine(
 
     // Show loss modal if animation completed
     if (completed) {
-      const snapshot = createSnapshot(nn);
-      nn.train(inputs, getTargetOneHot());
-      restoreSnapshot(nn, snapshot, inputs);
-      showLossModal();
+      completeForwardPass({ skipForwardComplete: true });
     }
 
     return completed;
-  }, [fsmActions, refreshDisplayOnly, sleep, computeAndRefreshDisplay, nnRef, shouldPauseAnimation, getCurrentInputs, getTargetOneHot, showLossModal]);
+  }, [fsmActions, refreshDisplayOnly, sleep, computeAndRefreshDisplay, nnRef, shouldPauseAnimation, completeForwardPass]);
   // Backward propagation animation (unified: can start from beginning or from a specific position)
   const animateBackwardPropagation = useCallback(async (
     startFrom?: { layer: LayerName; neuronIndex: number }
@@ -413,18 +423,6 @@ export function useAnimationEngine(
   }, [state.modalSetters, fsmActions, refreshDisplayOnly]);
 
   // 5. CANVAS INTERACTION
-
-  // Helper: Complete forward pass (used by canvas click handler)
-  const completeForwardPass = useCallback(() => {
-    const nn      = nnRef.current;
-    const inputs  = getCurrentInputs();
-    const snapshot= createSnapshot(nn);
-    
-    nn.train(inputs, getTargetOneHot());
-    restoreSnapshot(nn, snapshot, inputs);
-    fsmActions.forwardComplete();
-    showLossModal();
-  }, [nnRef, getCurrentInputs, getTargetOneHot, showLossModal, fsmActions]);
 
   // Canvas click handler
   const handleCanvasClick = useCallback((x?: number, y?: number) => {
