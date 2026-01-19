@@ -11,7 +11,10 @@
       "Read(//usr/local/workspace/nn-book/**)",
       "Bash(xargs:*)",
       "Bash(wc:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(for key in \"calculation.connections\" \"calculation.connectionsCalc\" \"calculation.dotProduct\" \"calculation.bias\" \"calculation.activation\")",
+      "Bash(do echo \"Checking: $key\")",
+      "Bash(done)"
     ],
     "additionalDirectories": [
       "c:\\src\\nn-book\\src\\lib\\visualizer"

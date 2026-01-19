@@ -473,5 +473,24 @@ export class NeuralNetwork {
     if (!this.lastBackwardSteps) return null;
     return this.lastBackwardSteps[layer]?.[index] ?? null;
   }
+
+  /**
+   * Copy weights and biases from another NeuralNetwork instance.
+   * Used for dual-buffer pattern where one network is for display and another for training.
+   */
+  copyWeightsFrom(source: NeuralNetwork): void {
+    // Copy weights
+    this.weightsInputHidden1.data = JSON.parse(JSON.stringify(source.weightsInputHidden1.data));
+    this.weightsHidden1Hidden2.data = JSON.parse(JSON.stringify(source.weightsHidden1Hidden2.data));
+    this.weightsHidden2Output.data = JSON.parse(JSON.stringify(source.weightsHidden2Output.data));
+
+    // Copy biases
+    this.biasHidden1.data = JSON.parse(JSON.stringify(source.biasHidden1.data));
+    this.biasHidden2.data = JSON.parse(JSON.stringify(source.biasHidden2.data));
+    this.biasOutput.data = JSON.parse(JSON.stringify(source.biasOutput.data));
+
+    // Copy learning rate
+    this.learningRate = source.learningRate;
+  }
 }
 
