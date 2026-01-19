@@ -58,7 +58,17 @@
     "title": "計算過程",
     "noData": "学習を開始すると計算過程が表示されます",
     "forwardPass": "順伝播 (Forward Pass)",
-    "backprop": "逆伝播 (Backpropagation)"
+    "backprop": "逆伝播 (Backpropagation)",
+    "connections": "接続",
+    "connectionsCalc": "各接続の入力 × 重み",
+    "dotProduct": "内積",
+    "bias": "バイアス追加",
+    "activation": "活性化",
+    "weights": "w",
+    "dotProductLabel": "x·w",
+    "biasLabel": "+b",
+    "activationSigmoid": "σ",
+    "activationSoftmax": "softmax"
   },
   "lossModal": {
     "title": "Forward Pass結果とLoss計算",

@@ -58,7 +58,17 @@
     "title": "Calculation Process",
     "noData": "Start training to see the calculation process",
     "forwardPass": "Forward Pass",
-    "backprop": "Backpropagation"
+    "backprop": "Backpropagation",
+    "connections": "Connections",
+    "connectionsCalc": "Input × Weight for each connection",
+    "dotProduct": "Dot Product",
+    "bias": "Add Bias",
+    "activation": "Activation",
+    "weights": "w",
+    "dotProductLabel": "x·w",
+    "biasLabel": "+b",
+    "activationSigmoid": "σ",
+    "activationSoftmax": "softmax"
   },
   "lossModal": {
     "title": "Forward Pass Result & Loss Calculation",

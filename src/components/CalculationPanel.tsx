@@ -140,14 +140,15 @@ interface NeuronCalcDisplayProps {
 }
 
 function NeuronCalcDisplay({ neuron, label, isOutput }: NeuronCalcDisplayProps) {
+  const { t } = useTranslation();
   return (
     <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(15, 23, 42, 0.6)', borderRadius: 1, border: '1px solid rgba(51, 65, 85, 0.5)' }}>
       <Typography sx={{ fontWeight: 600, mb: 1, fontSize: '0.95rem' }}>{label}</Typography>
-      
+
       {/* Weights */}
       <Box sx={{ mb: 1 }}>
         <Typography component="span" color="text.secondary" fontSize="0.85rem">
-          w = 
+          {t('calculation.weights')} =
         </Typography>
         <Typography component="span" sx={{ fontFamily: 'monospace', color: '#a5b4fc', fontSize: '0.85rem' }}>
           [{neuron.weights.map(w => w.toFixed(2)).join(', ')}]
@@ -157,7 +158,7 @@ function NeuronCalcDisplay({ neuron, label, isOutput }: NeuronCalcDisplayProps) 
       {/* Dot Product */}
       <Box sx={{ mb: 0.5, p: 0.75, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 1 }}>
         <Typography component="span" color="text.secondary" fontSize="0.8rem">
-          x·w = 
+          {t('calculation.dotProductLabel')} =
         </Typography>
         <Typography component="span" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
           {neuron.inputs.map((inp, i) => `${inp.toFixed(2)}×${neuron.weights[i].toFixed(2)}`).join(' + ')}
@@ -171,10 +172,10 @@ function NeuronCalcDisplay({ neuron, label, isOutput }: NeuronCalcDisplayProps) 
       {/* Bias */}
       <Box sx={{ mb: 0.5, p: 0.75, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 1 }}>
         <Typography component="span" color="text.secondary" fontSize="0.8rem">
-          +b = 
+          {t('calculation.biasLabel')} =
         </Typography>
         <Typography component="span" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-          {neuron.dotProduct.toFixed(3)} + {neuron.bias.toFixed(2)} = 
+          {neuron.dotProduct.toFixed(3)} + {neuron.bias.toFixed(2)} =
           <Box component="span" sx={{ color: 'secondary.light', fontWeight: 700 }}>
             {neuron.withBias.toFixed(3)}
           </Box>
@@ -184,7 +185,7 @@ function NeuronCalcDisplay({ neuron, label, isOutput }: NeuronCalcDisplayProps) 
       {/* Activation */}
       <Box sx={{ p: 0.75, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 1 }}>
         <Typography component="span" color="text.secondary" fontSize="0.8rem">
-          {isOutput ? 'softmax' : 'σ'} = 
+          {isOutput ? t('calculation.activationSoftmax') : t('calculation.activationSigmoid')} =
         </Typography>
         <Typography component="span" sx={{ fontFamily: 'monospace', color: 'warning.main', fontWeight: 700, fontSize: '0.9rem' }}>
           {isOutput ? `${(neuron.activated * 100).toFixed(1)}%` : neuron.activated.toFixed(3)}

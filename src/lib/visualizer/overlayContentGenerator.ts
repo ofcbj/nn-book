@@ -68,7 +68,7 @@ export function generateForwardContent(
       return {
         title: i18n.t('calculation.activation'),
         color: '#34d399',
-        lines: [`σ(${data.withBias.toFixed(3)}) = ${data.activated.toFixed(3)}`]
+        lines: [`${i18n.t('calculation.activationSigmoid')}(${data.withBias.toFixed(3)}) = ${data.activated.toFixed(3)}`]
       };
 
     default:

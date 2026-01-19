@@ -58,7 +58,17 @@
     "title": "연산 과정",
     "noData": "학습을 시작하면 연산 과정이 표시됩니다",
     "forwardPass": "Forward Pass (순전파)",
-    "backprop": "Backpropagation (역전파)"
+    "backprop": "Backpropagation (역전파)",
+    "connections": "연결",
+    "connectionsCalc": "각 연결의 입력 × 가중치",
+    "dotProduct": "내적",
+    "bias": "편향 추가",
+    "activation": "활성화",
+    "weights": "w",
+    "dotProductLabel": "x·w",
+    "biasLabel": "+b",
+    "activationSigmoid": "σ",
+    "activationSoftmax": "softmax"
   },
   "lossModal": {
     "title": "Forward Pass 결과 및 Loss 계산",
