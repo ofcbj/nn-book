@@ -159,7 +159,8 @@ export function drawBackwardOverlay(
   canvas: HTMLCanvasElement,
   nodes: NodePosition[][],
   nn: NeuralNetwork,
-  animationState: AnimationState
+  animationState: AnimationState,
+  learningRate: number = 0.25
 ): void {
   // Only show backprop highlights during backward animation
   if (animationState.type !== 'backward_animating' && 
@@ -178,8 +179,9 @@ export function drawBackwardOverlay(
   const nodeInfo = getHighlightedNode(layer, neuronIndex, nodes);
   if (!nodeInfo) return;
 
-  // Draw connection lines during 'error' stage for hidden layers
-  if (stage === 'error' && layer !== 'output' && neuronData) {
+  // Draw connection lines to next layer for hidden layers during all backprop stages
+  // Backpropagation always considers error from the next layer
+  if (layer !== 'output' && neuronData) {
     // Map layer to next layer nodes
     const nextLayerMap: Record<string, NodePosition[]> = {
       layer1: nodes[2] || [],  // layer2 nodes
@@ -205,7 +207,7 @@ export function drawBackwardOverlay(
 
   // Draw information overlay
   if (neuronData && stage) {
-    const content = generateBackpropContent(stage, neuronData, layer);
+    const content = generateBackpropContent(stage, neuronData, layer, learningRate);
     renderOverlay(ctx, canvas, nodeInfo, content);
   } else {
     // Fallback label

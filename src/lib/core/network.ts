@@ -46,7 +46,7 @@ export class NeuralNetwork {
   weightsHidden2Output: Matrix;
   biasOutput: Matrix;
   
-  learningRate: number = 0.1;
+  learningRate: number = 0.25;
   
   // Store intermediate values for visualizer
   lastInput      : Matrix | null = null;

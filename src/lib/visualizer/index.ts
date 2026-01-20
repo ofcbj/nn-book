@@ -36,7 +36,7 @@ export class Visualizer {
   /**
    * Main render method - draws the network and appropriate overlays
    */
-  draw(nn: NeuralNetwork, steps: ForwardSteps | null, animationState: AnimationState): void {
+  draw(nn: NeuralNetwork, steps: ForwardSteps | null, animationState: AnimationState, learningRate: number = 0.25): void {
     const nodes = drawNetwork(
       this.ctx,
       this.canvas,
@@ -47,7 +47,8 @@ export class Visualizer {
       {
         drawConnections,
         drawForwardOverlay,
-        drawBackwardOverlay,
+        drawBackwardOverlay: (ctx, canvas, nodes, nn, animState) => 
+          drawBackwardOverlay(ctx, canvas, nodes, nn, animState, learningRate),
       }
     );
     this.lastNodes = nodes;
@@ -56,9 +57,9 @@ export class Visualizer {
   /**
    * Convenience method that gets steps from network and draws
    */
-  update(nn: NeuralNetwork, animationState: AnimationState): void {
+  update(nn: NeuralNetwork, animationState: AnimationState, learningRate: number = 0.25): void {
     const steps = nn.getForwardSteps();
-    this.draw(nn, steps, animationState);
+    this.draw(nn, steps, animationState, learningRate);
   }
 
   getActivationColor(value: number): string {

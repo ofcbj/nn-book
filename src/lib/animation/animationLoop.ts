@@ -38,9 +38,6 @@ export interface AnimationLoopConfig<TStage extends string, TData> {
   /** Called after visualizer update for each stage */
   onAfterVisualizer?: () => void;
 
-  /** Called after a stage completes (e.g., for weight updates) */
-  onStageComplete?: (layer: LayerName, neuronIndex: number, stage: TStage, data: TData) => void;
-
   /** Called when entire animation completes */
   onComplete: () => void;
 
@@ -117,9 +114,6 @@ export async function runAnimationLoop<TStage extends string, TData>(
 
         // Wait for appropriate duration
         await config.sleep(config.stageDurations[stage], config.speedOverride);
-
-        // Handle post-stage processing (e.g., weight updates for backward)
-        config.onStageComplete?.(layer, neuronIndex, stage, neuronData);
       }
     }
   }

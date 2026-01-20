@@ -157,9 +157,9 @@ export function useAnimationEngine(
   // Refresh display without recalculation (uses displayNN for visualization)
   const refreshDisplayOnly = useCallback(() => {
     if (visualizerRef.current) {
-      visualizerRef.current.update(displayNNRef.current, animationStateRef.current);
+      visualizerRef.current.update(displayNNRef.current, animationStateRef.current, state.stats.learningRate);
     }
-  }, [displayNNRef, visualizerRef]);
+  }, [displayNNRef, visualizerRef, state.stats.learningRate]);
 
   // Compute and refresh display (full recalculation using displayNN)
   const computeAndRefreshDisplay = useCallback(() => {
@@ -246,11 +246,10 @@ export function useAnimationEngine(
     return completed;
   }, [fsmActions, refreshDisplayOnly, sleep, computeAndRefreshDisplay, displayNNRef, shouldPauseAnimation, completeForwardPass]);
   // Backward propagation animation (unified: can start from beginning or from a specific position)
-  // Uses trainNN for backprop data, updates displayNN weights during animation
+  // Uses trainNN for backprop data - displayNN weights are updated in batch at the end
   const animateBackwardPropagation = useCallback(async (
     startFrom?: { layer: LayerName; neuronIndex: number }
   ): Promise<boolean> => {
-    const displayNN   = displayNNRef.current;
     const trainNN     = trainNNRef.current;
     const backpropData= trainNN.lastBackwardSteps;
     if (!backpropData) return false;
@@ -261,15 +260,6 @@ export function useAnimationEngine(
       output: backpropData.output
     };
 
-    // Helper for weight updates on 'update' stage - updates displayNN
-    const handleStageComplete = (layer: LayerName, neuronIndex: number, stage: BackwardStage, data: BackwardCalculation) => {
-      if (stage === 'update') {
-        displayNN.updateNeuronWeights(layer, neuronIndex, data.newWeights, data.newBias);
-        displayNN.feedforward(displayNN.lastInput!.toArray());
-        refreshDisplayOnly();
-      }
-    };
-
     const completed = await runAnimationLoop({
       mode              : 'backward',
       layers            : ['output', 'layer2', 'layer1'],
@@ -278,7 +268,6 @@ export function useAnimationEngine(
       stageDurations    : BACKWARD_STAGE_DURATIONS,
       getData           : () => layerData,
       onTick            : fsmActions.backwardTick,
-      onStageComplete   : handleStageComplete,
       onComplete        : fsmActions.backwardComplete,
       shouldStop        : shouldPauseAnimation,
       sleep             : sleep,
@@ -294,7 +283,7 @@ export function useAnimationEngine(
       state.modalSetters.setBackpropSummaryData(summaryData);
     }
     return completed;
-  }, [fsmActions, sleep, refreshDisplayOnly, computeAndRefreshDisplay, displayNNRef, trainNNRef, state.stats.learningRate, state.modalSetters, shouldPauseAnimation, state.training.animationSpeed]);
+  }, [fsmActions, sleep, refreshDisplayOnly, computeAndRefreshDisplay, trainNNRef, state.stats.learningRate, state.modalSetters, shouldPauseAnimation, state.training.animationSpeed]);
   
   // Continue from jumped position (dispatcher)
   const continueFromJumpedPosition = useCallback(async () => {
@@ -400,17 +389,25 @@ export function useAnimationEngine(
     fsmActions.closeLossModal();
 
     const displayNN = displayNNRef.current;
+    const trainNN = trainNNRef.current;
     const oldSnapshot = createSnapshot(displayNN);
+
+    // Sync backprop data from trainNN to displayNN for visualization
+    displayNN.lastBackwardSteps = trainNN.lastBackwardSteps;
 
     const completed = await animateBackwardPropagation();
     await sleep(500, state.training.animationSpeed);
     // Update stats and weight comparison data if animation completed
     if (completed) {
+      // Batch update all weights from trainNN to displayNN at once
+      displayNN.copyWeightsFrom(trainNN);
+      displayNN.feedforward(displayNN.lastInput!.toArray());
+      
       const newSnapshot = createSnapshot(displayNN);
       const comparisonData = compareSnapshots(oldSnapshot, newSnapshot, state.stats.learningRate);
       state.modalSetters.setWeightComparisonData(comparisonData);
       state.statsSetters.setEpoch(prev => prev + 1);
-      state.statsSetters.setLoss(displayNN.lastLoss);
+      state.statsSetters.setLoss(trainNN.lastLoss);
     }
 
     computeAndRefreshDisplay();

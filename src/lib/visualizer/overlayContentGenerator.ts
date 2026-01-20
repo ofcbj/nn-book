@@ -171,7 +171,8 @@ function generateErrorContent(data: BackwardCalculation, currentLayer: string): 
 export function generateBackpropContent(
   stage: BackwardStage,
   data: BackwardCalculation,
-  currentLayer: string
+  currentLayer: string,
+  learningRate: number = 0.25
 ): OverlayContent {
   const y = data.activation;
   const deriv = data.derivative;
@@ -217,10 +218,10 @@ export function generateBackpropContent(
         color: '#fbbf24',
         lines: [
           i18n.t('backprop.weightDeltaCalc'),
-          `ΔW = gradient × input × ${i18n.t('controls.learningRate')}(0.1)`,
+          `ΔW = gradient × input × ${i18n.t('controls.learningRate')}(${learningRate})`,
           ``,
           `${i18n.t('backprop.example')} input[${mostChangedIdx}]${i18n.t('backprop.connectedWeight')}:`,
-          `ΔW[${mostChangedIdx}] = ${data.gradient.toFixed(4)} × ${inputVal.toFixed(3)} × 0.1 = ${weightDelta.toFixed(5)}`
+          `ΔW[${mostChangedIdx}] = ${data.gradient.toFixed(4)} × ${inputVal.toFixed(3)} × ${learningRate} = ${weightDelta.toFixed(5)}`
         ]
       };
 
@@ -237,12 +238,12 @@ export function generateBackpropContent(
           `W[${i}] = ${oldWeight.toFixed(4)}  → ΔW[${i}] = η × δ × x[${i}]`
         );
         lines.push(
-          `     = 0.1 × ${data.gradient.toFixed(4)} × ${inputVal.toFixed(3)} = ${delta.toFixed(5)}`
+          `     = ${learningRate} × ${data.gradient.toFixed(4)} × ${inputVal.toFixed(3)} = ${delta.toFixed(5)}`
         );
       });
 
       lines.push('');
-      lines.push(`b = ${data.oldBias.toFixed(4)}  → Δb = 0.1 × ${data.gradient.toFixed(4)} = ${data.biasDelta.toFixed(5)}`);
+      lines.push(`b = ${data.oldBias.toFixed(4)}  → Δb = ${learningRate} × ${data.gradient.toFixed(4)} = ${data.biasDelta.toFixed(5)}`);
 
       return {
         title: i18n.t('backprop.allWeightDeltas'),

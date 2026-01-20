@@ -45,8 +45,8 @@ function isConnectionActive(
   toLayer: string,
   toIndex: number
 ): boolean {
-  if (animationState.type !== 'forward_animating' &&
-      animationState.type !== 'backward_animating') {
+  // Only check forward animation - backward connections are hidden entirely during backprop
+  if (animationState.type !== 'forward_animating') {
     return false;
   }
   return animationState.layer === toLayer && animationState.neuronIndex === toIndex;
@@ -106,7 +106,18 @@ export function drawConnections(
     { from: 'layer2', to: 'output', fromCount: LAYER_SIZES.layer2, toCount: LAYER_SIZES.output, theme: CONNECTION_COLORS.layer2 },
   ] as const;
 
+  // During backprop, hide forward connections to the current neuron's layer
+  // This visually emphasizes that backprop doesn't consider forward (previous layer) connections
+  const isBackpropAnimating = animationState.type === 'backward_animating';
+  const backpropLayer = isBackpropAnimating ? animationState.layer : null;
+
   connections.forEach(({ from, to, fromCount, toCount, theme }, idx) => {
+    // Skip drawing forward connections TO the backprop layer
+    // (e.g., if backprop is on layer2, don't draw layer1 → layer2 connections)
+    if (isBackpropAnimating && to === backpropLayer) {
+      return;
+    }
+
     drawLayerConnections(ctx, nodes, animationState, {
       fromLayerIdx: idx,
       toLayerIdx: idx + 1,

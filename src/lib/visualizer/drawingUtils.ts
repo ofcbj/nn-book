@@ -9,6 +9,19 @@ import {
 } from './uiConfig';
 
 // =============================================================================
+// Backprop Update Data
+// =============================================================================
+
+/**
+ * Data for displaying value changes during backpropagation.
+ * Contains both old and new values for weights and bias.
+ */
+export interface BackpropUpdateData {
+  newWeights: number[];
+  newBias: number;
+}
+
+// =============================================================================
 // Text Rendering Helpers
 // =============================================================================
 
@@ -82,10 +95,11 @@ function drawWeightsVector(
   weights: number[],
   x: number,
   y: number,
-  containerWidth: number
+  containerWidth: number,
+  color: string = '#a5b4fc'
 ): void {
   ctx.font = '12px monospace';
-  ctx.fillStyle = '#a5b4fc';
+  ctx.fillStyle = color;
   ctx.textAlign = 'left';
   
   const vectorStr = '[' + weights.map(w => w.toFixed(2)).join(', ') + ']';
@@ -176,7 +190,8 @@ export function drawNeuronVector(
   layerType: LayerType,
   isHighlighted: boolean = false,
   isBackpropHighlighted: boolean = false,
-  activationRange?: { min: number; max: number }
+  activationRange?: { min: number; max: number },
+  backpropUpdateData?: BackpropUpdateData
 ): NodePosition {
   // Calculate width based on weights and layer type
   const baseWidth = weights.length * NEURON_BOX.weightMultiplier;
@@ -269,17 +284,33 @@ export function drawNeuronVector(
   });
 
   // === 3. Draw weights vector (W: [...]) ===
-  const weightsY = centerY + 35;
+  // Apply 2px y-offset adjustment for layer1
+  const layer1YOffset = layerType === 'layer1' ? -2 : 0;
+  const weightsY = centerY + 35 + layer1YOffset;
   drawText(ctx, 'W:', centerX + 8, weightsY, { color: '#cbd5e1' });
   drawWeightsVector(ctx, weights, centerX + 24, weightsY, width);
+  
+  // Draw new weights below if backprop update data is provided
+  if (backpropUpdateData) {
+    const newWeightsY = weightsY + 14;
+    drawText(ctx, '→', centerX + 8, newWeightsY, { color: '#f472b6', font: 'bold 12px monospace' });
+    drawWeightsVector(ctx, backpropUpdateData.newWeights, centerX + 24, newWeightsY, width, '#f472b6');
+  }
 
   // === 4. Draw bias value (b: X.XX) ===
-  const biasY = centerY + 50;
+  const biasY = (backpropUpdateData ? centerY + 64 : centerY + 50) + layer1YOffset;
   drawText(ctx, 'b:', centerX + 8, biasY, { color: '#cbd5e1' });
-  drawText(ctx, bias.toFixed(2), centerX + 24, biasY, { color: '#fbbf24' });
+  
+  if (backpropUpdateData) {
+    // Show both old and new bias with arrow
+    const biasText = `${bias.toFixed(2)} => ${backpropUpdateData.newBias.toFixed(2)}`;
+    drawText(ctx, biasText, centerX + 24, biasY, { color: '#fbbf24', font: '11px monospace' });
+  } else {
+    drawText(ctx, bias.toFixed(2), centerX + 24, biasY, { color: '#fbbf24' });
+  }
 
   // === 5. Draw activation output (σ=X.XXX) ===
-  const activationY = centerY + 68;
+  const activationY = (backpropUpdateData ? centerY + 80 : centerY + 68) + layer1YOffset;
   drawText(ctx, `σ=${activation.toFixed(3)}`, centerX + 70, activationY, {
     font: 'bold 12px monospace',
     color: '#34d399'

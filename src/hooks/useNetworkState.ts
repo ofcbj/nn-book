@@ -130,7 +130,7 @@ export function useNetworkState(): UseNetworkStateReturn {
   // Network stats
   const [epoch, setEpoch] = useState(0);
   const [loss, setLoss] = useState(0);
-  const [learningRate, setLearningRate] = useState(0.1);
+  const [learningRate, setLearningRate] = useState(0.25);
   const [output, setOutput] = useState<number[] | null>(null);
   const [steps, setSteps] = useState<ForwardSteps | null>(null);
 
