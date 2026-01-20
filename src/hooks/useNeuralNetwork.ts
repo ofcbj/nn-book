@@ -82,28 +82,22 @@ export interface UseNeuralNetworkReturn {
 
 export function useNeuralNetwork(): UseNeuralNetworkReturn {
   // =========================================================================
-  // Core Refs - Dual Buffer Pattern
-  // displayNN: for visualization (weights unchanged during forward animation)
-  // trainNN: for training calculations (loss, backprop data)
+  // Core Refs - Single Instance Pattern
   // =========================================================================
-  const displayNNRef = useRef(new NeuralNetwork());
-  const trainNNRef = useRef(new NeuralNetwork());
+  const nnRef = useRef(new NeuralNetwork());
   const visualizerRef = useRef<Visualizer | null>(null);
-
-  // Sync trainNN weights with displayNN on mount
-  trainNNRef.current.copyWeightsFrom(displayNNRef.current);
 
   // =========================================================================
   // Hooks - Simplified from 5 to 2
   // =========================================================================
   const state = useNetworkState();
-  const engine = useAnimationEngine(displayNNRef, trainNNRef, visualizerRef, state);
+  const engine = useAnimationEngine(nnRef, visualizerRef, state);
 
   // =========================================================================
   // Return combined interface - Memoized to prevent recreating objects
   // =========================================================================
   const network = useMemo(() => ({
-    nn: displayNNRef.current,
+    nn: nnRef.current,
     visualizer: visualizerRef.current,
     setVisualizer: engine.setVisualizer,
   }), [engine.setVisualizer]);

@@ -65,16 +65,24 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
 
     // Get backprop update data if in backward mode
     let backpropUpdateData: BackpropUpdateData | undefined;
+    // Use oldWeights/oldBias from backprop data when in backward mode
+    // because the network's weights are already updated after train()
+    let displayWeights = neuron.weights;
+    let displayBias = neuron.bias;
+    
     if (isBackward && backpropData && backpropData[i]) {
       backpropUpdateData = {
         newWeights: backpropData[i].newWeights,
         newBias: backpropData[i].newBias,
       };
+      // Override display values with old weights/bias from backprop data
+      displayWeights = backpropData[i].oldWeights;
+      displayBias = backpropData[i].oldBias;
     }
 
     const node = drawNeuronVector(
       ctx, x, y,
-      neuron.weights, neuron.bias, neuron.activated,
+      displayWeights, displayBias, neuron.activated,
       getLabel(i), layerName,
       isAnimating && isForward || false,
       isAnimating && isBackward || false,
