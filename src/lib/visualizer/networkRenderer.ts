@@ -1,7 +1,7 @@
 // Network rendering module - draws the base neural network structure
 import type { ForwardSteps, NodePosition, AnimationPhase, ForwardCalculation, LayerType, BackwardCalculation } from '../types';
 import type { AnimationState } from '../animation';
-import { checkForwardMode, checkBackwardMode } from '../animation';
+import { checkMode } from '../animation';
 import type { NeuralNetwork } from '../core';
 import { LAYER_SIZES } from '../core';
 import { drawInputVector, drawNeuronVector, type BackpropUpdateData } from './drawingUtils';
@@ -55,8 +55,8 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
   const startY = (height - totalHeight) / 2;
 
   const animatingNeuron = getAnimatingNeuron(animationState);
-  const isForward   = checkForwardMode(animationState);
-  const isBackward  = checkBackwardMode(animationState);
+  const isForward   = checkMode(animationState, 'forward');
+  const isBackward  = checkMode(animationState, 'backward');
 
   for (let i = 0; i < neuronCount; i++) {
     const neuron = neurons[i];
@@ -146,7 +146,7 @@ export function drawNetwork(
   ];
 
   // Get backprop data if in backward mode
-  const isBackward = checkBackwardMode(animationState);
+  const isBackward = checkMode(animationState, 'backward');
   const backwardSteps = isBackward ? nn.lastBackwardSteps : null;
 
   // Draw all layers

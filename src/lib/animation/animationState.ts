@@ -252,13 +252,11 @@ export function checkPaused(state: AnimationState): boolean {
   return checkAnimating(state) && state.interruptReason !== 'none';
 }
 
-/** Check if we're in forward propagation mode */
-export function checkForwardMode(state: AnimationState): boolean {
-  return state.type === 'forward_animating' || state.type === 'showing_loss_modal';
-}
-
-/** Check if we're in backward propagation mode */
-export function checkBackwardMode(state: AnimationState): boolean {
+/** Check if we're in a specific propagation mode */
+export function checkMode(state: AnimationState, mode: 'forward' | 'backward'): boolean {
+  if (mode === 'forward') {
+    return state.type === 'forward_animating' || state.type === 'showing_loss_modal';
+  }
   return state.type === 'backward_animating' || state.type === 'showing_backprop_modal';
 }
 
@@ -273,33 +271,17 @@ export function getHighlightedNeuron(state: AnimationState): {
   return null;
 }
 
-/** Get forward propagation stage for visualizer */
-export function getForwardStage(state: AnimationState): ForwardStage | null {
-  if (state.type === 'forward_animating') {
+/** Get current animation stage (works for both forward and backward) */
+export function getStage(state: AnimationState): ForwardStage | BackwardStage | null {
+  if (state.type === 'forward_animating' || state.type === 'backward_animating') {
     return state.stage;
   }
   return null;
 }
 
-/** Get backward propagation stage for visualizer */
-export function getBackwardStage(state: AnimationState): BackwardStage | null {
-  if (state.type === 'backward_animating') {
-    return state.stage;
-  }
-  return null;
-}
-
-/** Get current neuron data for calculation overlay */
-export function getCurrentForwardNeuronData(state: AnimationState): ForwardCalculation | null {
-  if (state.type === 'forward_animating') {
-    return state.neuronData;
-  }
-  return null;
-}
-
-/** Get current backprop neuron data for backprop overlay */
-export function getCurrentBackwardNeuronData(state: AnimationState): BackwardCalculation | null {
-  if (state.type === 'backward_animating') {
+/** Get current neuron data for calculation overlay (works for both forward and backward) */
+export function getCurrentNeuronData(state: AnimationState): ForwardCalculation | BackwardCalculation | null {
+  if (state.type === 'forward_animating' || state.type === 'backward_animating') {
     return state.neuronData;
   }
   return null;
@@ -321,27 +303,7 @@ export function isAnimatingAtNeuron(
   return false;
 }
 
-/** Check if forward animation is at a specific neuron */
-export function isForwardAnimatingAtNeuron(
-  state: AnimationState,
-  layer: LayerName,
-  neuronIndex: number
-): boolean {
-  return state.type === 'forward_animating' && 
-         state.layer === layer && 
-         state.neuronIndex === neuronIndex;
-}
-
-/** Check if backward animation is at a specific neuron */
-export function isBackwardAnimatingAtNeuron(
-  state: AnimationState,
-  layer: LayerName,
-  neuronIndex: number
-): boolean {
-  return state.type === 'backward_animating' && 
-         state.layer === layer && 
-         state.neuronIndex === neuronIndex;
-}
+// Note: isAnimatingAtNeuron above handles both forward and backward cases
 
 // ============================================================================
 // Re-exports from core/networkConfig

@@ -5,7 +5,7 @@
  * Uses Strategy pattern to handle differences between modes.
  */
 
-import type { ForwardStage, BackwardStage } from '../types';
+import type { ForwardStage, BackwardStage, ForwardCalculation, BackwardCalculation } from '../types';
 
 // ============================================================================
 // Types
@@ -13,7 +13,16 @@ import type { ForwardStage, BackwardStage } from '../types';
 
 import type { LayerName } from '../core';
 
-export interface AnimationLoopConfig<TStage extends string, TData> {
+/** Union type for all animation stages */
+export type AnimationStage = ForwardStage | BackwardStage;
+
+/** Union type for all neuron data */
+export type NeuronData = ForwardCalculation | BackwardCalculation;
+
+/** Stage durations record */
+export type StageDurations = Record<string, number>;
+
+export interface AnimationLoopConfig {
   /** Mode identifier */
   mode: 'forward' | 'backward';
 
@@ -24,16 +33,16 @@ export interface AnimationLoopConfig<TStage extends string, TData> {
   getNeuronIndices: (layer: LayerName) => number[];
 
   /** Stages to iterate through for each neuron */
-  stages: TStage[];
+  stages: AnimationStage[];
 
   /** Duration for each stage (in ms) */
-  stageDurations: Record<TStage, number>;
+  stageDurations: StageDurations;
 
   /** Get data for all layers */
-  getData: () => Record<LayerName, TData[]> | null;
+  getData: () => Record<LayerName, NeuronData[]> | null;
 
   /** Called for each stage tick */
-  onTick: (layer: LayerName, neuronIndex: number, stage: TStage, data: TData) => void;
+  onTick: (layer: LayerName, neuronIndex: number, stage: AnimationStage, data: NeuronData) => void;
 
   /** Called after visualizer update for each stage */
   onAfterVisualizer?: () => void;
@@ -71,8 +80,8 @@ export interface AnimationLoopConfig<TStage extends string, TData> {
  *
  * @returns true if animation completed successfully, false if interrupted
  */
-export async function runAnimationLoop<TStage extends string, TData>(
-  config: AnimationLoopConfig<TStage, TData>
+export async function runAnimationLoop(
+  config: AnimationLoopConfig
 ): Promise<boolean> {
   const data = config.getData();
   if (!data) return false;
@@ -113,7 +122,7 @@ export async function runAnimationLoop<TStage extends string, TData>(
         config.onAfterVisualizer?.();
 
         // Wait for appropriate duration
-        await config.sleep(config.stageDurations[stage], config.speedOverride);
+        await config.sleep(config.stageDurations[stage] ?? 300, config.speedOverride);
       }
     }
   }

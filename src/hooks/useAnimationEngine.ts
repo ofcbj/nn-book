@@ -25,10 +25,9 @@ import { createSnapshot } from '../lib/core/networkSnapshot';
 import { createWeightComparisonData } from '../lib/core/weightComparison';
 import { AnimationState, AnimationAction, animationReducer, 
   initialAnimationState, checkAnimating, checkPaused, 
-  getNextForwardStage, getNextBackwardStage, getForwardStage, getBackwardStage,
+  getNextForwardStage, getNextBackwardStage, getStage,
   getNextForwardNeuron, getNextBackwardNeuron, getHighlightedNeuron,
-  getCurrentForwardNeuronData, getCurrentBackwardNeuronData,
-  isForwardAnimatingAtNeuron, isBackwardAnimatingAtNeuron,
+  getCurrentNeuronData, isAnimatingAtNeuron,
   FORWARD_STAGES, BACKPROP_STAGES, InterruptReason, runAnimationLoop
 } from '../lib/animation';
 import {
@@ -141,8 +140,12 @@ export function useAnimationEngine(
     const comparisonData = createWeightComparisonData(
       oldSnapshot.weights,
       newSnapshot.weights,
-      { layer1: oldSnapshot.biases.layer1.map(row => row[0]), layer2: oldSnapshot.biases.layer2.map(row => row[0]), output: oldSnapshot.biases.output.map(row => row[0]) },
-      { layer1: newSnapshot.biases.layer1.map(row => row[0]), layer2: newSnapshot.biases.layer2.map(row => row[0]), output: newSnapshot.biases.output.map(row => row[0]) },
+      { layer1: oldSnapshot.biases.layer1.map(row => row[0]), 
+        layer2: oldSnapshot.biases.layer2.map(row => row[0]), 
+        output: oldSnapshot.biases.output.map(row => row[0]) },
+      { layer1: newSnapshot.biases.layer1.map(row => row[0]), 
+        layer2: newSnapshot.biases.layer2.map(row => row[0]), 
+        output: newSnapshot.biases.output.map(row => row[0]) },
       state.stats.learningRate
     );
     state.modalSetters.setWeightComparisonData(comparisonData);
@@ -192,7 +195,7 @@ export function useAnimationEngine(
   // Sleep utility for animation timing
   const sleep = useCallback(async (ms: number, overrideSpeed?: number): Promise<void> => {
     const effectiveSpeed = overrideSpeed ?? state.training.animationSpeed;
-    await new Promise(resolve => setTimeout(resolve, ms / effectiveSpeed));
+    await new Promise(resolve => setTimeout(resolve, ms/effectiveSpeed));
   }, [state.training.animationSpeed]);
 
   // Helper: Complete forward pass (used by canvas click handler and animation loop)
@@ -231,7 +234,7 @@ export function useAnimationEngine(
       stages            : FORWARD_STAGES,
       stageDurations    : FORWARD_STAGE_DURATIONS,
       getData           : () => layerData,
-      onTick            : fsmActions.forwardTick,
+      onTick            : (layer, idx, stage, data) => fsmActions.forwardTick(layer, idx, stage as ForwardStage, data as ForwardCalculation | null),
       onComplete        : fsmActions.forwardComplete,
       refreshDisplayOnly: refreshDisplayOnly,
       shouldStop        : shouldPauseAnimation,
@@ -268,7 +271,7 @@ export function useAnimationEngine(
       stages            : BACKPROP_STAGES,
       stageDurations    : BACKWARD_STAGE_DURATIONS,
       getData           : () => layerData,
-      onTick            : fsmActions.backwardTick,
+      onTick            : (layer, idx, stage, data) => fsmActions.backwardTick(layer, idx, stage as BackwardStage, data as BackwardCalculation | null),
       onComplete        : fsmActions.backwardComplete,
       shouldStop        : shouldPauseAnimation,
       sleep             : sleep,
@@ -400,10 +403,18 @@ export function useAnimationEngine(
       const backpropData = nn.lastBackwardSteps;
       if (backpropData) {
         const comparisonData = createWeightComparisonData(
-          { layer1: backpropData.layer1.map(n => n.oldWeights), layer2: backpropData.layer2.map(n => n.oldWeights), output: backpropData.output.map(n => n.oldWeights) },
-          { layer1: backpropData.layer1.map(n => n.newWeights), layer2: backpropData.layer2.map(n => n.newWeights), output: backpropData.output.map(n => n.newWeights) },
-          { layer1: backpropData.layer1.map(n => n.oldBias), layer2: backpropData.layer2.map(n => n.oldBias), output: backpropData.output.map(n => n.oldBias) },
-          { layer1: backpropData.layer1.map(n => n.newBias), layer2: backpropData.layer2.map(n => n.newBias), output: backpropData.output.map(n => n.newBias) },
+          { layer1: backpropData.layer1.map(n => n.oldWeights), 
+            layer2: backpropData.layer2.map(n => n.oldWeights), 
+            output: backpropData.output.map(n => n.oldWeights) },
+          { layer1: backpropData.layer1.map(n => n.newWeights), 
+            layer2: backpropData.layer2.map(n => n.newWeights), 
+            output: backpropData.output.map(n => n.newWeights) },
+          { layer1: backpropData.layer1.map(n => n.oldBias), 
+            layer2: backpropData.layer2.map(n => n.oldBias), 
+            output: backpropData.output.map(n => n.oldBias) },
+          { layer1: backpropData.layer1.map(n => n.newBias), 
+            layer2: backpropData.layer2.map(n => n.newBias), 
+            output: backpropData.output.map(n => n.newBias) },
           state.stats.learningRate
         );
         state.modalSetters.setWeightComparisonData(comparisonData);
@@ -523,15 +534,15 @@ export function useAnimationEngine(
 
     const neuronLoc: NeuronLocation = { layer: neuron.layer, index: neuron.index };
 
-    // Case 1: Same neuron clicked during forward - advance stage
-    if (isForwardAnimatingAtNeuron(animationState, neuronLoc.layer, neuronLoc.index)) {
-      advanceForwardStage(neuronLoc);
+    // Case 1: Same neuron clicked - advance stage
+    if (isAnimatingAtNeuron(animationState, neuronLoc.layer, neuronLoc.index)) {
+      if (animationState.type === 'forward_animating') {
+        advanceForwardStage(neuronLoc);
+      } else if (animationState.type === 'backward_animating') {
+        advanceBackwardStage(neuronLoc);
+      }
     }
-    // Case 2: Same neuron clicked during backward - advance stage
-    else if (isBackwardAnimatingAtNeuron(animationState, neuronLoc.layer, neuronLoc.index)) {
-      advanceBackwardStage(neuronLoc);
-    }
-    // Case 3: Different neuron clicked - jump to it
+    // Case 2: Different neuron clicked - jump to it
     else {
       jumpToNeuron(neuronLoc);
     }
@@ -546,10 +557,10 @@ export function useAnimationEngine(
     isPaused,
     // Visualization data
     highlightedNeuron   : getHighlightedNeuron(animationState),
-    forwardStage        : getForwardStage(animationState),
-    backpropStage       : getBackwardStage(animationState),
-    currentForwardData  : getCurrentForwardNeuronData(animationState),
-    currentBackwardData : getCurrentBackwardNeuronData(animationState),
+    forwardStage        : animationState.type === 'forward_animating' ? getStage(animationState) as ForwardStage : null,
+    backpropStage       : animationState.type === 'backward_animating' ? getStage(animationState) as BackwardStage : null,
+    currentForwardData  : animationState.type === 'forward_animating' ? getCurrentNeuronData(animationState) as ForwardCalculation : null,
+    currentBackwardData : animationState.type === 'backward_animating' ? getCurrentNeuronData(animationState) as BackwardCalculation : null,
     // Training controls
     trainOneStepWithAnimation,
     trainOneEpochWithoutAnimation,
