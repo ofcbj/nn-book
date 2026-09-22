@@ -12,16 +12,13 @@
     "trainingSection": "Visualize Controls",
     "learningRate": "Learning Rate",
     "animationSpeed": "Animation Speed",
-    "manualMode": "Manual Mode",
-    "actionSection": "Training Actions",
     "oneStep": "Train Once",
     "start": "Start",
     "resume": "Resume",
     "autoTrain": "Auto Train",
     "pause": "Pause",
     "stop": "Stop",
-    "reset": "Reset",
-    "nextStep": "Next Step"
+    "reset": "Reset"
   },
   "common": {
     "count": "items",
@@ -49,16 +46,12 @@
     "title": "Network Structure"
   },
   "visualizer": {
-    "canvasHeatmap": "Canvas Heatmap",
-    "gridHeatmap": "Grid Heatmap",
     "activationTitle": "Layer Activations",
     "colorLegend": "Activation Strength"
   },
   "calculation": {
     "title": "Calculation Process",
     "noData": "Start training to see the calculation process",
-    "forwardPass": "Forward Pass",
-    "backprop": "Backpropagation",
     "connections": "Connections",
     "connectionsCalc": "Input × Weight for each connection",
     "dotProduct": "Dot Product",
@@ -78,7 +71,6 @@
     "targetClass": "Target Class",
     "oneHot": "One-Hot",
     "lossValue": "Cross-Entropy Loss",
-    "lossFormula": "L = -Σ(target × log(predicted))",
     "lossCalculation": "Loss Calculation Steps",
     "step1": "1. Expand Cross-Entropy formula:",
     "step2": "2. Calculate only for target class:",
@@ -176,15 +168,10 @@
     "outputError": "Output layer error calculation:",
     "hiddenError": "Hidden layer error backpropagation:",
     "nextLayerErrors": "Errors sent by each neuron in the next layer:",
-    "neuronError": "(that neuron's error)",
-    "connectionWeight": "(connection weight)",
-    "contribution": "(contribution)",
     "sumAll": "Sum of all:",
     "nextLayerPropagation": "Errors from the next layer propagate",
     "thisNeuron": "to this neuron through weights:",
     "delta": "2️⃣ Adjustment Direction (Delta δ)",
-    "deltaCalc": "δ = error × activation function gradient",
-    "derivative": "Derivative:",
     "gradient": "3️⃣ Gradient Calculation",
     "weightDelta": "4️⃣ Weight Change Calculation",
     "weightDeltaCalc": "Calculate how much to adjust each weight:",
@@ -192,23 +179,17 @@
     "connectedWeight": "weight connected to",
     "allWeightDeltas": "📝 All Weight Changes",
     "allWeightChanges": "Change formula for each weight:",
-    "currentWeight": "Current weight:",
     "update": "5️⃣ Update",
     "allWeightUpdate": "Update all weights:",
-    "biasUpdate": "Update bias:",
-    "oldValue": "Old:",
-    "newValue": "→ New:",
     "neuronResponsibility": "This value is the magnitude of this neuron's responsibility",
     "needIncreaseWeight": "✓ Predicted lower than target → need to increase weight",
-    "needDecreaseWeight": "✓ Predicted higher than target → need to decrease weight"
+    "needDecreaseWeight": "✓ Predicted higher than target → need to decrease weight",
+    "softmaxDerivativeNote": "the derivative is already folded into the error",
+    "softmaxDerivativeResult": "so f' is treated as 1"
   },
   "backpropSummary": {
     "title": "🎉 Backpropagation Complete",
     "overview": "All weights and biases have been updated",
-    "formulas": "Formulas Used",
-    "errorCalc": "1. Error Calculation",
-    "gradientCalc": "2. Gradient Calculation",
-    "weightUpdate": "3. Weight Update",
     "weightChanges": "Weight Changes",
     "biasChanges": "Bias Changes",
     "layer1Weights": "1st Stage Interviewer Weights",
@@ -217,7 +198,6 @@
     "totalUpdated": "Total Updated Weights",
     "learningRate": "Learning Rate",
     "close": "Close",
-    "startForward": "▶ Start Forward Pass",
     "detailedProcess": "Detailed Process",
     "step1Title": "Step 1: Error Calculation",
     "step1Desc": "Calculate the error each neuron will receive.",
@@ -228,7 +208,8 @@
     "step4Title": "Step 4: Weight Update",
     "step4Desc": "Apply the calculated changes to the actual weights.",
     "outputLayer": "Output Layer",
-    "hiddenLayer": "Hidden Layer"
+    "hiddenLayer": "Hidden Layer",
+    "averageChange": "Average change:"
   },
   "comparison": {
     "title": "Weight Comparison: Before/After Training",
@@ -244,11 +225,9 @@
     "inputsPerNeuron": "Inputs/Neuron",
     "totalParameters": "Total Parameters",
     "viewComparison": "View Weight Changes",
-    "noData": "No training data. Please run 'Train Once' first.",
     "close": "Close"
   },
   "footer": {
-    "architecture": "Architecture: <1>3 inputs</1> → <3>5 neurons(1st)</3> → <5>3 neurons(2nd)</5> → <7>3 outputs</7>",
     "description": "This visualizer shows how a candidate's 3 attributes (grade, attitude, response level) are passed through 1st stage interviewers (5) and 2nd stage interviewers (3), leading to the final decision."
   }
 }

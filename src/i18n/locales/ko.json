@@ -12,16 +12,13 @@
     "trainingSection": "시각화 컨트롤",
     "learningRate": "학습률",
     "animationSpeed": "애니메이션 속도",
-    "manualMode": "수동 모드",
-    "actionSection": "학습 동작",
     "oneStep": "1회 학습",
     "start": "시작",
     "resume": "재개",
     "autoTrain": "자동 학습",
     "pause": "일시정지",
     "stop": "중지",
-    "reset": "초기화",
-    "nextStep": "다음 단계"
+    "reset": "초기화"
   },
   "common": {
     "count": "개",
@@ -49,16 +46,12 @@
     "title": "네트워크 구조"
   },
   "visualizer": {
-    "canvasHeatmap": "캔버스 히트맵",
-    "gridHeatmap": "그리드 히트맵",
     "activationTitle": "레이어별 활성화",
     "colorLegend": "활성화 강도"
   },
   "calculation": {
     "title": "연산 과정",
     "noData": "학습을 시작하면 연산 과정이 표시됩니다",
-    "forwardPass": "Forward Pass (순전파)",
-    "backprop": "Backpropagation (역전파)",
     "connections": "연결",
     "connectionsCalc": "각 연결의 입력 × 가중치",
     "dotProduct": "내적",
@@ -78,7 +71,6 @@
     "targetClass": "Target Class",
     "oneHot": "One-Hot",
     "lossValue": "Cross-Entropy Loss",
-    "lossFormula": "L = -Σ(target × log(predicted))",
     "lossCalculation": "Loss 계산 과정",
     "step1": "1. Cross-Entropy 수식 전개:",
     "step2": "2. 정답 클래스만 계산:",
@@ -176,15 +168,10 @@
     "outputError": "출력 레이어의 오류 계산:",
     "hiddenError": "은닉 레이어의 오류 역전파:",
     "nextLayerErrors": "다음 레이어의 각 뉴런이 보낸 오류:",
-    "neuronError": "(그 뉴런의 오류)",
-    "connectionWeight": "(연결 가중치)",
-    "contribution": "(기여도)",
     "sumAll": "모두 합하면:",
     "nextLayerPropagation": "다음 레이어의 오류들이 가중치를 통해",
     "thisNeuron": "이 뉴런으로 전달됩니다:",
     "delta": "2️⃣ 조정 방향 (Delta δ)",
-    "deltaCalc": "δ = 오류 × 활성화 함수의 기울기",
-    "derivative": "도함수:",
     "gradient": "3️⃣ 그래디언트 계산",
     "weightDelta": "4️⃣ 가중치 변화량 계산",
     "weightDeltaCalc": "각 가중치를 얼마나 조정할지 계산:",
@@ -192,23 +179,17 @@
     "connectedWeight": "에 연결된 가중치",
     "allWeightDeltas": "📝 모든 가중치 변화량",
     "allWeightChanges": "각 가중치의 변화 수식:",
-    "currentWeight": "현재 가중치:",
     "update": "5️⃣ 업데이트 (Update)",
     "allWeightUpdate": "모든 가중치 업데이트:",
-    "biasUpdate": "바이어스 업데이트:",
-    "oldValue": "이전:",
-    "newValue": "→ 새로운:",
     "neuronResponsibility": "이 값이 이 뉴런의 책임 크기입니다",
     "needIncreaseWeight": "✓ 목표보다 낮게 예측 → 가중치 증가 필요",
-    "needDecreaseWeight": "✓ 목표보다 높게 예측 → 가중치 감소 필요"
+    "needDecreaseWeight": "✓ 목표보다 높게 예측 → 가중치 감소 필요",
+    "softmaxDerivativeNote": "도함수가 이미 오류 계산에 포함되어 있음",
+    "softmaxDerivativeResult": "따라서 f'는 1로 취급"
   },
   "backpropSummary": {
     "title": "🎉 역전파 완료",
     "overview": "모든 가중치와 바이어스가 업데이트되었습니다",
-    "formulas": "사용된 수식",
-    "errorCalc": "1. 오류 계산",
-    "gradientCalc": "2. 그래디언트 계산",
-    "weightUpdate": "3. 가중치 업데이트",
     "weightChanges": "가중치 변화",
     "biasChanges": "바이어스 변화",
     "layer1Weights": "1차 면접관 가중치",
@@ -217,7 +198,6 @@
     "totalUpdated": "총 업데이트된 가중치",
     "learningRate": "학습률",
     "close": "닫기",
-    "startForward": "▶ Forward Pass 시작",
     "detailedProcess": "상세 과정",
     "step1Title": "1단계: 오류 계산",
     "step1Desc": "각 뉴런이 받을 오류를 계산합니다.",
@@ -228,7 +208,8 @@
     "step4Title": "4단계: 가중치 업데이트",
     "step4Desc": "계산된 변화량을 실제 가중치에 적용합니다.",
     "outputLayer": "출력 레이어",
-    "hiddenLayer": "은닉 레이어"
+    "hiddenLayer": "은닉 레이어",
+    "averageChange": "평균 변화량:"
   },
   "comparison": {
     "title": "학습 전/후 가중치 비교",
@@ -244,11 +225,9 @@
     "inputsPerNeuron": "뉴런당 입력",
     "totalParameters": "총 파라미터",
     "viewComparison": "가중치 변화 보기",
-    "noData": "학습 데이터가 없습니다. 먼저 1회 학습을 실행하세요.",
     "close": "닫기"
   },
   "footer": {
-    "architecture": "Architecture: <1>3 inputs</1> → <3>5 neurons(1차)</3> → <5>3 neurons(2차)</5> → <7>3 outputs</7>",
     "description": "이 시각화는 면접자의 3가지 속성(성적, 태도, 응답수준)이 1차 면접관(5명)을 거쳐 2차 면접관(3명)에게 전달되고 최종 결정으로 이어지는 과정을 보여줍니다."
   }
 }

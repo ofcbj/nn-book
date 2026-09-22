@@ -1,289 +1,151 @@
 // Backpropagation helper functions for neural network training
 import { Matrix } from './matrix';
-import { dsigmoid } from './network';
+import { dsigmoid } from './activations';
 import type { BackwardSteps, BackwardCalculation } from '../types';
-import { LAYER_SIZES } from './networkConfig';
+import { LAYER_SIZES, LAYER_NAMES } from './networkConfig';
 import type { LayerName } from './networkConfig';
 
 /**
- * Perform backpropagation for output layer and return deltas
+ * Result of backpropagation through one layer.
+ *
+ * - errors:       the error each neuron "received"
+ *                 (output: target − output, hidden: Σ δ_next · w)
+ * - deltas:       δ = errors ⊙ f'(y); this is what gets propagated to the previous layer
+ * - weightDeltas: ΔW = lr · δ · xᵀ   (added to the weights)
+ * - biasDeltas:   Δb = lr · δ        (added to the biases)
+ */
+export interface LayerBackpropResult {
+  errors: Matrix;
+  deltas: Matrix;
+  weightDeltas: Matrix;
+  biasDeltas: Matrix;
+}
+
+/**
+ * Output layer: softmax activation + cross-entropy loss.
+ *
+ * For this pairing ∂L/∂z = output − target, so the activation derivative
+ * is already folded in and δ = target − output directly (no σ' factor).
  */
 export function backpropOutputLayer(
   outputs: Matrix,
   targets: Matrix,
-  hidden2: Matrix,
+  previousLayer: Matrix,
   learningRate: number
-): {
-  outputErrors: Matrix;
-  gradientsOutput: Matrix;
-  weightHoDeltas: Matrix;
-  biasOutputDeltas: Matrix;
-} {
-  // Calculate output errors
-  const outputErrors = Matrix.subtract(targets, outputs);
+): LayerBackpropResult {
+  const errors = Matrix.subtract(targets, outputs);
+  const deltas = errors.clone();
 
-  // Calculate output gradient
-  const gradientsOutput = Matrix.map(outputs, dsigmoid);
-  gradientsOutput.multiply(outputErrors);
-  gradientsOutput.multiply(learningRate);
+  const weightDeltas = Matrix.multiply(deltas, Matrix.transpose(previousLayer));
+  weightDeltas.multiply(learningRate);
+  const biasDeltas = Matrix.map(deltas, d => d * learningRate);
 
-  // Calculate hidden2 -> output deltas
-  const hidden2T = Matrix.transpose(hidden2);
-  const weightHoDeltas = Matrix.multiply(gradientsOutput, hidden2T);
-
-  return {
-    outputErrors,
-    gradientsOutput,
-    weightHoDeltas,
-    biasOutputDeltas: gradientsOutput
-  };
+  return { errors, deltas, weightDeltas, biasDeltas };
 }
 
 /**
- * Generic backpropagation for hidden layers
- * Calculates errors, gradients, and weight deltas for a layer
+ * Hidden layer with sigmoid activation.
+ *
+ * error_i = Σ_j δ_next[j] · W[j][i]   (W = weights from this layer to the next, BEFORE update)
+ * δ_i     = error_i · σ'(y_i)
  */
 export function backpropHiddenLayer(
-  nextLayerErrors: Matrix,
+  nextLayerDeltas: Matrix,
   currentLayer: Matrix,
   previousLayer: Matrix,
-  weightsCurrentNext: Matrix,
+  weightsCurrentToNext: Matrix,
   learningRate: number
-): {
-  currentErrors: Matrix;
-  currentGradients: Matrix;
-  weightDeltas: Matrix;
-  biasDeltas: Matrix;
-} {
-  // Calculate current layer errors from next layer
-  const weightsTransposed = Matrix.transpose(weightsCurrentNext);
-  const currentErrors = Matrix.multiply(weightsTransposed, nextLayerErrors);
+): LayerBackpropResult {
+  const errors = Matrix.multiply(Matrix.transpose(weightsCurrentToNext), nextLayerDeltas);
 
-  // Calculate gradients
-  const currentGradients = Matrix.map(currentLayer, dsigmoid);
-  currentGradients.multiply(currentErrors);
-  currentGradients.multiply(learningRate);
+  const deltas = Matrix.map(currentLayer, dsigmoid);
+  deltas.multiply(errors);
 
-  // Calculate weight deltas
-  const previousLayerT = Matrix.transpose(previousLayer);
-  const weightDeltas = Matrix.multiply(currentGradients, previousLayerT);
+  const weightDeltas = Matrix.multiply(deltas, Matrix.transpose(previousLayer));
+  weightDeltas.multiply(learningRate);
+  const biasDeltas = Matrix.map(deltas, d => d * learningRate);
 
-  return {
-    currentErrors,
-    currentGradients,
-    weightDeltas,
-    biasDeltas: currentGradients
-  };
+  return { errors, deltas, weightDeltas, biasDeltas };
 }
 
 // =============================================================================
 // Backprop Visualizer Helpers
 // =============================================================================
 
-/**
- * Configuration for creating BackwardCalculation for a single layer
- */
-interface LayerBackpropConfig {
-  layerName: LayerName;
+/** Everything the visualizer needs to know about one layer's backward pass. */
+export interface LayerBackpropInput {
   activations: Matrix;
-  errors: Matrix;
-  gradients: Matrix;
-  weightDeltas: Matrix;
-  oldWeights: number[][];
-  oldBias: number[][];
-  newWeights: number[][];
-  newBias: number[][];
   inputs: Matrix;
-  // Optional: for hidden layers, info about next layer
-  nextLayerErrors?: Matrix;
+  result: LayerBackpropResult;
+  oldWeights: Matrix;
+  oldBias: Matrix;
+  newWeights: Matrix;
+  newBias: Matrix;
+  /** Hidden layers only: δ of the next layer and the (pre-update) weights to it */
+  nextLayerDeltas?: Matrix;
   nextLayerWeights?: Matrix;
 }
 
-/**
- * Create BackwardCalculation array for a single layer
- */
-function createLayerBackpropData(config: LayerBackpropConfig): BackwardCalculation[] {
-  const {
-    layerName,
-    activations,
-    errors,
-    gradients,
-    weightDeltas,
-    oldWeights,
-    oldBias,
-    newWeights,
-    newBias,
-    inputs,
-    nextLayerErrors,
-    nextLayerWeights
-  } = config;
-
-  const neuronCount = LAYER_SIZES[layerName];
-  const result: BackwardCalculation[] = [];
-
-  for (let i = 0; i < neuronCount; i++) {
-    const activation = activations.data[i][0];
-    const derivative = dsigmoid(activation);
-    const error = errors.data[i][0];
-    const gradient = error * derivative;
-
-    const neuronData: BackwardCalculation = {
-      neuronIndex: i,
-      error: error,
-      gradients: gradients.data[i],
-      weightDeltas: weightDeltas.data[i],
-      biasDelta: gradients.data[i][0],
-      oldWeights: oldWeights[i],
-      newWeights: newWeights[i],
-      oldBias: oldBias[i][0],
-      newBias: newBias[i][0],
-      activation: activation,
-      derivative: derivative,
-      gradient: gradient,
-      inputs: inputs.toArray()
-    };
-
-    // Add next layer info for hidden layers
-    if (nextLayerErrors && nextLayerWeights) {
-      neuronData.nextLayerErrors = nextLayerErrors.toArray();
-      neuronData.nextLayerWeights = nextLayerWeights.data.map(row => row[i]);
-    }
-
-    result.push(neuronData);
-  }
-
-  return result;
-}
-
-/**
- * Create BackwardSteps for visualizer
- * 
- * Parameter interfaces for better organization
- */
-
-// Layer-wise weight and bias data
-interface LayerWeightData {
-  weights: number[][];
-  bias: number[][];
-}
-
-// All weights and biases before update
-interface OldWeightsAndBiases {
-  output: LayerWeightData;
-  hidden2: LayerWeightData;
-  hidden1: LayerWeightData;
-}
-
-// All weights and biases after update
-interface NewWeightsAndBiases {
-  output: LayerWeightData;
-  hidden2: LayerWeightData;
-  hidden1: LayerWeightData;
-}
-
-// Main parameter interface for createBackwardSteps
 export interface BackpropData {
-  // Layer activations
-  activations: {
-    inputs: Matrix;
-    hidden1: Matrix;
-    hidden2: Matrix;
-    outputs: Matrix;
-  };
-  
-  // Target values
+  layers: Record<LayerName, LayerBackpropInput>;
   target: number[];
-  
-  // Errors for each layer
-  errors: {
-    output: Matrix;
-    hidden2: Matrix;
-    hidden1: Matrix;
-  };
-  
-  // Gradients for each layer
-  gradients: {
-    output: Matrix;
-    hidden2: Matrix;
-    hidden1: Matrix;
-  };
-  
-  // Weight deltas for each layer
-  weightDeltas: {
-    outputToHidden2: Matrix;
-    hidden2ToHidden1: Matrix;
-    hidden1ToInput: Matrix;
-  };
-  
-  // Weights and biases before update
-  oldWeights: OldWeightsAndBiases;
-  
-  // Weights and biases after update
-  newWeights: NewWeightsAndBiases;
-  
-  // Current weight matrices (for calculating back-propagated errors)
-  currentWeights: {
-    hidden2ToOutput: Matrix;
-    hidden1ToHidden2: Matrix;
-  };
-  
-  // Loss value
+  predictions: number[];
   loss: number;
 }
 
+function createLayerBackpropData(layerName: LayerName, layer: LayerBackpropInput): BackwardCalculation[] {
+  const { activations, inputs, result, oldWeights, oldBias, newWeights, newBias, nextLayerDeltas, nextLayerWeights } = layer;
+  const isOutputLayer = layerName === 'output';
+  const inputArray = inputs.toArray();
+  const neuronCount = LAYER_SIZES[layerName];
+  const data: BackwardCalculation[] = [];
+
+  for (let i = 0; i < neuronCount; i++) {
+    const activation = activations.data[i][0];
+    // Softmax + cross-entropy: derivative already folded into the error, so it is 1.
+    const derivative = isOutputLayer ? 1 : dsigmoid(activation);
+
+    const neuronData: BackwardCalculation = {
+      neuronIndex : i,
+      error       : result.errors.data[i][0],
+      activation,
+      derivative,
+      gradient    : result.deltas.data[i][0],
+      weightDeltas: [...result.weightDeltas.data[i]],
+      biasDelta   : result.biasDeltas.data[i][0],
+      oldWeights  : [...oldWeights.data[i]],
+      newWeights  : [...newWeights.data[i]],
+      oldBias     : oldBias.data[i][0],
+      newBias     : newBias.data[i][0],
+      inputs      : [...inputArray],
+    };
+
+    if (nextLayerDeltas && nextLayerWeights) {
+      neuronData.nextLayerDeltas = nextLayerDeltas.toArray();
+      // Column i of the next layer's weight matrix = weights leaving this neuron
+      neuronData.nextLayerWeights = nextLayerWeights.data.map(row => row[i]);
+    }
+
+    data.push(neuronData);
+  }
+
+  return data;
+}
+
 /**
- * Create BackwardSteps for visualizer
+ * Create BackwardSteps for the visualizer.
+ * All arrays are copies, so later training steps do not mutate stored data.
  */
 export function createBackwardSteps(data: BackpropData): BackwardSteps {
-  // Destructure data for easier access
-  const { activations, target, errors, gradients, weightDeltas, oldWeights, newWeights, currentWeights, loss } = data;
-  
-  const targetClass = target.indexOf(1);
-  const predictions = activations.outputs.toArray();
+  const steps = {} as Record<LayerName, BackwardCalculation[]>;
+  for (const name of LAYER_NAMES) {
+    steps[name] = createLayerBackpropData(name, data.layers[name]);
+  }
 
   return {
-    output: createLayerBackpropData({
-      layerName: 'output',
-      activations: activations.outputs,
-      errors: errors.output,
-      gradients: gradients.output,
-      weightDeltas: weightDeltas.outputToHidden2,
-      oldWeights: oldWeights.output.weights,
-      oldBias: oldWeights.output.bias,
-      newWeights: newWeights.output.weights,
-      newBias: newWeights.output.bias,
-      inputs: activations.hidden2
-    }),
-    layer2: createLayerBackpropData({
-      layerName: 'layer2',
-      activations: activations.hidden2,
-      errors: errors.hidden2,
-      gradients: gradients.hidden2,
-      weightDeltas: weightDeltas.hidden2ToHidden1,
-      oldWeights: oldWeights.hidden2.weights,
-      oldBias: oldWeights.hidden2.bias,
-      newWeights: newWeights.hidden2.weights,
-      newBias: newWeights.hidden2.bias,
-      inputs: activations.hidden1,
-      nextLayerErrors: errors.output,
-      nextLayerWeights: currentWeights.hidden2ToOutput
-    }),
-    layer1: createLayerBackpropData({
-      layerName: 'layer1',
-      activations: activations.hidden1,
-      errors: errors.hidden1,
-      gradients: gradients.hidden1,
-      weightDeltas: weightDeltas.hidden1ToInput,
-      oldWeights: oldWeights.hidden1.weights,
-      oldBias: oldWeights.hidden1.bias,
-      newWeights: newWeights.hidden1.weights,
-      newBias: newWeights.hidden1.bias,
-      inputs: activations.inputs,
-      nextLayerErrors: errors.hidden2,
-      nextLayerWeights: currentWeights.hidden1ToHidden2
-    }),
-    totalLoss: loss,
-    targetClass,
-    predictions
+    ...steps,
+    totalLoss  : data.loss,
+    targetClass: data.target.indexOf(1),
+    predictions: [...data.predictions],
   };
 }

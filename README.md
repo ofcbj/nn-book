@@ -38,6 +38,7 @@
   - Cross-Entropy Lossの計算過程
 
 ### 🌍 多言語対応
+- **English** (default)
 - **日本語** (Japanese)
 - **한국어** (Korean)
 - UIとアニメーションラベルが完全対応
@@ -56,7 +57,7 @@
 ### インストール
 
 ```bash
-cd c:\src\nn-book
+cd nn-book
 npm install
 ```
 
@@ -71,6 +72,7 @@ npm run dev
 ### ビルド
 
 ```bash
+npm test        # ユニットテスト (vitest)
 npm run build
 ```
 
@@ -94,39 +96,41 @@ npm run build
 ## 📁 プロジェクト構造
 
 ```
-c:\src\nn-book\
+nn-book/
 ├── src/
-│   ├── components/          # React コンポーネント
-│   │   ├── BackpropModal.tsx      # 逆伝播サマリーモーダル
-│   │   └── LossModal.tsx          # Loss計算説明モーダル
+│   ├── main.tsx                   # エントリーポイント
+│   ├── App.tsx                    # レイアウト
+│   ├── theme.ts                   # MUI ダークテーマ
+│   ├── components/                # React コンポーネント
+│   │   ├── Header.tsx / ControlPanel.tsx / StatsDisplay.tsx
+│   │   ├── NetworkCanvas.tsx            # Canvas マウント・リサイズ
+│   │   ├── CalculationPanel.tsx / ActivationHeatmap.tsx
+│   │   └── LossModal.tsx / BackpropModal.tsx / WeightComparisonModal.tsx / HelpModal.tsx
 │   ├── hooks/
-│   │   └── useNeuralNetwork.ts    # NN状態管理フック
+│   │   ├── useNeuralNetwork.ts    # オーケストレーター
+│   │   ├── useNetworkState.ts     # React 状態
+│   │   ├── useAnimationEngine.ts  # FSM・アニメーション・学習制御
+│   │   └── useModalState.ts
 │   ├── lib/
-│   │   ├── matrix.ts              # 行列演算クラス
-│   │   ├── network.ts             # NNメインロジック
-│   │   ├── network/
-│   │   │   └── backpropagation.ts # 逆伝播ヘルパー関数
-│   │   ├── visualizer.ts          # Canvas可視化
-│   │   ├── visualizer/
-│   │   │   ├── backpropRenderer.ts      # 逆伝播オーバーレイ
-│   │   │   ├── calculationOverlay.ts    # 計算ポップアップ
-│   │   │   ├── drawingUtils.ts          # 描画ユーティリティ
-│   │   │   └── networkRenderer.ts       # ネットワーク描画
-│   │   └── types.ts               # TypeScript型定義
-│   ├── i18n/
-│   │   ├── index.ts               # i18n設定
-│   │   └── locales/
-│   │       ├── ko.json            # 韓国語翻訳
-│   │       └── ja.json            # 日本語翻訳
-│   └── App.tsx                    # メインアプリ
-├── public/                        # 静的ファイル
-└── vite.config.ts                 # Vite設定
+│   │   ├── types.ts               # 共通型定義
+│   │   ├── core/                  # 純粋 TypeScript (React 非依存)
+│   │   │   ├── network.ts / backpropagation.ts / activations.ts / matrix.ts
+│   │   │   ├── networkConfig.ts / networkSnapshot.ts / weightComparison.ts
+│   │   │   └── __tests__/         # vitest
+│   │   ├── animation/             # 状態マシンとアニメーションループ
+│   │   └── visualizer/            # Canvas 描画 (renderer, overlay, uiConfig)
+│   └── i18n/
+│       ├── index.ts
+│       └── locales/               # en.json, ko.json, ja.json
+├── doc/                           # アーキテクチャ文書
+├── vite.config.ts
+└── vitest.config.ts
 ```
 
 ## 🛠️ 技術スタック
 
 ### フロントエンド
-- **React 18** - UIフレームワーク
+- **React 19** - UIフレームワーク
 - **TypeScript** - 型安全性
 - **Vite** - ビルドツール
 - **Material-UI (MUI)** - UIコンポーネント

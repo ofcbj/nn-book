@@ -1,12 +1,12 @@
 /**
  * Animation State Machine for Neural Network Visualizer
- * 
+ *
  * This module defines a finite state machine (FSM) to manage animation states
- * in a predictable and bug-free manner. All state transitions are explicit.
+ * in a predictable manner. All state transitions are explicit.
  */
 
 import type { ForwardStage, BackwardStage, ForwardCalculation, BackwardCalculation } from '../types';
-import { type LayerName } from '../core';
+import { LAYER_SIZES, FORWARD_LAYER_ORDER, BACKWARD_LAYER_ORDER, FORWARD_STAGES, BACKPROP_STAGES, type LayerName } from '../core';
 
 // ============================================================================
 // State Definitions
@@ -14,17 +14,15 @@ import { type LayerName } from '../core';
 
 export type AnimationMode = 'forward' | 'backward';
 
-/** Interrupt reason - replaces isJumped and shouldStopRef */
+/** Interrupt reason: none = running, paused = user paused, jumped = user clicked another neuron */
 export type InterruptReason = 'none' | 'paused' | 'jumped';
 
-/** Base state shared by all animation states */
 interface BaseAnimationState {
-  /** Reason for interrupt (none = running, paused = user paused, jumped = clicked neuron) */
   interruptReason: InterruptReason;
 }
 
 /** Idle - No animation running */
-export interface IdleState extends BaseAnimationState {
+interface IdleState extends BaseAnimationState {
   type: 'idle';
 }
 
@@ -38,7 +36,7 @@ export interface ForwardAnimatingState extends BaseAnimationState {
 }
 
 /** Showing loss modal after forward propagation */
-export interface ShowingLossModalState extends BaseAnimationState {
+interface ShowingLossModalState extends BaseAnimationState {
   type: 'showing_loss_modal';
 }
 
@@ -52,7 +50,7 @@ export interface BackwardAnimatingState extends BaseAnimationState {
 }
 
 /** Showing backprop summary modal */
-export interface ShowingBackpropModalState extends BaseAnimationState {
+interface ShowingBackpropModalState extends BaseAnimationState {
   type: 'showing_backprop_modal';
 }
 
@@ -71,28 +69,11 @@ export type AnimationAction =
   | { type: 'START_TRAINING' }
   | { type: 'PAUSE' }
   | { type: 'RESUME' }
-  | { type: 'NEXT_STEP' }
-  | { 
-      type: 'JUMP_TO_NEURON'; 
-      layer: LayerName; 
-      neuronIndex: number;
-    }
-  | { 
-      type: 'FORWARD_TICK'; 
-      layer: LayerName; 
-      neuronIndex: number; 
-      stage: ForwardStage;
-      neuronData: ForwardCalculation | null;
-    }
+  | { type: 'JUMP_TO_NEURON'; layer: LayerName; neuronIndex: number }
+  | { type: 'FORWARD_TICK'; layer: LayerName; neuronIndex: number; stage: ForwardStage; neuronData: ForwardCalculation | null }
   | { type: 'FORWARD_COMPLETE' }
   | { type: 'CLOSE_LOSS_MODAL' }
-  | { 
-      type: 'BACKWARD_TICK'; 
-      layer: LayerName; 
-      neuronIndex: number; 
-      stage: BackwardStage;
-      neuronData: BackwardCalculation | null;
-    }
+  | { type: 'BACKWARD_TICK'; layer: LayerName; neuronIndex: number; stage: BackwardStage; neuronData: BackwardCalculation | null }
   | { type: 'BACKWARD_COMPLETE' }
   | { type: 'CLOSE_BACKPROP_MODAL' }
   | { type: 'RESET' };
@@ -106,19 +87,16 @@ export const initialAnimationState: AnimationState = {
   interruptReason: 'none',
 };
 
+const FIRST_FORWARD_LAYER  = FORWARD_LAYER_ORDER[0];
+const FIRST_BACKWARD_LAYER = BACKWARD_LAYER_ORDER[0];
+
 // ============================================================================
 // State Reducer
 // ============================================================================
 
-export function animationReducer(
-  state : AnimationState,
-  action: AnimationAction
-): AnimationState {
+export function animationReducer(state: AnimationState, action: AnimationAction): AnimationState {
   switch (action.type) {
-    // -------------------------------------------------------------------------
-    // Global Actions (work in any state)
-    // -------------------------------------------------------------------------
-
+    // --- Global actions (work in any state) ---
     case 'PAUSE':
       return { ...state, interruptReason: 'paused' };
 
@@ -128,41 +106,36 @@ export function animationReducer(
     case 'RESET':
       return initialAnimationState;
 
-    // -------------------------------------------------------------------------
-    // Idle State Transitions
-    // -------------------------------------------------------------------------
+    // --- Idle -> Forward ---
     case 'START_TRAINING':
       if (state.type !== 'idle') return state;
       return {
-        type              : 'forward_animating',
-        layer             : 'layer1',
-        neuronIndex       : 0,
-        stage             : 'connections',
-        neuronData        : null,
-        interruptReason   : 'none',
+        type            : 'forward_animating',
+        layer           : FIRST_FORWARD_LAYER,
+        neuronIndex     : 0,
+        stage           : FORWARD_STAGES[0],
+        neuronData      : null,
+        interruptReason : 'none',
       };
 
-    // -------------------------------------------------------------------------
-    // Forward Animation Transitions
-    // -------------------------------------------------------------------------
+    // --- Forward animation ---
     case 'FORWARD_TICK':
       if (state.type !== 'forward_animating') return state;
       return {
         ...state,
-        layer             : action.layer,
-        neuronIndex       : action.neuronIndex,
-        stage             : action.stage,
-        neuronData        : action.neuronData,
+        layer       : action.layer,
+        neuronIndex : action.neuronIndex,
+        stage       : action.stage,
+        neuronData  : action.neuronData,
       };
 
     case 'JUMP_TO_NEURON':
-      // Can jump during forward or backward animation
       if (state.type === 'forward_animating') {
         return {
           ...state,
           layer           : action.layer,
           neuronIndex     : action.neuronIndex,
-          stage           : 'connections', // Reset to first stage
+          stage           : FORWARD_STAGES[0],
           interruptReason : 'jumped',
         };
       }
@@ -171,7 +144,7 @@ export function animationReducer(
           ...state,
           layer           : action.layer,
           neuronIndex     : action.neuronIndex,
-          stage           : 'error', // Reset to first backprop stage
+          stage           : BACKPROP_STAGES[0],
           interruptReason : 'jumped',
         };
       }
@@ -179,59 +152,39 @@ export function animationReducer(
 
     case 'FORWARD_COMPLETE':
       if (state.type !== 'forward_animating') return state;
-      return {
-        type              : 'showing_loss_modal',
-        interruptReason   : 'none',
-      };
+      return { type: 'showing_loss_modal', interruptReason: 'none' };
 
-    // -------------------------------------------------------------------------
-    // Loss Modal Transitions
-    // -------------------------------------------------------------------------
+    // --- Loss modal -> Backward ---
     case 'CLOSE_LOSS_MODAL':
       if (state.type !== 'showing_loss_modal') return state;
       return {
-        type              : 'backward_animating',
-        layer             : 'output',
-        neuronIndex       : 2, // Start from last output neuron
-        stage             : 'error',
-        neuronData        : null,
-        interruptReason   : 'none',
+        type            : 'backward_animating',
+        layer           : FIRST_BACKWARD_LAYER,
+        neuronIndex     : LAYER_SIZES[FIRST_BACKWARD_LAYER] - 1, // Start from the last output neuron
+        stage           : BACKPROP_STAGES[0],
+        neuronData      : null,
+        interruptReason : 'none',
       };
 
-    // -------------------------------------------------------------------------
-    // Backward Animation Transitions
-    // -------------------------------------------------------------------------
+    // --- Backward animation ---
     case 'BACKWARD_TICK':
       if (state.type !== 'backward_animating') return state;
       return {
         ...state,
-        layer             : action.layer,
-        neuronIndex       : action.neuronIndex,
-        stage             : action.stage,
-        neuronData        : action.neuronData,
+        layer       : action.layer,
+        neuronIndex : action.neuronIndex,
+        stage       : action.stage,
+        neuronData  : action.neuronData,
       };
 
     case 'BACKWARD_COMPLETE':
       if (state.type !== 'backward_animating') return state;
-      return {
-        type              : 'showing_backprop_modal',
-        interruptReason   : 'none',
-      };
+      return { type: 'showing_backprop_modal', interruptReason: 'none' };
 
-    // -------------------------------------------------------------------------
-    // Backprop Modal Transitions
-    // -------------------------------------------------------------------------
+    // --- Backprop modal -> Idle ---
     case 'CLOSE_BACKPROP_MODAL':
       if (state.type !== 'showing_backprop_modal') return state;
-      return {
-        type              : 'idle',
-        interruptReason   : 'none',
-      };
-
-    case 'NEXT_STEP':
-      // This is handled by the animation loop, not the reducer
-      // It's a signal to advance to the next stage/neuron
-      return state;
+      return { type: 'idle', interruptReason: 'none' };
 
     default:
       return state;
@@ -242,74 +195,38 @@ export function animationReducer(
 // Helper Functions
 // ============================================================================
 
-/** Check if animation is currently running (not idle and not showing modal) */
-export function checkAnimating(state: AnimationState): boolean {
+/** True while a forward or backward animation is running (not idle, not showing a modal) */
+export function checkAnimating(state: AnimationState): state is ForwardAnimatingState | BackwardAnimatingState {
   return state.type === 'forward_animating' || state.type === 'backward_animating';
 }
 
-/** Check if animation is paused (either by user pause or neuron jump) */
+/** True when an animation is interrupted (user pause or neuron jump) */
 export function checkPaused(state: AnimationState): boolean {
   return checkAnimating(state) && state.interruptReason !== 'none';
 }
 
-/** Check if we're in a specific propagation mode */
-export function checkMode(state: AnimationState, mode: 'forward' | 'backward'): boolean {
+/** True when the state belongs to the given propagation phase (animation or its modal) */
+export function checkMode(state: AnimationState, mode: AnimationMode): boolean {
   if (mode === 'forward') {
     return state.type === 'forward_animating' || state.type === 'showing_loss_modal';
   }
   return state.type === 'backward_animating' || state.type === 'showing_backprop_modal';
 }
 
-/** Get current highlighted neuron info for visualizer */
-export function getHighlightedNeuron(state: AnimationState): {
-  layer: LayerName;
-  index: number;
-} | null {
-  if (state.type === 'forward_animating' || state.type === 'backward_animating') {
+/** Neuron currently being animated, if any */
+export function getAnimatingNeuron(state: AnimationState): { layer: LayerName; index: number } | null {
+  if (checkAnimating(state)) {
     return { layer: state.layer, index: state.neuronIndex };
   }
   return null;
 }
 
-/** Get current animation stage (works for both forward and backward) */
-export function getStage(state: AnimationState): ForwardStage | BackwardStage | null {
-  if (state.type === 'forward_animating' || state.type === 'backward_animating') {
-    return state.stage;
-  }
-  return null;
+/** True when the animation is currently at the given neuron */
+export function isAnimatingAtNeuron(state: AnimationState, layer: LayerName, neuronIndex: number): boolean {
+  return checkAnimating(state) && state.layer === layer && state.neuronIndex === neuronIndex;
 }
 
-/** Get current neuron data for calculation overlay (works for both forward and backward) */
-export function getCurrentNeuronData(state: AnimationState): ForwardCalculation | BackwardCalculation | null {
-  if (state.type === 'forward_animating' || state.type === 'backward_animating') {
-    return state.neuronData;
-  }
-  return null;
-}
-
-// ============================================================================
-// Neuron Location Matching Helpers
-// ============================================================================
-
-/** Check if animation state matches a specific neuron location */
-export function isAnimatingAtNeuron(
-  state: AnimationState,
-  layer: LayerName,
-  neuronIndex: number
-): boolean {
-  if (state.type === 'forward_animating' || state.type === 'backward_animating') {
-    return state.layer === layer && state.neuronIndex === neuronIndex;
-  }
-  return false;
-}
-
-// Note: isAnimatingAtNeuron above handles both forward and backward cases
-
-// ============================================================================
-// Re-exports from core/networkConfig
-// (Centralized configuration for layers, stages, and navigation)
-// ============================================================================
-
+// Re-exports from core/networkConfig for convenience
 export {
   FORWARD_STAGES,
   BACKPROP_STAGES,

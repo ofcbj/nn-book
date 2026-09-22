@@ -1,18 +1,18 @@
 /**
- * Neural Network Hook - Simplified Architecture
+ * Neural Network Hook
  *
- * This hook is the main orchestrator that combines:
- * - useNetworkState: State management
- * - useAnimationEngine: Unified animation, training, and interaction logic
+ * Main orchestrator that combines:
+ * - useNetworkState: React state
+ * - useAnimationEngine: animation, training and interaction logic
  *
- * Previous 5-hook architecture has been consolidated to 2 hooks for better maintainability.
+ * and exposes a grouped, memoized API to the App component.
  */
 
 import { useRef, useMemo } from 'react';
 import { NeuralNetwork } from '../lib/core';
 import { Visualizer } from '../lib/visualizer';
 import type { BackpropSummaryData, WeightComparisonData } from '../lib/types';
-import { useNetworkState, NetworkStats, VisualizerState, InputState } from './useNetworkState';
+import { useNetworkState, NetworkStats, VisualizerState, InputState, LossModalData } from './useNetworkState';
 import { useAnimationEngine } from './useAnimationEngine';
 
 // ============================================================================
@@ -20,9 +20,10 @@ import { useAnimationEngine } from './useAnimationEngine';
 // ============================================================================
 
 export interface NetworkCore {
-  nn: NeuralNetwork;
-  visualizer: Visualizer | null;
+  /** Register the canvas visualizer once it is created */
   setVisualizer: (v: Visualizer) => void;
+  /** Redraw the canvas from the current network and animation state */
+  redraw: () => void;
 }
 
 export interface InputControls {
@@ -37,7 +38,7 @@ export interface InputControls {
 export interface ModalState {
   loss: {
     show: boolean;
-    data: { targetClass: number; predictions: number[]; loss: number } | null;
+    data: LossModalData | null;
     close: () => Promise<void>;
   };
   backprop: {
@@ -59,7 +60,7 @@ export interface TrainingActions {
   toggleTraining: () => void;
   reset: () => void;
   computeAndRefreshDisplay: () => void;
-  handleCanvasClick: (x?: number, y?: number) => void;
+  handleCanvasClick: (x: number, y: number) => void;
 }
 
 export interface UseNeuralNetworkReturn {
@@ -81,26 +82,17 @@ export interface UseNeuralNetworkReturn {
 }
 
 export function useNeuralNetwork(): UseNeuralNetworkReturn {
-  // =========================================================================
-  // Core Refs - Single Instance Pattern
-  // =========================================================================
+  // Single network / visualizer instance (the network is replaced on reset)
   const nnRef = useRef(new NeuralNetwork());
   const visualizerRef = useRef<Visualizer | null>(null);
 
-  // =========================================================================
-  // Hooks - Simplified from 5 to 2
-  // =========================================================================
   const state = useNetworkState();
   const engine = useAnimationEngine(nnRef, visualizerRef, state);
 
-  // =========================================================================
-  // Return combined interface - Memoized to prevent recreating objects
-  // =========================================================================
-  const network = useMemo(() => ({
-    nn: nnRef.current,
-    visualizer: visualizerRef.current,
+  const network = useMemo<NetworkCore>(() => ({
     setVisualizer: engine.setVisualizer,
-  }), [engine.setVisualizer]);
+    redraw: engine.refreshDisplayOnly,
+  }), [engine.setVisualizer, engine.refreshDisplayOnly]);
 
   const inputs = useMemo(() => ({
     ...state.inputs,
@@ -108,68 +100,60 @@ export function useNeuralNetwork(): UseNeuralNetworkReturn {
     animationSpeed: state.training.animationSpeed,
   }), [state.inputs, state.stats.learningRate, state.training.animationSpeed]);
 
-  const controls = useMemo(() => ({
+  const controls = useMemo<InputControls>(() => ({
     ...state.inputSetters,
     setLearningRate: engine.handleLearningRateChange,
     setAnimationSpeed: state.trainingSetters.setAnimationSpeed,
   }), [state.inputSetters, engine.handleLearningRateChange, state.trainingSetters.setAnimationSpeed]);
 
-  const stats = useMemo(() => ({
-    epoch: state.stats.epoch,
-    loss: state.stats.loss,
-    learningRate: state.stats.learningRate,
-    output: state.stats.output,
-    steps: state.stats.steps,
-  }), [state.stats.epoch, state.stats.loss, state.stats.learningRate, state.stats.output, state.stats.steps]);
-
   const training = useMemo(() => ({
     isTraining: state.training.isTraining,
     isAnimating: engine.isAnimating,
-    isPaused: engine.state.interruptReason !== 'none',
-  }), [state.training.isTraining, engine.isAnimating, engine.state.interruptReason]);
+    isPaused: engine.isPaused,
+  }), [state.training.isTraining, engine.isAnimating, engine.isPaused]);
 
-  const modals = useMemo(() => ({
+  const modals = useMemo<ModalState>(() => ({
     loss: {
-      ...state.modals.loss,
+      show: state.modals.loss.show,
+      data: state.modals.loss.data,
       close: engine.closeLossModal,
     },
     backprop: {
-      ...state.modals.backprop,
+      show: state.modals.backprop.show,
+      data: state.modals.backprop.data,
       close: engine.closeBackpropModal,
     },
     comparison: {
-      ...state.modals.comparison,
-      // Wrapper for open to make it no-argument (data already set by training)
+      show: state.modals.comparison.show,
+      data: state.modals.comparison.data,
+      // Data is stored by training; the "View" button just re-opens it
       open: () => {
         if (state.modals.comparison.data) {
           state.modals.comparison.open(state.modals.comparison.data);
         }
       },
+      close: state.modals.comparison.close,
     },
   }), [state.modals.loss, state.modals.backprop, state.modals.comparison, engine.closeLossModal, engine.closeBackpropModal]);
 
-  const visualizer = useMemo(() => ({
-    ...state.visualizer,
-  }), [state.visualizer]);
-
-  const actions = useMemo(() => ({
+  const actions = useMemo<TrainingActions>(() => ({
     trainOneStep            : engine.trainOneStepWithAnimation,
     trainOneEpoch           : engine.trainOneEpochWithoutAnimation,
     toggleTraining          : engine.toggleTraining,
     reset                   : engine.reset,
     computeAndRefreshDisplay: engine.computeAndRefreshDisplay,
     handleCanvasClick       : engine.handleCanvasClick,
-  }), [engine.trainOneStepWithAnimation, engine.trainOneEpochWithoutAnimation, 
+  }), [engine.trainOneStepWithAnimation, engine.trainOneEpochWithoutAnimation,
     engine.toggleTraining, engine.reset, engine.computeAndRefreshDisplay, engine.handleCanvasClick]);
 
   return {
     network,
     inputs,
     controls,
-    stats,
+    stats: state.stats,
     training,
     modals,
-    visualizer,
+    visualizer: state.visualizer,
     actions,
   };
 }

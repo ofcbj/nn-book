@@ -1,9 +1,8 @@
 /**
  * Animation Module
- * 
- * Contains animation state management and loop utilities:
+ *
  * - Animation state machine and reducer
- * - Animation loop runner
+ * - Animation loop runner and stage durations
  */
 
 export {
@@ -12,20 +11,19 @@ export {
   checkAnimating,
   checkPaused,
   checkMode,
+  getAnimatingNeuron,
+  isAnimatingAtNeuron,
   getNextForwardStage,
   getNextBackwardStage,
   getNextForwardNeuron,
   getNextBackwardNeuron,
   FORWARD_STAGES,
   BACKPROP_STAGES,
-  getHighlightedNeuron,
-  getStage,
-  getCurrentNeuronData,
-  isAnimatingAtNeuron,
 } from './animationState';
-export type { 
-  AnimationState, 
+export type {
+  AnimationState,
   AnimationAction,
+  AnimationMode,
   ForwardAnimatingState,
   BackwardAnimatingState,
   InterruptReason,
@@ -33,5 +31,7 @@ export type {
 
 export {
   runAnimationLoop,
+  FORWARD_STAGE_DURATIONS,
+  BACKWARD_STAGE_DURATIONS,
 } from './animationLoop';
-export type { AnimationLoopConfig } from './animationLoop';
+export type { AnimationLoopConfig, AnimationStage, NeuronData } from './animationLoop';

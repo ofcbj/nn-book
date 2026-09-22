@@ -25,7 +25,7 @@ export interface BackpropUpdateData {
 // Text Rendering Helpers
 // =============================================================================
 
-export interface LabelStyle {
+interface LabelStyle {
   bgColor: string;
   textColor: string;
   font: string;
@@ -113,7 +113,7 @@ function drawWeightsVector(
   ctx.fillText(vectorStr, x, y);
 }
 
-export function drawRoundedRect(
+function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,

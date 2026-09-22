@@ -1,17 +1,18 @@
 /**
  * Network State Hook
- * 
- * Manages all state variables for the neural network visualizer.
- * State is organized by topic for better clarity and maintainability.
+ *
+ * Manages all React state for the neural network visualizer,
+ * organized by topic (inputs, stats, training, visualizer, modals).
  */
 
 import { useState, useMemo, useCallback } from 'react';
 import type { ForwardSteps, BackpropSummaryData, WeightComparisonData } from '../lib/types';
 import type { ActivationData } from '../components/ActivationHeatmap';
+import { DEFAULT_LEARNING_RATE, OUTPUT_CLASSES } from '../lib/core';
 import { useModal, type UseModalReturn } from './useModalState';
 
 // =============================================================================
-// State Interfaces - Organized by Topic
+// State Interfaces
 // =============================================================================
 
 export interface InputState {
@@ -38,7 +39,6 @@ export interface VisualizerState {
   activations: ActivationData | null;
 }
 
-// Modal data types
 export type LossModalData = { targetClass: number; predictions: number[]; loss: number };
 
 export interface ModalState {
@@ -48,7 +48,7 @@ export interface ModalState {
 }
 
 // =============================================================================
-// Setters and Actions
+// Setters
 // =============================================================================
 
 export interface InputSetters {
@@ -75,19 +75,13 @@ export interface VisualizerSetters {
   setActivations: (v: ActivationData | null) => void;
 }
 
-export interface VisualizerActions {
-}
-
-// Modal setters and actions are now part of the modal state itself
-// Keeping these interfaces for backward compatibility during transition
 export interface ModalSetters {
+  /** Open the loss modal with data, or close it with null */
   setLossModalData: (v: LossModalData | null) => void;
+  /** Open the backprop summary modal with data, or close it with null */
   setBackpropSummaryData: (v: BackpropSummaryData | null) => void;
+  /** Store comparison data without opening the modal (the "View" button opens it) */
   setWeightComparisonData: (v: WeightComparisonData | null) => void;
-}
-
-export interface ModalActions {
-  // No longer needed - actions are part of modal state
 }
 
 // =============================================================================
@@ -100,19 +94,14 @@ export interface UseNetworkStateReturn {
   training          : TrainingConfig;
   visualizer        : VisualizerState;
   modals            : ModalState;
-  
-  // Setters
+
   inputSetters      : InputSetters;
   statsSetters      : StatsSetters;
   trainingSetters   : TrainingSetters;
   visualizerSetters : VisualizerSetters;
   modalSetters      : ModalSetters;
-  
-  // Actions
-  visualizerActions : VisualizerActions;
-  modalActions      : ModalActions;
-  
-  // Reset
+
+  /** Reset stats and modals, and randomize the inputs (learning rate is kept) */
   resetAllState     : () => void;
 }
 
@@ -130,7 +119,7 @@ export function useNetworkState(): UseNetworkStateReturn {
   // Network stats
   const [epoch, setEpoch] = useState(0);
   const [loss, setLoss] = useState(0);
-  const [learningRate, setLearningRate] = useState(0.25);
+  const [learningRate, setLearningRate] = useState(DEFAULT_LEARNING_RATE);
   const [output, setOutput] = useState<number[] | null>(null);
   const [steps, setSteps] = useState<ForwardSteps | null>(null);
 
@@ -141,109 +130,56 @@ export function useNetworkState(): UseNetworkStateReturn {
   // Visualizer state
   const [activations, setActivations] = useState<ActivationData | null>(null);
 
-  // Modal state - now using generic useModal hook
+  // Modal state
   const lossModal = useModal<LossModalData>();
   const backpropModal = useModal<BackpropSummaryData>();
   const comparisonModal = useModal<WeightComparisonData>();
 
-  // Memoize setters to prevent recreating objects every render
-  const inputSetters = useMemo(() => ({
-    setGrade,
-    setAttitude,
-    setResponse,
-    setTargetValue,
-  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+  // useState setters are stable, so these groups never need to be recreated
+  const inputSetters = useMemo<InputSetters>(() => ({ setGrade, setAttitude, setResponse, setTargetValue }), []);
+  const statsSetters = useMemo<StatsSetters>(() => ({ setEpoch, setLoss, setLearningRate, setOutput, setSteps }), []);
+  const trainingSetters = useMemo<TrainingSetters>(() => ({ setIsTraining, setAnimationSpeed }), []);
+  const visualizerSetters = useMemo<VisualizerSetters>(() => ({ setActivations }), []);
 
-  const statsSetters = useMemo(() => ({
-    setEpoch,
-    setLoss,
-    setLearningRate,
-    setOutput,
-    setSteps,
-  }), []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const trainingSetters = useMemo(() => ({
-    setIsTraining,
-    setAnimationSpeed,
-  }), []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const visualizerSetters = useMemo(() => ({
-    setActivations,
-  }), []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const modalSetters = useMemo(() => ({
-    setLossModalData: (data: LossModalData | null) => data ? lossModal.open(data) : lossModal.close(),
-    setBackpropSummaryData: (data: BackpropSummaryData | null) => data ? backpropModal.open(data) : backpropModal.close(),
-    setWeightComparisonData: (data: WeightComparisonData | null) => comparisonModal.setData(data),
+  const modalSetters = useMemo<ModalSetters>(() => ({
+    setLossModalData: (data) => data ? lossModal.open(data) : lossModal.close(),
+    setBackpropSummaryData: (data) => data ? backpropModal.open(data) : backpropModal.close(),
+    setWeightComparisonData: (data) => comparisonModal.setData(data),
   }), [lossModal.open, lossModal.close, backpropModal.open, backpropModal.close, comparisonModal.setData]);
 
-  // Reset all state to initial values
   const resetAllState = useCallback(() => {
-    // Stats
     setEpoch(0);
     setLoss(0);
     setOutput(null);
-    
-    // Modals
+
     lossModal.close();
     backpropModal.close();
     comparisonModal.close();
-    
-    // Inputs - randomize
+    comparisonModal.setData(null);
+
     setGrade(Math.random());
     setAttitude(Math.random());
     setResponse(Math.random());
-    setTargetValue(Math.floor(Math.random() * 3));
-  }, [lossModal.close, backpropModal.close, comparisonModal.close]);
+    setTargetValue(Math.floor(Math.random() * OUTPUT_CLASSES));
+  }, [lossModal.close, backpropModal.close, comparisonModal.close, comparisonModal.setData]);
+
+  const inputs = useMemo<InputState>(() => ({ grade, attitude, response, targetValue }), [grade, attitude, response, targetValue]);
+  const stats = useMemo<NetworkStats>(() => ({ epoch, loss, learningRate, output, steps }), [epoch, loss, learningRate, output, steps]);
+  const training = useMemo<TrainingConfig>(() => ({ isTraining, animationSpeed }), [isTraining, animationSpeed]);
+  const visualizer = useMemo<VisualizerState>(() => ({ activations }), [activations]);
+  const modals = useMemo<ModalState>(() => ({ loss: lossModal, backprop: backpropModal, comparison: comparisonModal }), [lossModal, backpropModal, comparisonModal]);
 
   return {
-    // Grouped state
-    inputs: {
-      grade,
-      attitude,
-      response,
-      targetValue,
-    },
-
-    stats: {
-      epoch,
-      loss,
-      learningRate,
-      output,
-      steps,
-    },
-
-    training: {
-      isTraining,
-      animationSpeed,
-    },
-
-    visualizer: {
-      activations,
-    },
-
-    modals: {
-      loss: lossModal,
-      backprop: backpropModal,
-      comparison: comparisonModal,
-    },
-
-    // Setters - now memoized
+    inputs,
+    stats,
+    training,
+    visualizer,
+    modals,
     inputSetters,
     statsSetters,
     trainingSetters,
     visualizerSetters,
     modalSetters,
-
-    // Actions
-    visualizerActions: {
-    },
-
-    modalActions: {
-      // No longer needed - use modals directly
-    },
-    
-    // Reset
     resetAllState,
   };
 }

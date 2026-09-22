@@ -1,18 +1,18 @@
 /**
  * Overlay Renderer
- * 
+ *
  * Common popup box rendering logic for both Forward and Backward overlays.
  * Separates rendering from content generation for better maintainability.
  */
 
-import type { NodePosition } from '../types';
+import type { NodePosition, Viewport } from '../types';
 import type { OverlayContent } from './overlayContentGenerator';
 
 // ============================================================================
 // Box Position Calculation
 // ============================================================================
 
-export interface BoxPosition {
+interface BoxPosition {
   x: number;
   y: number;
 }
@@ -20,11 +20,11 @@ export interface BoxPosition {
 /**
  * Calculate optimal box position avoiding overlap with neuron and canvas bounds.
  */
-export function calculateBoxPosition(
+function calculateBoxPosition(
   nodeInfo: NodePosition,
   boxWidth: number,
   boxHeight: number,
-  canvas: HTMLCanvasElement
+  viewport: Viewport
 ): BoxPosition {
   const margin = 10;
   const offset = 15;
@@ -33,22 +33,16 @@ export function calculateBoxPosition(
   let boxX = nodeInfo.centerX - boxWidth / 2;
   let boxY = nodeInfo.y - boxHeight - offset;
 
-  // Check if popup overlaps with neuron box
   const overlapsNeuron = (testX: number, testY: number): boolean => {
-    const popupLeft = testX;
     const popupRight = testX + boxWidth;
-    const popupTop = testY;
     const popupBottom = testY + boxHeight;
-
-    const neuronLeft = nodeInfo.x;
     const neuronRight = nodeInfo.x + nodeInfo.width;
-    const neuronTop = nodeInfo.y;
     const neuronBottom = nodeInfo.y + nodeInfo.height;
 
-    return !(popupRight < neuronLeft || 
-             popupLeft > neuronRight || 
-             popupBottom < neuronTop || 
-             popupTop > neuronBottom);
+    return !(popupRight < nodeInfo.x ||
+             testX > neuronRight ||
+             popupBottom < nodeInfo.y ||
+             testY > neuronBottom);
   };
 
   // If default position overlaps neuron or is out of bounds above, try below
@@ -57,21 +51,21 @@ export function calculateBoxPosition(
   }
 
   // If below also overlaps or out of bounds, try to the right
-  if ((boxY + boxHeight > canvas.height - margin) || overlapsNeuron(boxX, boxY)) {
+  if ((boxY + boxHeight > viewport.height - margin) || overlapsNeuron(boxX, boxY)) {
     boxY = nodeInfo.centerY - boxHeight / 2;
     boxX = nodeInfo.x + nodeInfo.width + offset;
   }
 
   // If right also overlaps or out of bounds, try to the left
-  if ((boxX + boxWidth > canvas.width - margin) || overlapsNeuron(boxX, boxY)) {
+  if ((boxX + boxWidth > viewport.width - margin) || overlapsNeuron(boxX, boxY)) {
     boxX = nodeInfo.x - boxWidth - offset;
   }
 
   // Final boundary adjustments (ensure within canvas)
   if (boxX < margin) boxX = margin;
   if (boxY < margin) boxY = margin;
-  if (boxX + boxWidth > canvas.width - margin) boxX = canvas.width - margin - boxWidth;
-  if (boxY + boxHeight > canvas.height - margin) boxY = canvas.height - margin - boxHeight;
+  if (boxX + boxWidth > viewport.width - margin) boxX = viewport.width - margin - boxWidth;
+  if (boxY + boxHeight > viewport.height - margin) boxY = viewport.height - margin - boxHeight;
 
   return { x: boxX, y: boxY };
 }
@@ -103,7 +97,7 @@ const DEFAULT_OPTIONS: Required<OverlayBoxOptions> = {
 /**
  * Draw an overlay box with title and content lines.
  */
-export function drawOverlayBox(
+function drawOverlayBox(
   ctx: CanvasRenderingContext2D,
   boxX: number,
   boxY: number,
@@ -113,7 +107,7 @@ export function drawOverlayBox(
   options: OverlayBoxOptions = {}
 ): void {
   const opts = { ...DEFAULT_OPTIONS, ...options };
-  
+
   // Background
   ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
   ctx.beginPath();
@@ -134,22 +128,18 @@ export function drawOverlayBox(
 
   // Content lines
   ctx.font = `bold ${opts.contentFontSize}px monospace`;
-  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e2e8f0';
   let yOffset = boxY + 50;
-
-  content.lines.forEach((line) => {
-    // All lines use consistent white color and bold monospace font
-    ctx.fillStyle = '#e2e8f0';
-    ctx.font = `bold ${opts.contentFontSize}px monospace`;
+  for (const line of content.lines) {
     ctx.fillText(line, textCenterX, yOffset);
     yOffset += opts.lineHeight;
-  });
+  }
 }
 
 /**
  * Calculate box dimensions based on content.
  */
-export function calculateBoxDimensions(
+function calculateBoxDimensions(
   content: OverlayContent,
   options: OverlayBoxOptions = {}
 ): { width: number; height: number } {
@@ -165,12 +155,12 @@ export function calculateBoxDimensions(
  */
 export function renderOverlay(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  viewport: Viewport,
   nodeInfo: NodePosition,
   content: OverlayContent,
   options: OverlayBoxOptions = {}
 ): void {
   const { width: boxWidth, height: boxHeight } = calculateBoxDimensions(content, options);
-  const { x: boxX, y: boxY } = calculateBoxPosition(nodeInfo, boxWidth, boxHeight, canvas);
+  const { x: boxX, y: boxY } = calculateBoxPosition(nodeInfo, boxWidth, boxHeight, viewport);
   drawOverlayBox(ctx, boxX, boxY, boxWidth, boxHeight, content, options);
 }

@@ -5,7 +5,7 @@
  * Eliminates pattern duplication across multiple modals.
  *
  * This is a reusable utility hook for managing modal state.
- * For specific modal business logic, see useModalActions.
+ * Modal-specific behaviour (what happens on close) lives in useAnimationEngine.
  */
 
 import { useState, useCallback } from 'react';

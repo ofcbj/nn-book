@@ -5,6 +5,8 @@
  * Change these values to adjust the visual appearance.
  */
 
+import type { LayerName } from '../core';
+
 // =============================================================================
 // Canvas Layout
 // =============================================================================
@@ -16,14 +18,6 @@ export const CANVAS_BACKGROUND = '#0a0a0a';
 export const CANVAS_PADDING = {
   left: 60,
   right: 80,
-} as const;
-
-/** Layer X position ratios (relative to usable width) */
-export const LAYER_X_RATIOS = {
-  input: 0,      // absolute offset from left
-  layer1: 0.32,
-  layer2: 0.65,
-  output: 1,     // absolute offset from right
 } as const;
 
 // =============================================================================
@@ -68,7 +62,7 @@ export const VERTICAL_SPACING = {
 } as const;
 
 /** Layer name to node array index mapping */
-export const LAYER_NODE_INDEX: Record<string, number> = {
+export const LAYER_NODE_INDEX: Record<LayerName, number> = {
   layer1: 1,
   layer2: 2,
   output: 3,
@@ -114,37 +108,6 @@ export const LAYER_COLORS = {
 } as const;
 
 // =============================================================================
-// Text Styling
-// =============================================================================
-
-export const TEXT_STYLES = {
-  label: {
-    font: 'bold 11px Arial',
-    color: 'white',
-  },
-  value: {
-    font: '10px monospace',
-    color: '#e5e5e5',
-  },
-  weight: {
-    font: '9px monospace',
-    positiveColor: '#4ade80',
-    negativeColor: '#f87171',
-  },
-} as const;
-
-// =============================================================================
-// Connection Lines
-// =============================================================================
-
-export const CONNECTION_STYLES = {
-  defaultWidth: 1,
-  activeWidth: 2.5,
-  defaultColor: 'rgba(100, 100, 100, 0.3)',
-  activeColor: 'rgba(74, 222, 128, 0.8)',
-} as const;
-
-// =============================================================================
 // Activation Color Mapping
 // =============================================================================
 
@@ -181,11 +144,6 @@ export function activationToColor(value: number): string {
     : interpolateColor(ACTIVATION_COLORS.mid, ACTIVATION_COLORS.high, (clamped - 0.5) / 0.5);
 
   return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
-}
-
-/** Gets activation color with alpha transparency */
-export function activationToColorWithAlpha(value: number, alpha: number = 0.8): string {
-  return activationToColor(value).replace('rgb', 'rgba').replace(')', `, ${alpha})`);
 }
 
 /** Returns color stops for gradient legend */

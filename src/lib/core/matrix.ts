@@ -9,7 +9,7 @@ export class Matrix {
   constructor(rows: number, cols: number) {
     this.rows = rows;
     this.cols = cols;
-    this.data = Array(rows).fill(null).map(() => Array(cols).fill(0));
+    this.data = Array.from({ length: rows }, () => Array(cols).fill(0));
   }
 
   static fromArray(arr: number[]): Matrix {
@@ -18,6 +18,25 @@ export class Matrix {
       m.data[i][0] = arr[i];
     }
     return m;
+  }
+
+  /** Build a matrix from a 2D array (the data is copied). */
+  static fromData(data: number[][]): Matrix {
+    const rows = data.length;
+    const cols = rows > 0 ? data[0].length : 0;
+    const m = new Matrix(rows, cols);
+    m.data = Matrix.cloneRows(data);
+    return m;
+  }
+
+  /** Deep-copy a 2D number array. */
+  static cloneRows(data: number[][]): number[][] {
+    return data.map(row => [...row]);
+  }
+
+  /** Deep copy of this matrix. */
+  clone(): Matrix {
+    return Matrix.fromData(this.data);
   }
 
   toArray(): number[] {
@@ -37,7 +56,7 @@ export class Matrix {
       }
     }
   }
-  
+
   randomizeBias(): void {
     // Bias can be slightly negative to adjust threshold
     for (let i = 0; i < this.rows; i++) {
@@ -47,10 +66,10 @@ export class Matrix {
     }
   }
 
+  /** Matrix product A × B */
   static multiply(a: Matrix, b: Matrix): Matrix {
     if (a.cols !== b.rows) {
-      console.error('Columns of A must match rows of B.');
-      return new Matrix(0, 0);
+      throw new Error(`Matrix.multiply: shape mismatch (${a.rows}×${a.cols}) × (${b.rows}×${b.cols})`);
     }
     const result = new Matrix(a.rows, b.cols);
     for (let i = 0; i < result.rows; i++) {
@@ -76,6 +95,7 @@ export class Matrix {
   }
 
   static subtract(a: Matrix, b: Matrix): Matrix {
+    Matrix.assertSameShape(a, b, 'subtract');
     const result = new Matrix(a.rows, a.cols);
     for (let i = 0; i < a.rows; i++) {
       for (let j = 0; j < a.cols; j++) {
@@ -85,16 +105,16 @@ export class Matrix {
     return result;
   }
 
+  /** In-place element-wise (Hadamard) product, or scalar product. */
   multiply(n: Matrix | number): void {
     if (n instanceof Matrix) {
-      // Element-wise multiplication
+      Matrix.assertSameShape(this, n, 'multiply');
       for (let i = 0; i < this.rows; i++) {
         for (let j = 0; j < this.cols; j++) {
           this.data[i][j] *= n.data[i][j];
         }
       }
     } else {
-      // Scalar multiplication
       for (let i = 0; i < this.rows; i++) {
         for (let j = 0; j < this.cols; j++) {
           this.data[i][j] *= n;
@@ -103,8 +123,10 @@ export class Matrix {
     }
   }
 
+  /** In-place element-wise addition, or scalar addition. */
   add(n: Matrix | number): void {
     if (n instanceof Matrix) {
+      Matrix.assertSameShape(this, n, 'add');
       for (let i = 0; i < this.rows; i++) {
         for (let j = 0; j < this.cols; j++) {
           this.data[i][j] += n.data[i][j];
@@ -129,11 +151,9 @@ export class Matrix {
     return result;
   }
 
-  map(func: (val: number) => number): void {
-    for (let i = 0; i < this.rows; i++) {
-      for (let j = 0; j < this.cols; j++) {
-        this.data[i][j] = func(this.data[i][j]);
-      }
+  private static assertSameShape(a: Matrix, b: Matrix, op: string): void {
+    if (a.rows !== b.rows || a.cols !== b.cols) {
+      throw new Error(`Matrix.${op}: shape mismatch (${a.rows}×${a.cols}) vs (${b.rows}×${b.cols})`);
     }
   }
 }

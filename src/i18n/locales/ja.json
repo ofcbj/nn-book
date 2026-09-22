@@ -12,16 +12,13 @@
     "trainingSection": "可視化コントロール",
     "learningRate": "学習率",
     "animationSpeed": "アニメーション速度",
-    "manualMode": "手動モード",
-    "actionSection": "学習操作",
     "oneStep": "1回学習",
     "start": "開始",
     "resume": "再開",
     "autoTrain": "自動学習",
     "pause": "一時停止",
     "stop": "停止",
-    "reset": "リセット",
-    "nextStep": "次のステップ"
+    "reset": "リセット"
   },
   "common": {
     "count": "個",
@@ -49,16 +46,12 @@
     "title": "ネットワーク構造"
   },
   "visualizer": {
-    "canvasHeatmap": "キャンバスヒートマップ",
-    "gridHeatmap": "グリッドヒートマップ",
     "activationTitle": "レイヤー別活性化",
     "colorLegend": "活性化強度"
   },
   "calculation": {
     "title": "計算過程",
     "noData": "学習を開始すると計算過程が表示されます",
-    "forwardPass": "順伝播 (Forward Pass)",
-    "backprop": "逆伝播 (Backpropagation)",
     "connections": "接続",
     "connectionsCalc": "各接続の入力 × 重み",
     "dotProduct": "内積",
@@ -78,7 +71,6 @@
     "targetClass": "Target Class",
     "oneHot": "One-Hot",
     "lossValue": "Cross-Entropy Loss",
-    "lossFormula": "L = -Σ(target × log(predicted))",
     "lossCalculation": "Loss計算過程",
     "step1": "1. Cross-Entropy式の展開:",
     "step2": "2. 正解クラスのみ計算:",
@@ -176,15 +168,10 @@
     "outputError": "出力レイヤーのエラー計算:",
     "hiddenError": "隠れレイヤーのエラー逆伝播:",
     "nextLayerErrors": "次のレイヤーの各ニューロンが送ったエラー:",
-    "neuronError": "(そのニューロンのエラー)",
-    "connectionWeight": "(接続重み)",
-    "contribution": "(寄与度)",
     "sumAll": "すべて合わせると:",
     "nextLayerPropagation": "次のレイヤーのエラーが重みを通じて",
     "thisNeuron": "このニューロンに伝わります:",
     "delta": "2️⃣ 調整方向 (Delta δ)",
-    "deltaCalc": "δ = エラー × 活性化関数の勾配",
-    "derivative": "導関数:",
     "gradient": "3️⃣ 勾配計算",
     "weightDelta": "4️⃣ 重み変化量計算",
     "weightDeltaCalc": "各重みをどれだけ調整するか計算:",
@@ -192,23 +179,17 @@
     "connectedWeight": "に接続された重み",
     "allWeightDeltas": "📝 すべての重み変化量",
     "allWeightChanges": "各重みの変化式:",
-    "currentWeight": "現在の重み:",
     "update": "5️⃣ 更新 (Update)",
     "allWeightUpdate": "すべての重み更新:",
-    "biasUpdate": "バイアス更新:",
-    "oldValue": "古い:",
-    "newValue": "→ 新しい:",
     "neuronResponsibility": "この値がこのニューロンの責任の大きさです",
     "needIncreaseWeight": "✓ 目標より低く予測 → 重みの増加が必要",
-    "needDecreaseWeight": "✓ 目標より高く予測 → 重みの減少が必要"
+    "needDecreaseWeight": "✓ 目標より高く予測 → 重みの減少が必要",
+    "softmaxDerivativeNote": "導関数はすでにエラーに含まれています",
+    "softmaxDerivativeResult": "そのため f' は 1 として扱う"
   },
   "backpropSummary": {
     "title": "🎉 逆伝播完了",
     "overview": "すべての重みとバイアスが更新されました",
-    "formulas": "使用された式",
-    "errorCalc": "1. エラー計算",
-    "gradientCalc": "2. 勾配計算",
-    "weightUpdate": "3. 重み更新",
     "weightChanges": "重み変化",
     "biasChanges": "バイアス変化",
     "layer1Weights": "1次面接官重み",
@@ -217,7 +198,6 @@
     "totalUpdated": "総更新数",
     "learningRate": "学習率",
     "close": "閉じる",
-    "startForward": "▶ Forward Pass 開始",
     "detailedProcess": "詳細過程",
     "step1Title": "1段階: エラー計算",
     "step1Desc": "各ニューロンが受けるエラーを計算します。",
@@ -228,7 +208,8 @@
     "step4Title": "4段階: 重み更新",
     "step4Desc": "計算された変化量を実際の重みに適用します。",
     "outputLayer": "出力レイヤー",
-    "hiddenLayer": "隠れレイヤー"
+    "hiddenLayer": "隠れレイヤー",
+    "averageChange": "平均変化量:"
   },
   "comparison": {
     "title": "学習前後の重み比較",
@@ -244,11 +225,9 @@
     "inputsPerNeuron": "ニューロンあたりの入力",
     "totalParameters": "総パラメータ数",
     "viewComparison": "重みの変化を表示",
-    "noData": "学習データがありません。まず「1回学習」を実行してください。",
     "close": "閉じる"
   },
   "footer": {
-    "architecture": "構造: <1>3入力</1> → <3>5ニューロン(1次)</3> → <5>3ニューロン(2次)</5> → <7>3出力</7>",
     "description": "この可視化は、面接者の3つの属性(成績、態度、応答レベル)が1次面接官(5名)を経て2次面接官(3名)に伝わり、最終決定につながる過程を示しています。"
   }
 }

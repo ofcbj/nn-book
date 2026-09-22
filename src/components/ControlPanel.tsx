@@ -22,6 +22,54 @@ interface ControlPanelProps {
   isPaused        : boolean;
 }
 
+interface LabeledSliderProps {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  marks?: boolean;
+  /** Text shown next to the slider (defaults to the value with 2 decimals) */
+  display?: string;
+  /** Color of the display text */
+  color?: string;
+}
+
+function LabeledSlider({ label, value, onChange, min, max, step, marks, display, color = 'primary.light' }: LabeledSliderProps) {
+  return (
+    <Box sx={{ mb: 2.5 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        {label}
+      </Typography>
+      <Stack direction="row" alignItems="center" spacing={1.5}>
+        <Slider
+          value={value}
+          onChange={(_, v) => onChange(v as number)}
+          min={min}
+          max={max}
+          step={step}
+          marks={marks}
+          sx={{ flex: 1 }}
+        />
+        <Typography
+          sx={{
+            minWidth: 50,
+            fontFamily: 'monospace',
+            fontWeight: 600,
+            fontSize: '0.85rem',
+            color,
+          }}
+        >
+          {display ?? value.toFixed(2)}
+        </Typography>
+      </Stack>
+    </Box>
+  );
+}
+
+const TARGET_COLORS = ['error.main', 'warning.main', 'secondary.main'];
+
 export default function ControlPanel({
   grade,
   attitude,
@@ -41,6 +89,9 @@ export default function ControlPanel({
   const { t } = useTranslation();
   const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
 
+  const stepLabel = isPaused ? t('controls.resume') : (isAnimating ? t('controls.pause') : t('controls.start'));
+  const stepColor = isPaused ? 'success' : (isAnimating ? 'warning' : 'primary');
+
   return (
     <Paper sx={{ p: 2, height: '100%' }}>
       {/* Input Controls */}
@@ -48,119 +99,27 @@ export default function ControlPanel({
         <Typography variant="h3" sx={{ mb: 1.5, pb: 0.5, borderBottom: '2px solid #334155', fontSize: '0.95rem' }}>
           📊 {t('controls.inputSection')}
         </Typography>
-        
-        <Box sx={{ mb: 2.5 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {t('controls.grade')}
-          </Typography>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Slider
-              value={grade}
-              onChange={(_, v) => onGradeChange(v as number)}
-              min={0}
-              max={1}
-              step={0.01}
-              sx={{ flex: 1 }}
-            />
-            <Typography 
-              sx={{ 
-                minWidth: 40, 
-                fontFamily: 'monospace', 
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                color: 'primary.light'
-              }}
-            >
-              {grade.toFixed(2)}
-            </Typography>
-          </Stack>
-        </Box>
 
-        <Box sx={{ mb: 2.5 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {t('controls.attitude')}
-          </Typography>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <Slider
-              value={attitude}
-              onChange={(_, v) => onAttitudeChange(v as number)}
-              min={0}
-              max={1}
-              step={0.01}
-              sx={{ flex: 1 }}
-            />
-            <Typography 
-              sx={{ 
-                minWidth: 50, 
-                fontFamily: 'monospace', 
-                fontWeight: 600,
-                color: 'primary.light'
-              }}
-            >
-              {attitude.toFixed(2)}
-            </Typography>
-          </Stack>
-        </Box>
+        <LabeledSlider label={t('controls.grade')}    value={grade}    onChange={onGradeChange}    min={0} max={1} step={0.01} />
+        <LabeledSlider label={t('controls.attitude')} value={attitude} onChange={onAttitudeChange} min={0} max={1} step={0.01} />
+        <LabeledSlider label={t('controls.response')} value={response} onChange={onResponseChange} min={0} max={1} step={0.01} />
+        <LabeledSlider
+          label={t('controls.target')}
+          value={targetValue}
+          onChange={onTargetChange}
+          min={0}
+          max={classNames.length - 1}
+          step={1}
+          marks
+          display={classNames[targetValue]}
+          color={TARGET_COLORS[targetValue]}
+        />
 
-        <Box sx={{ mb: 2.5 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {t('controls.response')}
-          </Typography>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <Slider
-              value={response}
-              onChange={(_, v) => onResponseChange(v as number)}
-              min={0}
-              max={1}
-              step={0.01}
-              sx={{ flex: 1 }}
-            />
-            <Typography 
-              sx={{ 
-                minWidth: 50, 
-                fontFamily: 'monospace', 
-                fontWeight: 600,
-                color: 'primary.light'
-              }}
-            >
-              {response.toFixed(2)}
-            </Typography>
-          </Stack>
-        </Box>
-
-        <Box sx={{ mb: 2.5 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {t('controls.target')}
-          </Typography>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <Slider
-              value={targetValue}
-              onChange={(_, v) => onTargetChange(v as number)}
-              min={0}
-              max={2}
-              step={1}
-              marks
-              sx={{ flex: 1 }}
-            />
-            <Typography 
-              sx={{ 
-                minWidth: 50, 
-                fontFamily: 'monospace', 
-                fontWeight: 600,
-                color: targetValue === 0 ? 'error.main' : targetValue === 1 ? 'warning.main' : 'secondary.main'
-              }}
-            >
-              {classNames[targetValue]}
-            </Typography>
-          </Stack>
-        </Box>
-        
-        {/* Reset Button */}
         <Box sx={{ mb: 3 }}>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             fullWidth
-            sx={{ 
+            sx={{
               bgcolor: '#64748b',
               '&:hover': { bgcolor: 'error.main' }
             }}
@@ -177,44 +136,26 @@ export default function ControlPanel({
           ⚙️ {t('controls.trainingSection')}
         </Typography>
 
-        <Box sx={{ mb: 2.5 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {t('controls.animationSpeed')}
-          </Typography>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <Slider
-              value={animationSpeed}
-              onChange={(_, v) => onAnimationSpeedChange(v as number)}
-              min={0.1}
-              max={2}
-              step={0.1}
-              sx={{ flex: 1 }}
-            />
-            <Typography
-              sx={{
-                minWidth: 50,
-                fontFamily: 'monospace',
-                fontWeight: 600,
-                color: 'primary.light'
-              }}
-            >
-              {`${animationSpeed.toFixed(1)}x`}
-            </Typography>
-          </Stack>
-        </Box>
+        <LabeledSlider
+          label={t('controls.animationSpeed')}
+          value={animationSpeed}
+          onChange={onAnimationSpeedChange}
+          min={0.1}
+          max={2}
+          step={0.1}
+          display={`${animationSpeed.toFixed(1)}x`}
+        />
 
-        <Button 
+        <Button
           variant="contained"
           fullWidth
           onClick={onStep}
-          sx={{ 
-            bgcolor: isPaused ? 'success.main' : (isAnimating ? 'warning.main' : 'primary.main'),
-            '&:hover': {
-              bgcolor: isPaused ? 'success.dark' : (isAnimating ? 'warning.dark' : 'primary.dark'),
-            }
+          sx={{
+            bgcolor: `${stepColor}.main`,
+            '&:hover': { bgcolor: `${stepColor}.dark` },
           }}
         >
-          {isPaused ? t('controls.resume') : (isAnimating ? t('controls.pause') : t('controls.start'))}
+          {stepLabel}
         </Button>
       </Box>
     </Paper>

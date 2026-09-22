@@ -15,7 +15,6 @@ interface ConnectionTheme {
 interface LayerConnectionConfig {
   fromLayerIdx: number;
   toLayerIdx: number;
-  fromLayer: string;
   toLayer: string;
   fromCount: number;
   toCount: number;
@@ -111,7 +110,7 @@ export function drawConnections(
   const isBackpropAnimating = animationState.type === 'backward_animating';
   const backpropLayer = isBackpropAnimating ? animationState.layer : null;
 
-  connections.forEach(({ from, to, fromCount, toCount, theme }, idx) => {
+  connections.forEach(({ to, fromCount, toCount, theme }, idx) => {
     // Skip drawing forward connections TO the backprop layer
     // (e.g., if backprop is on layer2, don't draw layer1 → layer2 connections)
     if (isBackpropAnimating && to === backpropLayer) {
@@ -121,7 +120,6 @@ export function drawConnections(
     drawLayerConnections(ctx, nodes, animationState, {
       fromLayerIdx: idx,
       toLayerIdx: idx + 1,
-      fromLayer: from,
       toLayer: to,
       fromCount,
       toCount,

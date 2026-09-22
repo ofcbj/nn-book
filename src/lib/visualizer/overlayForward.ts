@@ -1,5 +1,5 @@
 // Forward propagation overlay renderer
-import type { NodePosition } from '../types';
+import type { NodePosition, Viewport } from '../types';
 import type { AnimationState } from '../animation';
 import { generateForwardContent } from './overlayContentGenerator';
 import { renderOverlay } from './overlayRenderer';
@@ -11,7 +11,7 @@ import { LAYER_NODE_INDEX } from './uiConfig';
  */
 export function drawForwardOverlay(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  viewport: Viewport,
   nodes: NodePosition[][],
   animationState: AnimationState
 ): void {
@@ -19,18 +19,13 @@ export function drawForwardOverlay(
 
   const { layer, neuronIndex, stage, neuronData } = animationState;
 
-  // Find the animating neuron's position
-  const layerIdx = LAYER_NODE_INDEX[layer];
-  if (layerIdx === undefined || !nodes[layerIdx]) return;
-
-  const nodeInfo = nodes[layerIdx][neuronIndex];
+  const nodeInfo = nodes[LAYER_NODE_INDEX[layer]]?.[neuronIndex];
   if (!nodeInfo) return;
 
-  // Generate and render overlay content
-  const content = generateForwardContent(stage, neuronData);
+  const content = generateForwardContent(stage, neuronData, layer);
   if (!content.title) return;
 
-  renderOverlay(ctx, canvas, nodeInfo, content, {
+  renderOverlay(ctx, viewport, nodeInfo, content, {
     boxWidth: 380,
     lineHeight: 20,
     padding: 50,

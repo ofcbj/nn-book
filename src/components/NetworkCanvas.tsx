@@ -2,105 +2,55 @@ import { useRef, useEffect, useCallback } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { Visualizer } from '../lib/visualizer';
-import type { NeuralNetwork } from '../lib/core';
-import { initialAnimationState } from '../lib/animation';
 
 interface NetworkCanvasProps {
-  nn: NeuralNetwork;
+  /** Called once with the created visualizer */
   onVisualizerReady: (visualizer: Visualizer) => void;
-  onCanvasClick?: (x?: number, y?: number) => void;
+  /** Redraw the canvas from the current network / animation state */
+  onRedraw: () => void;
+  /** Click position in logical (CSS pixel) canvas coordinates */
+  onCanvasClick?: (x: number, y: number) => void;
 }
 
-export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: NetworkCanvasProps) {
+export default function NetworkCanvas({ onVisualizerReady, onRedraw, onCanvasClick }: NetworkCanvasProps) {
   const { t, i18n } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const visualizerRef = useRef<Visualizer | null>(null);
 
-  const resizeCanvas = useCallback(() => {
-    if (canvasRef.current && containerRef.current) {
-      const container = containerRef.current;
-      const canvas = canvasRef.current;
-      
-      // Set canvas size to match container
-      canvas.width = container.clientWidth;
-      canvas.height = container.clientHeight;
-      
-      if (visualizerRef.current) {
-        visualizerRef.current.update(nn, initialAnimationState);
-      }
-    }
-  }, [nn]);
-
+  // Create the visualizer once
   useEffect(() => {
-    if (canvasRef.current && !visualizerRef.current) {
-      // Initial resize before creating visualizer
-      if (containerRef.current) {
-        canvasRef.current.width = containerRef.current.clientWidth;
-        canvasRef.current.height = containerRef.current.clientHeight;
-      }
-      
-      visualizerRef.current = new Visualizer(canvasRef.current);
-      onVisualizerReady(visualizerRef.current);
-      
-      // Trigger initial draw after a short delay to ensure layout is complete
-      setTimeout(() => {
-        resizeCanvas();
-      }, 100);
-    }
-  }, [onVisualizerReady, resizeCanvas]);
+    if (!canvasRef.current || visualizerRef.current) return;
+    visualizerRef.current = new Visualizer(canvasRef.current);
+    onVisualizerReady(visualizerRef.current);
+    onRedraw();
+  }, [onVisualizerReady, onRedraw]);
 
+  // Keep the canvas bitmap in sync with its container size (also fires once on mount)
   useEffect(() => {
-    if (visualizerRef.current) {
-      visualizerRef.current.update(nn, initialAnimationState);
-    }
-  }, [nn]);
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      visualizerRef.current?.resizeCanvas();
+      onRedraw();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [onRedraw]);
 
-  // Listen for language changes and update canvas
+  // Canvas labels are translated, so redraw on language change
   useEffect(() => {
-    const handleLanguageChange = () => {
-      if (visualizerRef.current) {
-        visualizerRef.current.update(nn, initialAnimationState);
-      }
-    };
-
-    i18n.on('languageChanged', handleLanguageChange);
-    
+    i18n.on('languageChanged', onRedraw);
     return () => {
-      i18n.off('languageChanged', handleLanguageChange);
+      i18n.off('languageChanged', onRedraw);
     };
-  }, [i18n, nn]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      resizeCanvas();
-    };
-
-    window.addEventListener('resize', handleResize);
-    
-    // Also resize when component mounts
-    resizeCanvas();
-    
-    return () => window.removeEventListener('resize', handleResize);
-  }, [resizeCanvas]);
+  }, [i18n, onRedraw]);
 
   const handleClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onCanvasClick || !canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    
-    // Get click position relative to canvas
-    const x = event.clientX-rect.left;
-    const y = event.clientY-rect.top;
-    
-    // Scale for high DPI
-    const scaleX = canvas.width/rect.width;
-    const scaleY = canvas.height/rect.height;
-    const canvasX = x*scaleX;
-    const canvasY = y*scaleY;
-    
-    onCanvasClick(canvasX, canvasY);
+    // The visualizer draws in CSS pixels, so client-relative coordinates map directly
+    const rect = canvasRef.current.getBoundingClientRect();
+    onCanvasClick(event.clientX - rect.left, event.clientY - rect.top);
   }, [onCanvasClick]);
 
   return (
@@ -122,7 +72,7 @@ export default function NetworkCanvas({ nn, onVisualizerReady, onCanvasClick }: 
         <canvas
           ref={canvasRef}
           onClick={handleClick}
-          style={{ display: 'block', cursor: onCanvasClick ? 'pointer' : 'default' }}
+          style={{ display: 'block', width: '100%', height: '100%', cursor: onCanvasClick ? 'pointer' : 'default' }}
         />
       </Box>
     </Paper>

@@ -7,55 +7,23 @@ import type { LayerName } from './core/networkConfig';
 export type LayerType = 'input' | LayerName;
 
 /**
- * Matrix class representation
- */
-export interface MatrixData {
-  rows: number;
-  cols: number;
-  data: number[][];
-}
-
-/**
- * Neural network architecture configuration
- */
-export interface NetworkArchitecture {
-  inputSize: number;    // 3 (성적, 태도, 응답수준)
-  hidden1Size: number;  // 5 neurons (1차 면접관)
-  hidden2Size: number;  // 3 neurons (2차 면접관)
-  outputSize: number;   // 3 classes (불합격, 보류, 합격)
-}
-
-/**
  * Single neuron calculation data for visualizer
  */
 export interface ForwardCalculation {
   neuronIndex: number;
-  className?: string;      // For output neurons
   weights: number[];
   bias: number;
   inputs: number[];
-  dotProduct: number;
-  withBias: number;
-  activated: number;
-  calculation?: string;
+  dotProduct: number;   // Σ wᵢxᵢ
+  withBias: number;     // Σ wᵢxᵢ + b  (pre-activation / logit)
+  activated: number;    // sigmoid(withBias) for hidden layers, softmax probability for output
 }
 
 /**
  * Complete forward propagation steps for all layers
  */
-export interface ForwardSteps {
+export interface ForwardSteps extends Record<LayerName, ForwardCalculation[]> {
   input: number[];
-  layer1: ForwardCalculation[];
-  layer2: ForwardCalculation[];
-  output: ForwardCalculation[];
-}
-
-/**
- * Animation phase tracking
- */
-export interface AnimationPhase {
-  layer: 'input' | 'layer1' | 'layer2' | 'output';
-  index: number;
 }
 
 /**
@@ -73,37 +41,41 @@ export type BackwardStage = 'error' | 'derivative' | 'gradient' | 'weightDelta' 
  */
 export interface BackwardCalculation {
   neuronIndex: number;
-  error: number;              // 이 뉴런이 받은 오류 크기
-  gradients: number[];        // 각 가중치에 대한 그래디언트
-  weightDeltas: number[];     // 실제 가중치 변화량
-  biasDelta: number;          // bias 변화량
-  oldWeights: number[];       // 업데이트 전 가중치
-  newWeights: number[];       // 업데이트 후 가중치
+  /** Error this neuron received: output layer = target − output, hidden = Σ δ_next · w */
+  error: number;
+  /** Activation value of this neuron (y) */
+  activation: number;
+  /** Activation derivative: σ'(y) = y(1−y) for hidden layers, 1 for softmax+cross-entropy output */
+  derivative: number;
+  /** δ = error × derivative. This is what is propagated to the previous layer. */
+  gradient: number;
+  /** ΔWⱼ = lr × δ × inputⱼ (added to the weights) */
+  weightDeltas: number[];
+  /** Δb = lr × δ */
+  biasDelta: number;
+  oldWeights: number[];
+  newWeights: number[];
   oldBias: number;
   newBias: number;
-  // 추가: 계산 과정 상세 정보
-  activation: number;         // 이 뉴런의 활성화 값 (y)
-  derivative: number;         // sigmoid 미분값 y(1-y)
-  gradient: number;           // error × derivative (최종 그래디언트)
-  inputs: number[];           // 이 뉴런으로 들어온 입력값들
-  nextLayerErrors?: number[]; // 다음 레이어의 오류들 (역전파 계산용)
-  nextLayerWeights?: number[]; // 이 뉴런에서 다음 레이어로의 가중치들
+  /** Inputs to this neuron (activations of the previous layer) */
+  inputs: number[];
+  /** Hidden layers only: δ of each neuron in the next layer */
+  nextLayerDeltas?: number[];
+  /** Hidden layers only: pre-update weights from this neuron to each next-layer neuron */
+  nextLayerWeights?: number[];
 }
 
 /**
  * Complete backpropagation steps for visualizer
  */
-export interface BackwardSteps {
-  layer1: BackwardCalculation[];
-  layer2: BackwardCalculation[];
-  output: BackwardCalculation[];
+export interface BackwardSteps extends Record<LayerName, BackwardCalculation[]> {
   totalLoss: number;
   targetClass: number;
   predictions: number[];
 }
 
 /**
- * Node position for canvas rendering
+ * Node position for canvas rendering (logical / CSS pixels)
  */
 export interface NodePosition {
   x: number;
@@ -114,27 +86,19 @@ export interface NodePosition {
   centerY: number;
 }
 
+/**
+ * Logical drawing area of the canvas (CSS pixels, independent of devicePixelRatio)
+ */
+export interface Viewport {
+  width: number;
+  height: number;
+}
+
 export interface BackpropSummaryData {
-  oldWeights: {
-    layer1: number[][];
-    layer2: number[][];
-    output: number[][];
-  };
-  newWeights: {
-    layer1: number[][];
-    layer2: number[][];
-    output: number[][];
-  };
-  oldBiases: {
-    layer1: number[];
-    layer2: number[];
-    output: number[];
-  };
-  newBiases: {
-    layer1: number[];
-    layer2: number[];
-    output: number[];
-  };
+  oldWeights: Record<LayerName, number[][]>;
+  newWeights: Record<LayerName, number[][]>;
+  oldBiases: Record<LayerName, number[]>;
+  newBiases: Record<LayerName, number[]>;
   learningRate: number;
   totalWeightsUpdated: number;
 }
@@ -148,45 +112,8 @@ export interface LayerWeightComparison {
   biasDeltas: number[];
 }
 
-export interface WeightComparisonData {
-  layer1: LayerWeightComparison;
-  layer2: LayerWeightComparison;
-  output: LayerWeightComparison;
+export interface WeightComparisonData extends Record<LayerName, LayerWeightComparison> {
   totalChange: number;
   maxWeightChange: number;
   learningRate: number;
-}
-
-/**
- * Creates a BackpropSummaryData object from BackwardSteps data.
- * Extracts weights and biases from each layer into a summary format.
- */
-export function createBackpropSummaryData(
-  backpropData: BackwardSteps,
-  learningRate: number
-): BackpropSummaryData {
-  const layers: Array<'layer1' | 'layer2' | 'output'> = ['layer1', 'layer2', 'output'];
-  
-  const oldWeights: BackpropSummaryData['oldWeights'] = { layer1: [], layer2: [], output: [] };
-  const newWeights: BackpropSummaryData['newWeights'] = { layer1: [], layer2: [], output: [] };
-  const oldBiases: BackpropSummaryData['oldBiases'] = { layer1: [], layer2: [], output: [] };
-  const newBiases: BackpropSummaryData['newBiases'] = { layer1: [], layer2: [], output: [] };
-  let totalWeightsUpdated = 0;
-  
-  for (const layer of layers) {
-    oldWeights[layer] = backpropData[layer].map(n => [...n.oldWeights]);
-    newWeights[layer] = backpropData[layer].map(n => [...n.newWeights]);
-    oldBiases[layer] = backpropData[layer].map(n => n.oldBias);
-    newBiases[layer] = backpropData[layer].map(n => n.newBias);
-    totalWeightsUpdated += backpropData[layer].reduce((sum, n) => sum + n.oldWeights.length, 0);
-  }
-  
-  return {
-    oldWeights,
-    newWeights,
-    oldBiases,
-    newBiases,
-    learningRate,
-    totalWeightsUpdated,
-  };
 }

@@ -5,12 +5,14 @@ interface HeaderProps {
   onHelpClick?: () => void;
 }
 
+const LANGUAGES = [
+  { code: 'en', flag: '🇺🇸', label: 'English' },
+  { code: 'ko', flag: '🇰🇷', label: '한국어' },
+  { code: 'ja', flag: '🇯🇵', label: '日本語' },
+] as const;
+
 export default function Header({ onHelpClick }: HeaderProps) {
   const { t, i18n } = useTranslation();
-
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
-  };
 
   return (
     <Paper
@@ -25,61 +27,37 @@ export default function Header({ onHelpClick }: HeaderProps) {
     >
       {/* Language Switcher */}
       <Box sx={{ position: 'absolute', top: 16, left: 16, display: 'flex', gap: 1 }}>
-        <Button
-          onClick={() => changeLanguage('en')}
-          variant={i18n.language === 'en' ? 'contained' : 'outlined'}
-          size="small"
-          sx={{
-            minWidth: '50px',
-            color: i18n.language === 'en' ? 'white' : 'rgba(255,255,255,0.7)',
-            bgcolor: i18n.language === 'en' ? 'rgba(59, 130, 246, 0.8)' : 'transparent',
-            borderColor: 'rgba(255,255,255,0.3)',
-            '&:hover': {
-              bgcolor: i18n.language === 'en' ? 'rgba(59, 130, 246, 1)' : 'rgba(255,255,255,0.1)',
-            },
-          }}
-        >
-          🇺🇸
-        </Button>
-        <Button
-          onClick={() => changeLanguage('ko')}
-          variant={i18n.language === 'ko' ? 'contained' : 'outlined'}
-          size="small"
-          sx={{
-            minWidth: '50px',
-            color: i18n.language === 'ko' ? 'white' : 'rgba(255,255,255,0.7)',
-            bgcolor: i18n.language === 'ko' ? 'rgba(59, 130, 246, 0.8)' : 'transparent',
-            borderColor: 'rgba(255,255,255,0.3)',
-            '&:hover': {
-              bgcolor: i18n.language === 'ko' ? 'rgba(59, 130, 246, 1)' : 'rgba(255,255,255,0.1)',
-            },
-          }}
-        >
-          🇰🇷
-        </Button>
-        <Button
-          onClick={() => changeLanguage('ja')}
-          variant={i18n.language === 'ja' ? 'contained' : 'outlined'}
-          size="small"
-          sx={{
-            minWidth: '50px',
-            color: i18n.language === 'ja' ? 'white' : 'rgba(255,255,255,0.7)',
-            bgcolor: i18n.language === 'ja' ? 'rgba(59, 130, 246, 0.8)' : 'transparent',
-            borderColor: 'rgba(255,255,255,0.3)',
-            '&:hover': {
-              bgcolor: i18n.language === 'ja' ? 'rgba(59, 130, 246, 1)' : 'rgba(255,255,255,0.1)',
-            },
-          }}
-        >
-          🇯🇵
-        </Button>
+        {LANGUAGES.map(({ code, flag, label }) => {
+          const active = i18n.language === code;
+          return (
+            <Button
+              key={code}
+              onClick={() => i18n.changeLanguage(code)}
+              variant={active ? 'contained' : 'outlined'}
+              size="small"
+              aria-label={label}
+              aria-pressed={active}
+              sx={{
+                minWidth: '50px',
+                color: active ? 'white' : 'rgba(255,255,255,0.7)',
+                bgcolor: active ? 'rgba(59, 130, 246, 0.8)' : 'transparent',
+                borderColor: 'rgba(255,255,255,0.3)',
+                '&:hover': {
+                  bgcolor: active ? 'rgba(59, 130, 246, 1)' : 'rgba(255,255,255,0.1)',
+                },
+              }}
+            >
+              {flag}
+            </Button>
+          );
+        })}
       </Box>
-
 
       {/* Help Button */}
       {onHelpClick && (
         <IconButton
           onClick={onHelpClick}
+          aria-label={t('help.title')}
           sx={{
             position: 'absolute',
             top: 16,
@@ -110,7 +88,7 @@ export function Footer() {
   return (
     <Paper sx={{ textAlign: 'center', py: 2.5, px: 3, mt: 2.5 }}>
       <Typography color="text.secondary" sx={{ mb: 1 }}>
-        Architecture: <strong>3 inputs</strong> → <strong>5 neurons({t('layers.layer1Prefix')})</strong> → 
+        Architecture: <strong>3 inputs</strong> → <strong>5 neurons({t('layers.layer1Prefix')})</strong> →
         <strong> 3 neurons({t('layers.layer2Prefix')})</strong> → <strong>3 outputs</strong>
       </Typography>
       <Typography variant="body2" color="text.disabled" sx={{ maxWidth: 800, mx: 'auto' }}>

@@ -1,7 +1,7 @@
 // Network rendering module - draws the base neural network structure
-import type { ForwardSteps, NodePosition, AnimationPhase, ForwardCalculation, LayerType, BackwardCalculation } from '../types';
+import type { ForwardSteps, NodePosition, ForwardCalculation, LayerType, BackwardCalculation, Viewport } from '../types';
 import type { AnimationState } from '../animation';
-import { checkMode } from '../animation';
+import { checkMode, getAnimatingNeuron } from '../animation';
 import type { NeuralNetwork } from '../core';
 import { LAYER_SIZES } from '../core';
 import { drawInputVector, drawNeuronVector, type BackpropUpdateData } from './drawingUtils';
@@ -31,20 +31,13 @@ interface DrawContext {
 
 export interface OverlayCallbacks {
   drawConnections: (ctx: CanvasRenderingContext2D, nodes: NodePosition[][], animationState: AnimationState) => void;
-  drawForwardOverlay?: (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, nodes: NodePosition[][], animationState: AnimationState) => void;
-  drawBackwardOverlay?: (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, nodes: NodePosition[][], nn: NeuralNetwork, animationState: AnimationState) => void;
+  drawForwardOverlay?: (ctx: CanvasRenderingContext2D, viewport: Viewport, nodes: NodePosition[][], animationState: AnimationState) => void;
+  drawBackwardOverlay?: (ctx: CanvasRenderingContext2D, viewport: Viewport, nodes: NodePosition[][], nn: NeuralNetwork, animationState: AnimationState) => void;
 }
 
 // =============================================================================
 // Helper Functions
 // =============================================================================
-
-function getAnimatingNeuron(state: AnimationState): AnimationPhase | null {
-  if (state.type === 'forward_animating' || state.type === 'backward_animating') {
-    return { layer: state.layer, index: state.neuronIndex };
-  }
-  return null;
-}
 
 function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePosition[] {
   const { layerName, neurons, x, neuronCount, verticalSpacing, getLabel, backpropData } = config;
@@ -63,19 +56,17 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
     const y = startY + i * verticalSpacing;
     const isAnimating = animatingNeuron?.layer === layerName && animatingNeuron.index === i;
 
-    // Get backprop update data if in backward mode
+    // During backprop the network's weights are already updated, so show the
+    // pre-update values from the backprop data and the new values beneath them.
     let backpropUpdateData: BackpropUpdateData | undefined;
-    // Use oldWeights/oldBias from backprop data when in backward mode
-    // because the network's weights are already updated after train()
     let displayWeights = neuron.weights;
     let displayBias = neuron.bias;
-    
+
     if (isBackward && backpropData && backpropData[i]) {
       backpropUpdateData = {
         newWeights: backpropData[i].newWeights,
         newBias: backpropData[i].newBias,
       };
-      // Override display values with old weights/bias from backprop data
       displayWeights = backpropData[i].oldWeights;
       displayBias = backpropData[i].oldBias;
     }
@@ -84,8 +75,8 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
       ctx, x, y,
       displayWeights, displayBias, neuron.activated,
       getLabel(i), layerName,
-      isAnimating && isForward || false,
-      isAnimating && isBackward || false,
+      isAnimating && isForward,
+      isAnimating && isBackward,
       activationRange,
       backpropUpdateData
     );
@@ -102,18 +93,18 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
 
 /**
  * Draw the neural network structure and overlays based on animation state.
+ * Returns node positions per layer: [input, layer1, layer2, output].
  */
 export function drawNetwork(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  viewport: Viewport,
   nn: NeuralNetwork,
   steps: ForwardSteps | null,
   inputLabels: string[],
   animationState: AnimationState,
   callbacks: OverlayCallbacks
 ): NodePosition[][] {
-  const width = canvas.width;
-  const height = canvas.height;
+  const { width, height } = viewport;
 
   // Clear canvas
   ctx.fillStyle = CANVAS_BACKGROUND;
@@ -146,16 +137,12 @@ export function drawNetwork(
   ];
 
   // Get backprop data if in backward mode
-  const isBackward = checkMode(animationState, 'backward');
-  const backwardSteps = isBackward ? nn.lastBackwardSteps : null;
+  const backwardSteps = checkMode(animationState, 'backward') ? nn.lastBackwardSteps : null;
 
   // Draw all layers
   layerConfigs.forEach(({ name, data, x, getLabel }) => {
     const activations = data.map(n => n.activated);
-    
-    // Get backprop data for this layer
-    const backpropData = backwardSteps ? backwardSteps[name] : undefined;
-    
+
     const layerNodes = drawLayerNeurons({
       layerName: name,
       neurons: data,
@@ -163,7 +150,7 @@ export function drawNetwork(
       neuronCount: LAYER_SIZES[name],
       verticalSpacing: VERTICAL_SPACING[name],
       getLabel,
-      backpropData,
+      backpropData: backwardSteps ? backwardSteps[name] : undefined,
     }, {
       ctx, height, animationState,
       activationRange: { min: Math.min(...activations), max: Math.max(...activations) },
@@ -178,11 +165,11 @@ export function drawNetwork(
   const { type } = animationState;
 
   if (type === 'forward_animating' && callbacks.drawForwardOverlay) {
-    callbacks.drawForwardOverlay(ctx, canvas, nodes, animationState);
+    callbacks.drawForwardOverlay(ctx, viewport, nodes, animationState);
   }
 
   if ((type === 'backward_animating' || type === 'showing_backprop_modal') && callbacks.drawBackwardOverlay) {
-    callbacks.drawBackwardOverlay(ctx, canvas, nodes, nn, animationState);
+    callbacks.drawBackwardOverlay(ctx, viewport, nodes, nn, animationState);
   }
 
   return nodes;

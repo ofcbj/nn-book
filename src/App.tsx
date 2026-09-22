@@ -24,17 +24,14 @@ export default function App() {
     actions,
   } = useNeuralNetwork();
 
-  // Initial visualizer
+  // Recompute the forward pass on mount and whenever an input changes.
+  // Only the inputs are dependencies on purpose: `actions` changes identity on
+  // every animation tick and must not trigger a recomputation.
+  const { computeAndRefreshDisplay } = actions;
   useEffect(() => {
-    actions.computeAndRefreshDisplay();
-  }, [actions]);
+    computeAndRefreshDisplay();
+  }, [inputs.grade, inputs.attitude, inputs.response]);
 
-  // Update visualizer when inputs change
-  useEffect(() => {
-    actions.computeAndRefreshDisplay();
-  }, [inputs.grade, inputs.attitude, inputs.response, actions]);
-
-  // Help modal state
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   return (
@@ -42,10 +39,10 @@ export default function App() {
       <Container maxWidth="xl" sx={{ py: 2.5 }}>
         <Header onHelpClick={() => setShowHelpModal(true)} />
 
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            gap: 2.5, 
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 2.5,
             mb: 2.5,
             flexDirection: { xs: 'column', lg: 'row' }
           }}
@@ -72,18 +69,20 @@ export default function App() {
           {/* Center: Network Visualizer */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Stack spacing={2.5}>
-              <NetworkCanvas nn={network.nn} onVisualizerReady={network.setVisualizer} onCanvasClick={actions.handleCanvasClick} />
-
-              {/* Activation Heatmap - Always visible */}
+              <NetworkCanvas
+                onVisualizerReady={network.setVisualizer}
+                onRedraw={network.redraw}
+                onCanvasClick={actions.handleCanvasClick}
+              />
               <ActivationHeatmap activations={visualizer.activations} />
             </Stack>
           </Box>
           {/* Right Panel: Stats, Weight Comparison, Calculation Display */}
           <Box sx={{ width: { xs: '100%', lg: 280 }, flexShrink: 0 }}>
             <Stack spacing={2.5}>
-              <StatsDisplay 
-                epoch={stats.epoch} 
-                loss={stats.loss} 
+              <StatsDisplay
+                epoch={stats.epoch}
+                loss={stats.loss}
                 output={stats.output}
                 learningRate={inputs.learningRate}
                 isTraining={training.isTraining}
@@ -91,13 +90,17 @@ export default function App() {
                 onTrainOnce={actions.trainOneEpoch}
                 onTrainToggle={actions.toggleTraining}
               />
-              <CalculationPanel steps={stats.steps} hasComparisonData={modals.comparison.data !== null} onViewComparison={modals.comparison.open} />
+              <CalculationPanel
+                steps={stats.steps}
+                hasComparisonData={modals.comparison.data !== null}
+                onViewComparison={modals.comparison.open}
+              />
             </Stack>
           </Box>
         </Box>
 
         <Footer />
-        {/* Loss Modal */}
+
         {modals.loss.data && (
           <LossModal
             open={modals.loss.show}
@@ -108,20 +111,17 @@ export default function App() {
           />
         )}
 
-        {/* Backprop Summary Modal */}
         <BackpropModal
           open={modals.backprop.show}
           data={modals.backprop.data}
           onClose={modals.backprop.close}
         />
 
-        {/* Help Modal */}
         <HelpModal
           open={showHelpModal}
           onClose={() => setShowHelpModal(false)}
         />
 
-        {/* Weight Comparison Modal */}
         <WeightComparisonModal
           open={modals.comparison.show}
           data={modals.comparison.data}
@@ -131,4 +131,3 @@ export default function App() {
     </Box>
   );
 }
-

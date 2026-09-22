@@ -87,7 +87,7 @@ export default function BackpropModal({ open, data, onClose }: BackpropModalProp
                       {t('backpropSummary.outputLayer')}: error = target - output
                     </Typography>
                     <Typography sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'primary.light' }}>
-                      {t('backpropSummary.hiddenLayer')}: error = Σ(next_error × weight)
+                      {t('backpropSummary.hiddenLayer')}: error = Σ(δ_next × weight)
                     </Typography>
                   </Box>
                 </Box>
@@ -102,10 +102,10 @@ export default function BackpropModal({ open, data, onClose }: BackpropModalProp
                   </Typography>
                   <Box sx={{ pl: 2, borderLeft: '2px solid rgba(139, 92, 246, 0.5)' }}>
                     <Typography sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'primary.light' }}>
-                      δ = error × σ'(activation)
+                      {t('backpropSummary.hiddenLayer')}: δ = error × σ'(y),  σ'(y) = y × (1 - y)
                     </Typography>
                     <Typography sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'primary.light' }}>
-                      σ'(y) = y × (1 - y)
+                      {t('backpropSummary.outputLayer')} (softmax + cross-entropy): δ = error
                     </Typography>
                   </Box>
                 </Box>
@@ -138,10 +138,10 @@ export default function BackpropModal({ open, data, onClose }: BackpropModalProp
                   </Typography>
                   <Box sx={{ pl: 2, borderLeft: '2px solid rgba(139, 92, 246, 0.5)' }}>
                     <Typography sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'primary.light' }}>
-                      W_new = W_old - ΔW
+                      W_new = W_old + ΔW
                     </Typography>
                     <Typography sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'primary.light' }}>
-                      b_new = b_old - Δb
+                      b_new = b_old + Δb
                     </Typography>
                   </Box>
                 </Box>

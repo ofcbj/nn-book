@@ -1,7 +1,8 @@
 // Backward propagation overlay renderer
-import type { NodePosition, BackwardCalculation, BackwardSteps } from '../types';
+import type { NodePosition, BackwardCalculation, BackwardSteps, Viewport } from '../types';
 import type { AnimationState } from '../animation';
-import type { NeuralNetwork } from '../core';
+import type { NeuralNetwork, LayerName } from '../core';
+import { LAYER_NAMES, DEFAULT_LEARNING_RATE } from '../core';
 import { generateBackpropContent } from './overlayContentGenerator';
 import { renderOverlay } from './overlayRenderer';
 import { drawTextWithBackground } from './drawingUtils';
@@ -11,16 +12,10 @@ import { LAYER_NODE_INDEX } from './uiConfig';
 // Helper Functions
 // ============================================================================
 
-/**
- * Get the highlighted node based on layer and index.
- */
-function getHighlightedNode(
-  layer: string,
-  index: number,
-  nodes: NodePosition[][]
-): NodePosition | null {
-  const layerIdx = LAYER_NODE_INDEX[layer];
-  return layerIdx !== undefined && nodes[layerIdx] ? nodes[layerIdx][index] : null;
+/** Node array of the layer after `layer`, or null for the output layer */
+function getNextLayerNodes(layer: LayerName, nodes: NodePosition[][]): NodePosition[] | null {
+  const nextLayer = LAYER_NAMES[LAYER_NAMES.indexOf(layer) + 1];
+  return nextLayer ? nodes[LAYER_NODE_INDEX[nextLayer]] ?? null : null;
 }
 
 /**
@@ -38,7 +33,7 @@ function drawErrorGlow(
     nodeInfo.centerX, nodeInfo.centerY, 0,
     nodeInfo.centerX, nodeInfo.centerY, nodeInfo.width / 2 + glowSize
   );
-  gradient.addColorStop(0, `rgba(239, 68, 68, ${errorMagnitude * 0.8})`);
+  gradient.addColorStop(0, `rgba(239, 68, 68, ${Math.min(errorMagnitude * 0.8, 1)})`);
   gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
 
   ctx.fillStyle = gradient;
@@ -49,100 +44,84 @@ function drawErrorGlow(
 }
 
 /**
- * Draw highlighted connections from current neuron to next layer during error stage.
- * This helps visualize which weights are being used in the error calculation.
- * Also draws labels showing the original error values and weights.
+ * Draw highlighted connections from the current hidden neuron to the next layer.
+ * Shows which weights carry the next layer's δ back to this neuron.
  */
 function drawBackwardConnections(
   ctx: CanvasRenderingContext2D,
   currentNode: NodePosition,
   nextLayerNodes: NodePosition[],
-  nextLayerErrors: number[] | undefined,
+  nextLayerDeltas: number[] | undefined,
   nextLayerWeights: number[] | undefined
 ): void {
   ctx.save();
-  
+
   nextLayerNodes.forEach((nextNode, idx) => {
     const startX = currentNode.centerX + currentNode.width / 2;
     const startY = currentNode.centerY;
     const endX = nextNode.centerX - nextNode.width / 2;
     const endY = nextNode.centerY;
-    
-    // Draw connection line with red glow
+
+    // Connection line with red glow
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.lineTo(endX, endY);
-    
-    // Glow effect
     ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
     ctx.lineWidth = 4;
     ctx.shadowColor = 'rgba(239, 68, 68, 0.9)';
     ctx.shadowBlur = 12;
     ctx.stroke();
     ctx.shadowBlur = 0;
-    
-    // Draw weight label on connection line
-    if (nextLayerWeights && nextLayerWeights[idx] !== undefined) {
-      const midX = (startX + endX) / 2;
-      const midY = (startY + endY) / 2;
-      drawTextWithBackground(ctx, `W=${nextLayerWeights[idx].toFixed(3)}`, midX, midY, {
+
+    // Weight label on the connection line
+    const weight = nextLayerWeights?.[idx];
+    if (weight !== undefined) {
+      drawTextWithBackground(ctx, `W=${weight.toFixed(3)}`, (startX + endX) / 2, (startY + endY) / 2, {
         bgColor: 'rgba(0, 0, 0, 0.85)',
         textColor: '#fbbf24',
       });
     }
   });
-  
-  // Draw original error labels on next layer neurons
-  if (nextLayerErrors) {
-    nextLayerNodes.forEach((nextNode, idx) => {
-      if (nextLayerErrors[idx] !== undefined) {
-        const labelX = nextNode.centerX;
-        const labelY = nextNode.y + nextNode.height + 18;
-        drawTextWithBackground(ctx, `err=${nextLayerErrors[idx].toFixed(4)}`, labelX, labelY, {
-          bgColor: 'rgba(239, 68, 68, 0.9)',
-          font: 'bold 11px monospace',
-          padding: { x: 6, y: 10 },
-          borderRadius: 4,
-        });
-      }
+
+  // δ labels on the next-layer neurons
+  nextLayerDeltas?.forEach((delta, idx) => {
+    const nextNode = nextLayerNodes[idx];
+    if (!nextNode) return;
+    drawTextWithBackground(ctx, `δ=${delta.toFixed(4)}`, nextNode.centerX, nextNode.y + nextNode.height + 18, {
+      bgColor: 'rgba(239, 68, 68, 0.9)',
+      font: 'bold 11px monospace',
+      padding: { x: 6, y: 10 },
+      borderRadius: 4,
     });
-  }
+  });
 
   ctx.restore();
 }
 
 /**
- * Draw error labels on all neurons during backpropagation.
- * This provides persistent visualizer of error values.
+ * Draw δ labels under every neuron during backpropagation.
  */
-function drawAllErrorLabels(
+function drawAllDeltaLabels(
   ctx: CanvasRenderingContext2D,
   nodes: NodePosition[][],
   allBackpropData: BackwardSteps
 ): void {
   ctx.save();
-  
-  const layerData: { nodes: NodePosition[], data: BackwardCalculation[] }[] = [
-    { nodes: nodes[1] || [], data: allBackpropData.layer1 },
-    { nodes: nodes[2] || [], data: allBackpropData.layer2 },
-    { nodes: nodes[3] || [], data: allBackpropData.output },
-  ];
-  
-  layerData.forEach(({ nodes: layerNodes, data }) => {
-    layerNodes.forEach((node, idx) => {
-      if (data[idx]) {
-        const errorValue = data[idx].error;
-        const labelX = node.centerX;
-        const labelY = node.y + node.height + 14;
-        const errorMagnitude = Math.min(Math.abs(errorValue) * 2, 1);
 
-        drawTextWithBackground(ctx, `δ=${errorValue.toFixed(3)}`, labelX, labelY, {
-          bgColor: `rgba(239, 68, 68, ${0.5 + errorMagnitude * 0.4})`,
-        });
-      }
+  for (const layer of LAYER_NAMES) {
+    const layerNodes = nodes[LAYER_NODE_INDEX[layer]] ?? [];
+    const data: BackwardCalculation[] = allBackpropData[layer];
+
+    layerNodes.forEach((node, idx) => {
+      const neuron = data[idx];
+      if (!neuron) return;
+      const magnitude = Math.min(Math.abs(neuron.gradient) * 2, 1);
+      drawTextWithBackground(ctx, `δ=${neuron.gradient.toFixed(3)}`, node.centerX, node.y + node.height + 14, {
+        bgColor: `rgba(239, 68, 68, ${0.5 + magnitude * 0.4})`,
+      });
     });
-  });
-  
+  }
+
   ctx.restore();
 }
 
@@ -152,69 +131,52 @@ function drawAllErrorLabels(
 
 /**
  * Draw backward propagation overlay visualization.
- * Shows error values, connection weights, and backprop calculations.
+ * Shows δ values, connection weights, and backprop calculations.
  */
 export function drawBackwardOverlay(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  viewport: Viewport,
   nodes: NodePosition[][],
   nn: NeuralNetwork,
   animationState: AnimationState,
-  learningRate: number = 0.25
+  learningRate: number = DEFAULT_LEARNING_RATE
 ): void {
-  // Only show backprop highlights during backward animation
-  if (animationState.type !== 'backward_animating' && 
+  if (animationState.type !== 'backward_animating' &&
       animationState.type !== 'showing_backprop_modal') {
     return;
   }
 
-  // Draw persistent error labels on all neurons if we have backprop data
+  // Persistent δ labels on all neurons
   if (nn.lastBackwardSteps) {
-    drawAllErrorLabels(ctx, nodes, nn.lastBackwardSteps);
+    drawAllDeltaLabels(ctx, nodes, nn.lastBackwardSteps);
   }
-  
+
   if (animationState.type !== 'backward_animating') return;
 
   const { layer, neuronIndex, neuronData, stage } = animationState;
-  const nodeInfo = getHighlightedNode(layer, neuronIndex, nodes);
+  const nodeInfo = nodes[LAYER_NODE_INDEX[layer]]?.[neuronIndex];
   if (!nodeInfo) return;
 
-  // Draw connection lines to next layer for hidden layers during all backprop stages
-  // Backpropagation always considers error from the next layer
-  if (layer !== 'output' && neuronData) {
-    // Map layer to next layer nodes
-    const nextLayerMap: Record<string, NodePosition[]> = {
-      layer1: nodes[2] || [],  // layer2 nodes
-      layer2: nodes[3] || []   // output nodes
-    };
-    
-    const nextLayerNodes = nextLayerMap[layer];
-    
-    if (nextLayerNodes.length > 0) {
-      drawBackwardConnections(
-        ctx,
-        nodeInfo,
-        nextLayerNodes,
-        neuronData.nextLayerErrors,
-        neuronData.nextLayerWeights
-      );
+  // Hidden layers: show the connections that carry the next layer's δ back here
+  if (neuronData) {
+    const nextLayerNodes = getNextLayerNodes(layer, nodes);
+    if (nextLayerNodes && nextLayerNodes.length > 0) {
+      drawBackwardConnections(ctx, nodeInfo, nextLayerNodes, neuronData.nextLayerDeltas, neuronData.nextLayerWeights);
     }
   }
 
-  // Draw error glow
+  // Error glow
   const errorMagnitude = neuronData ? Math.abs(neuronData.error) : 0.5;
   drawErrorGlow(ctx, nodeInfo, errorMagnitude);
 
-  // Draw information overlay
-  if (neuronData && stage) {
+  // Information overlay
+  if (neuronData) {
     const content = generateBackpropContent(stage, neuronData, layer, learningRate);
-    renderOverlay(ctx, canvas, nodeInfo, content);
+    renderOverlay(ctx, viewport, nodeInfo, content);
   } else {
-    // Fallback label
     ctx.font = 'bold 14px sans-serif';
     ctx.fillStyle = '#ef4444';
     ctx.textAlign = 'center';
     ctx.fillText('◄ BACKPROP', nodeInfo.centerX, nodeInfo.y - 35);
   }
 }
-
