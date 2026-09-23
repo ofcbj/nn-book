@@ -49,10 +49,15 @@ export class Matrix {
     return arr;
   }
 
+  /**
+   * Uniform random weights in [-2, 2). Symmetric so the sign colouring of
+   * connections is meaningful from the start; wide enough that the sigmoid
+   * layers are not all stuck near 0.5 (which stalls learning for hundreds of steps).
+   */
   randomize(): void {
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.cols; j++) {
-        this.data[i][j] = Math.random(); // 0 to 1 (positive weights only)
+        this.data[i][j] = (Math.random() * 2 - 1) * 2;
       }
     }
   }

@@ -14,6 +14,20 @@ import {
 
 export const DEFAULT_LEARNING_RATE = 0.25;
 
+/** One (input, one-hot target) pair */
+export interface TrainingSample {
+  inputs: number[];
+  target: number[];
+}
+
+interface ForwardPass {
+  input: Matrix;
+  /** Pre-activation values per layer, in LAYER_NAMES order */
+  raw: Matrix[];
+  /** Activations per layer, in LAYER_NAMES order */
+  activated: Matrix[];
+}
+
 /**
  * Neural Network Class
  * Architecture: 3 -> 5 -> 3 -> 3 (3-class output with Softmax)
@@ -68,52 +82,47 @@ export class NeuralNetwork {
     this.biasOutput.randomizeBias();
   }
 
-  feedforward(inputArray: number[]): number[] {
-    const inputs = Matrix.fromArray(inputArray);
-    this.lastInput = inputs;
-
-    // Every layer follows the same pattern:
-    // 1. raw = weights × input + bias
-    // 2. activated = activation(raw)
-    const layerConfigs = [
-      {
-        weights: this.weightsInputHidden1,
-        bias: this.biasHidden1,
-        activationType: 'sigmoid' as const,
-        storeRaw: (m: Matrix) => { this.lastHidden1Raw = m; },
-        storeActivated: (m: Matrix) => { this.lastHidden1 = m; }
-      },
-      {
-        weights: this.weightsHidden1Hidden2,
-        bias: this.biasHidden2,
-        activationType: 'sigmoid' as const,
-        storeRaw: (m: Matrix) => { this.lastHidden2Raw = m; },
-        storeActivated: (m: Matrix) => { this.lastHidden2 = m; }
-      },
-      {
-        weights: this.weightsHidden2Output,
-        bias: this.biasOutput,
-        activationType: 'softmax' as const,
-        storeRaw: (m: Matrix) => { this.lastOutputRaw = m; },
-        storeActivated: (m: Matrix) => { this.lastOutput = m; }
-      }
+  /**
+   * Run the network without touching any stored state.
+   * Every layer follows the same pattern: raw = W·x + b, activated = f(raw).
+   */
+  private forwardPass(inputArray: number[]): ForwardPass {
+    const input = Matrix.fromArray(inputArray);
+    const layers = [
+      { weights: this.weightsInputHidden1,   bias: this.biasHidden1, activation: 'sigmoid' as const },
+      { weights: this.weightsHidden1Hidden2, bias: this.biasHidden2, activation: 'sigmoid' as const },
+      { weights: this.weightsHidden2Output,  bias: this.biasOutput,  activation: 'softmax' as const },
     ];
 
-    let currentInput = inputs;
-    for (const config of layerConfigs) {
-      const raw = Matrix.multiply(config.weights, currentInput);
-      raw.add(config.bias);
-      config.storeRaw(raw);
-
-      const activated = config.activationType === 'sigmoid'
-        ? Matrix.map(raw, sigmoid)
-        : Matrix.fromArray(softmax(raw.toArray()));
-
-      config.storeActivated(activated);
-      currentInput = activated;
+    const raw: Matrix[] = [];
+    const activated: Matrix[] = [];
+    let current = input;
+    for (const layer of layers) {
+      const z = Matrix.multiply(layer.weights, current);
+      z.add(layer.bias);
+      const a = layer.activation === 'sigmoid'
+        ? Matrix.map(z, sigmoid)
+        : Matrix.fromArray(softmax(z.toArray()));
+      raw.push(z);
+      activated.push(a);
+      current = a;
     }
+    return { input, raw, activated };
+  }
 
+  /** Forward pass that records intermediate values for the visualizer */
+  feedforward(inputArray: number[]): number[] {
+    const pass = this.forwardPass(inputArray);
+    this.lastInput = pass.input;
+    [this.lastHidden1Raw, this.lastHidden2Raw, this.lastOutputRaw] = pass.raw;
+    [this.lastHidden1, this.lastHidden2, this.lastOutput] = pass.activated;
     return this.lastOutput!.toArray();
+  }
+
+  /** Class probabilities for an input, without changing any stored state (for evaluation) */
+  predict(inputArray: number[]): number[] {
+    const pass = this.forwardPass(inputArray);
+    return pass.activated[pass.activated.length - 1].toArray();
   }
 
   /**
@@ -123,6 +132,19 @@ export class NeuralNetwork {
   train(inputArray: number[], targetArray: number[]): void {
     this.feedforward(inputArray);
     this.backpropagate(targetArray);
+  }
+
+  /**
+   * One epoch of plain SGD over the samples, in order.
+   * @returns mean cross-entropy loss over the epoch (each sample's loss before its update)
+   */
+  trainBatch(samples: readonly TrainingSample[]): number {
+    let total = 0;
+    for (const sample of samples) {
+      this.train(sample.inputs, sample.target);
+      total += this.lastLoss;
+    }
+    return samples.length > 0 ? total / samples.length : 0;
   }
 
   private backpropagate(targetArray: number[]): void {

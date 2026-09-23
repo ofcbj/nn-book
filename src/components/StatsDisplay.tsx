@@ -97,7 +97,7 @@ export default function StatsDisplay({ epoch, loss, output, learningRate, isTrai
               value={learningRate}
               onChange={(_, v) => onLearningRateChange(v as number)}
               min={0.01}
-              max={0.5}
+              max={2}
               step={0.01}
               size="small"
               sx={{ flex: 1 }}

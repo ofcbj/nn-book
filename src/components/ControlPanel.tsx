@@ -20,6 +20,8 @@ interface ControlPanelProps {
   // State
   isAnimating     : boolean;
   isPaused        : boolean;
+  /** Data training mode: sliders are a test candidate, training happens in the right panel */
+  dataMode        : boolean;
 }
 
 interface LabeledSliderProps {
@@ -85,6 +87,7 @@ export default function ControlPanel({
   onReset,
   isAnimating,
   isPaused,
+  dataMode,
 }: ControlPanelProps) {
   const { t } = useTranslation();
   const classNames = [t('classes.fail'), t('classes.pending'), t('classes.pass')];
@@ -97,8 +100,13 @@ export default function ControlPanel({
       {/* Input Controls */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="h3" sx={{ mb: 1.5, pb: 0.5, borderBottom: '2px solid #334155', fontSize: '0.95rem' }}>
-          📊 {t('controls.inputSection')}
+          📊 {dataMode ? t('controls.testCandidateSection') : t('controls.inputSection')}
         </Typography>
+        {dataMode && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+            {t('controls.testCandidateHint')}
+          </Typography>
+        )}
 
         <LabeledSlider label={t('controls.grade')}    value={grade}    onChange={onGradeChange}    min={0} max={1} step={0.01} />
         <LabeledSlider label={t('controls.attitude')} value={attitude} onChange={onAttitudeChange} min={0} max={1} step={0.01} />
@@ -130,8 +138,8 @@ export default function ControlPanel({
         </Box>
       </Box>
 
-      {/* Training Controls */}
-      <Box sx={{ mb: 3 }}>
+      {/* Training Controls (single-candidate mode only) */}
+      {!dataMode && <Box sx={{ mb: 3 }}>
         <Typography variant="h3" sx={{ mb: 2, pb: 1, borderBottom: '2px solid #334155' }}>
           ⚙️ {t('controls.trainingSection')}
         </Typography>
@@ -157,7 +165,7 @@ export default function ControlPanel({
         >
           {stepLabel}
         </Button>
-      </Box>
+      </Box>}
     </Paper>
   );
 }

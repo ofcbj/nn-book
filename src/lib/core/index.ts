@@ -12,6 +12,17 @@
 export { Matrix } from './matrix';
 export { sigmoid, dsigmoid, softmax, crossEntropyLoss } from './activations';
 export { NeuralNetwork, DEFAULT_LEARNING_RATE } from './network';
+export type { TrainingSample } from './network';
+export {
+  DATASET_SIZE,
+  generateDataset,
+  labelCandidate,
+  candidateInputs,
+  toTrainingSample,
+  argmax,
+  evaluateDataset,
+} from './dataset';
+export type { Candidate, CandidateEvaluation, DatasetEvaluation } from './dataset';
 export {
   backpropOutputLayer,
   backpropHiddenLayer,

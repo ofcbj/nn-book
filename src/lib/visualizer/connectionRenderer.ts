@@ -1,86 +1,194 @@
-// Connection rendering between neural network layers
-import type { NodePosition } from '../types';
+// Connection rendering between neural network layers.
+// Each line encodes its weight: thickness = |w|, colour = sign (blue +, rose −).
+import type { NodePosition, BackwardStage } from '../types';
 import type { AnimationState } from '../animation';
-import { LAYER_SIZES } from '../core';
+import { LAYER_NAMES, LAYER_SIZES, type LayerName } from '../core';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-interface ConnectionTheme {
-  active: string;
-  shadow: string;
-}
+/** weights[to][j][i] = weight from neuron i of the previous layer into neuron j of layer `to` */
+export type LayerWeights = Record<LayerName, number[][]>;
 
-interface LayerConnectionConfig {
-  fromLayerIdx: number;
-  toLayerIdx: number;
-  toLayer: string;
-  fromCount: number;
-  toCount: number;
-  activeColor: string;
-  activeShadow: string;
-  inactiveColor: string;
+export interface ConnectionStyle {
+  color: string;
+  lineWidth: number;
 }
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const CONNECTION_COLORS: Record<string, ConnectionTheme> = {
-  input: { active: 'rgba(96, 165, 250, 0.9)', shadow: 'rgba(96, 165, 250, 0.8)' },
-  layer1: { active: 'rgba(52, 211, 153, 0.9)', shadow: 'rgba(52, 211, 153, 0.8)' },
-  layer2: { active: 'rgba(251, 146, 60, 0.9)', shadow: 'rgba(251, 146, 60, 0.8)' },
-};
-
-const INACTIVE_COLOR = 'rgba(100, 116, 139, 0.4)';
+const POSITIVE_RGB = '96, 165, 250';  // blue
+const NEGATIVE_RGB = '251, 113, 133'; // rose
+const MIN_WIDTH = 0.75;
+const MAX_WIDTH = 4;
+const MIN_ALPHA = 0.3;
+const MAX_ALPHA = 0.9;
+/**
+ * While a neuron is animating, the lines it is using are drawn fully opaque with a glow
+ * (forward: its incoming lines; backward: its outgoing lines, which carry the next layer's δ)…
+ */
+const ACTIVE_ALPHA = 1;
+/** …and every other line fades back so the active ones stand out */
+const INACTIVE_DIM = 0.35;
 
 // ============================================================================
-// Helper Functions
+// Weight encoding
 // ============================================================================
 
+/**
+ * Map a weight to a line style.
+ * `scale` is the |w| that maps to full thickness/opacity (at least 1 so tiny
+ * initial weights stay thin instead of being blown up by normalisation).
+ */
+export function weightToStyle(weight: number, scale: number, alphaMultiplier: number = 1): ConnectionStyle {
+  const norm = Math.min(Math.abs(weight) / Math.max(scale, 1), 1);
+  const alpha = (MIN_ALPHA + (MAX_ALPHA - MIN_ALPHA) * norm) * alphaMultiplier;
+  return {
+    color: `rgba(${weightRgb(weight)}, ${alpha.toFixed(3)})`,
+    lineWidth: MIN_WIDTH + (MAX_WIDTH - MIN_WIDTH) * norm,
+  };
+}
+
+/** Blue for positive weights, rose for negative */
+export function weightRgb(weight: number): string {
+  return weight >= 0 ? POSITIVE_RGB : NEGATIVE_RGB;
+}
+
+/** Largest |w| in a layer's weight matrix */
+export function maxAbsWeight(weights: number[][]): number {
+  let max = 0;
+  for (const row of weights) {
+    for (const w of row) {
+      max = Math.max(max, Math.abs(w));
+    }
+  }
+  return max;
+}
+
+// ============================================================================
+// Drawing
+// ============================================================================
+
+interface Anchor {
+  x: number;
+  y: number;
+}
+
+/** Two arrowheads along the line from `start` (the neuron) toward `end` (its input), at 35% and 70% */
+function drawBackwardArrows(ctx: CanvasRenderingContext2D, start: Anchor, end: Anchor, color: string, size: number): void {
+  const angle = Math.atan2(end.y - start.y, end.x - start.x);
+  ctx.fillStyle = color;
+  for (const t of [0.35, 0.7]) {
+    const tipX = start.x + (end.x - start.x) * t;
+    const tipY = start.y + (end.y - start.y) * t;
+    ctx.beginPath();
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(tipX - size * Math.cos(angle - 0.5), tipY - size * Math.sin(angle - 0.5));
+    ctx.lineTo(tipX - size * Math.cos(angle + 0.5), tipY - size * Math.sin(angle + 0.5));
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/** Right edge, vertical centre of source node i */
+function sourceAnchor(sourceNodes: NodePosition[], i: number): Anchor {
+  const node = sourceNodes[i];
+  return { x: node.centerX + node.width / 2, y: node.centerY };
+}
+
+/** Backprop stages that explain where the error came from (next layer) vs. what changes (incoming weights) */
+const OUTGOING_STAGES: readonly BackwardStage[] = ['error', 'derivative', 'gradient'];
+
+/** During backprop, which side of the current neuron the explanation is about */
+export function backwardFocus(stage: BackwardStage): 'outgoing' | 'incoming' {
+  return OUTGOING_STAGES.includes(stage) ? 'outgoing' : 'incoming';
+}
+
+/**
+ * Is the connection from source neuron i to target neuron j part of the current calculation?
+ * Forward: the lines feeding the neuron being computed.
+ * Backward, error stages: the lines leaving the neuron (its error is Σ δ_next · w over them).
+ * Backward, ΔW stages: the lines feeding the neuron (these are the weights being adjusted).
+ */
 function isConnectionActive(
   animationState: AnimationState,
-  toLayer: string,
-  toIndex: number
+  sourceLayer: LayerName | 'input',
+  sourceIndex: number,
+  targetLayer: LayerName,
+  targetIndex: number
 ): boolean {
-  // Only check forward animation - backward connections are hidden entirely during backprop
-  if (animationState.type !== 'forward_animating') {
-    return false;
+  if (animationState.type === 'forward_animating') {
+    return animationState.layer === targetLayer && animationState.neuronIndex === targetIndex;
   }
-  return animationState.layer === toLayer && animationState.neuronIndex === toIndex;
+  if (animationState.type === 'backward_animating') {
+    return backwardFocus(animationState.stage) === 'outgoing'
+      ? animationState.layer === sourceLayer && animationState.neuronIndex === sourceIndex
+      : animationState.layer === targetLayer && animationState.neuronIndex === targetIndex;
+  }
+  return false;
+}
+
+/** ΔW of the incoming weights of the neuron being back-propagated, when a ΔW stage is showing */
+function incomingWeightDeltas(animationState: AnimationState): number[] | null {
+  if (animationState.type !== 'backward_animating' || backwardFocus(animationState.stage) !== 'incoming') return null;
+  return animationState.neuronData?.weightDeltas ?? null;
 }
 
 function drawLayerConnections(
   ctx: CanvasRenderingContext2D,
-  nodes: NodePosition[][],
+  sourceNodes: NodePosition[],
+  targetNodes: NodePosition[],
+  sourceLayer: LayerName | 'input',
+  targetLayer: LayerName,
+  weights: number[][],
   animationState: AnimationState,
-  config: LayerConnectionConfig
+  somethingIsAnimating: boolean
 ): void {
-  const {
-    fromLayerIdx, toLayerIdx, toLayer,
-    fromCount, toCount,
-    activeColor, activeShadow, inactiveColor
-  } = config;
+  const scale = maxAbsWeight(weights);
+  const deltas = incomingWeightDeltas(animationState);
+  const maxDelta = deltas ? Math.max(...deltas.map(Math.abs), 1e-9) : 0;
 
-  for (let i = 0; i < fromCount; i++) {
-    for (let j = 0; j < toCount; j++) {
-      const from = nodes[fromLayerIdx][i];
-      const to = nodes[toLayerIdx][j];
-      const isActive = isConnectionActive(animationState, toLayer, j);
+  for (let j = 0; j < targetNodes.length; j++) {
+    const to = targetNodes[j];
+    const neuronWeights = weights[j] ?? [];
+
+    for (let i = 0; i < neuronWeights.length; i++) {
+      const from = sourceAnchor(sourceNodes, i);
+      const weight = neuronWeights[i];
+      const active = isConnectionActive(animationState, sourceLayer, i, targetLayer, j);
+      // Colour (sign) and thickness (|w|) never change; only emphasis does
+      const style = weightToStyle(weight, scale, somethingIsAnimating && !active ? INACTIVE_DIM : 1);
+
+      // ΔW halo: blue = this weight grows, rose = it shrinks; thickness ∝ |ΔW| within the neuron.
+      // Arrowheads run from the neuron back toward its inputs: its δ is what re-tunes these weights.
+      if (active && deltas) {
+        const delta = deltas[i] ?? 0;
+        const norm = Math.abs(delta) / maxDelta;
+        const toX = to.centerX - to.width / 2;
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(toX, to.centerY);
+        ctx.strokeStyle = `rgba(${weightRgb(delta)}, ${(0.3 + 0.4 * norm).toFixed(3)})`;
+        ctx.lineWidth = style.lineWidth + 6 + 10 * norm;
+        ctx.shadowBlur = 0;
+        ctx.stroke();
+        drawBackwardArrows(ctx, { x: toX, y: to.centerY }, from, `rgba(${weightRgb(delta)}, 0.95)`, 5 + 5 * norm);
+      }
 
       ctx.beginPath();
-      ctx.moveTo(from.centerX + from.width / 2, from.centerY);
+      ctx.moveTo(from.x, from.y);
       ctx.lineTo(to.centerX - to.width / 2, to.centerY);
+      ctx.lineWidth = style.lineWidth;
 
-      if (isActive) {
-        ctx.strokeStyle = activeColor;
-        ctx.lineWidth = 3;
-        ctx.shadowColor = activeShadow;
+      if (active) {
+        ctx.strokeStyle = `rgba(${weightRgb(weight)}, ${ACTIVE_ALPHA})`;
+        ctx.shadowColor = ctx.strokeStyle;
         ctx.shadowBlur = 10;
       } else {
-        ctx.strokeStyle = inactiveColor;
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = style.color;
         ctx.shadowBlur = 0;
       }
 
@@ -94,38 +202,33 @@ function drawLayerConnections(
 // Main Export
 // ============================================================================
 
+/**
+ * Draw all connections. `nodes` is [input, layer1, layer2, output].
+ * Every line keeps its sign colour and |w| thickness; while a neuron is animating
+ * (forward or backward) the lines it is using are emphasised and the rest are dimmed.
+ */
 export function drawConnections(
   ctx: CanvasRenderingContext2D,
   nodes: NodePosition[][],
-  animationState: AnimationState
+  animationState: AnimationState,
+  weights: LayerWeights
 ): void {
-  const connections = [
-    { from: 'input', to: 'layer1', fromCount: 1, toCount: LAYER_SIZES.layer1, theme: CONNECTION_COLORS.input },
-    { from: 'layer1', to: 'layer2', fromCount: LAYER_SIZES.layer1, toCount: LAYER_SIZES.layer2, theme: CONNECTION_COLORS.layer1 },
-    { from: 'layer2', to: 'output', fromCount: LAYER_SIZES.layer2, toCount: LAYER_SIZES.output, theme: CONNECTION_COLORS.layer2 },
-  ] as const;
+  const animating = animationState.type === 'forward_animating' || animationState.type === 'backward_animating';
 
-  // During backprop, hide forward connections to the current neuron's layer
-  // This visually emphasizes that backprop doesn't consider forward (previous layer) connections
-  const isBackpropAnimating = animationState.type === 'backward_animating';
-  const backpropLayer = isBackpropAnimating ? animationState.layer : null;
+  LAYER_NAMES.forEach((targetLayer, idx) => {
+    const sourceNodes = nodes[idx];
+    const targetNodes = nodes[idx + 1];
+    if (!sourceNodes || !targetNodes) return;
 
-  connections.forEach(({ to, fromCount, toCount, theme }, idx) => {
-    // Skip drawing forward connections TO the backprop layer
-    // (e.g., if backprop is on layer2, don't draw layer1 → layer2 connections)
-    if (isBackpropAnimating && to === backpropLayer) {
-      return;
-    }
-
-    drawLayerConnections(ctx, nodes, animationState, {
-      fromLayerIdx: idx,
-      toLayerIdx: idx + 1,
-      toLayer: to,
-      fromCount,
-      toCount,
-      activeColor: theme.active,
-      activeShadow: theme.shadow,
-      inactiveColor: INACTIVE_COLOR,
-    });
+    drawLayerConnections(
+      ctx,
+      sourceNodes,
+      targetNodes.slice(0, LAYER_SIZES[targetLayer]),
+      idx === 0 ? 'input' : LAYER_NAMES[idx - 1],
+      targetLayer,
+      weights[targetLayer],
+      animationState,
+      animating
+    );
   });
 }

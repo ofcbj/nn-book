@@ -30,6 +30,7 @@ flowchart TB
         useNS["useNetworkState.ts<br/>React State"]
         useAE["useAnimationEngine.ts<br/>Animation + Training"]
         useModal["useModalState.ts"]
+        useDT["useDatasetTraining.ts<br/>Data mode stream"]
     end
 
     subgraph Core["Core (lib/core/)"]
@@ -72,6 +73,8 @@ flowchart TB
 
     useNN --> useNS
     useNN --> useAE
+    useNN --> useDT
+    useDT --> Network
     useNS --> useModal
     useAE --> Network
     useAE --> Snapshot
@@ -119,12 +122,14 @@ flowchart TB
 ### 🧩 Components
 | 컴포넌트 | 책임 |
 |----------|------|
-| `Header` | 제목, 언어 전환, 도움말 버튼 (`Footer`도 포함) |
+| `Header` | 제목, 언어 전환, 데이터 학습 모드 스위치, 도움말 버튼 (`Footer`도 포함) |
 | `ControlPanel` | 입력/타깃/속도 슬라이더, 시작·일시정지·재개, 리셋 |
-| `NetworkCanvas` | 캔버스 마운트, DPR 대응 리사이즈, 클릭 좌표 전달 |
+| `NetworkCanvas` | 캔버스 마운트, DPR 대응 리사이즈, 클릭 좌표 전달, 연결선 범례 |
 | `StatsDisplay` | 에포크, 손실, 예측, 학습률, 1회 학습·자동 학습 버튼 |
+| `LossChart` | 에포크별 손실 꺾은선(SVG), 호버 툴팁 |
 | `CalculationPanel` | 순전파 계산 과정 텍스트, 가중치 비교 열기 버튼 |
 | `ActivationHeatmap` | 레이어별 활성화 히트맵 |
+| `DataStreamPanel` | 데이터 학습 모드: 지원자 500명 리스트, 재생/일시정지/한 명씩/속도, 학습 전 예측 정답률과 전체 정확도 |
 | `LossModal` | 순전파 결과와 Cross-Entropy 손실 설명 |
 | `BackpropModal` | 역전파 완료 요약 (수식, 변화량) |
 | `WeightComparisonModal` | 학습 전후 가중치 표 비교 |
@@ -137,7 +142,8 @@ flowchart TB
 |------|------|
 | `useNeuralNetwork` | `NeuralNetwork`/`Visualizer` ref 보유, 아래 두 훅을 조합해 그룹화된 API 반환 |
 | `useNetworkState` | 모든 React 상태 (입력, 통계, 학습 플래그, 히트맵 데이터, 모달) |
-| `useAnimationEngine` | FSM(`useReducer`), 애니메이션 루프, 학습 제어, 모달 전이, 캔버스 클릭 처리 |
+| `useAnimationEngine` | FSM(`useReducer`), 애니메이션 루프, 슬라이더 지원자 학습 제어, 모달 전이, 캔버스 클릭 처리 |
+| `useDatasetTraining` | 데이터 학습 모드: 생성된 500명을 예측 → 학습 → 캔버스 갱신 순으로 스트리밍, 패스/정확도 추적 |
 | `useModalState` | `show`/`data`/`open`/`close`/`setData`를 갖는 범용 모달 훅 |
 
 자세한 내용은 [hook_architecture.md](hook_architecture.md) 참고.
@@ -147,11 +153,12 @@ flowchart TB
 ### 🧠 Core (`lib/core/`)
 | 파일 | 책임 |
 |------|------|
-| `network.ts` | `NeuralNetwork` 클래스. `feedforward`, `train`, `getForwardSteps`, `lastBackwardSteps` |
+| `network.ts` | `NeuralNetwork` 클래스. `feedforward`, `predict`(상태 변경 없음), `train`, `trainBatch`(1 에포크), `getForwardSteps`, `lastBackwardSteps` |
 | `backpropagation.ts` | 출력층(softmax+CE)·은닉층(sigmoid) 역전파, 시각화용 `createBackwardSteps` |
 | `activations.ts` | `sigmoid`, `dsigmoid`, `softmax`, `crossEntropyLoss` |
 | `matrix.ts` | `Matrix` 클래스 (곱, 전치, 요소 연산, `clone`) |
 | `networkConfig.ts` | `LAYER_NAMES`, `LAYER_SIZES`, 뉴런/스테이지 탐색 함수, `toOneHot` |
+| `dataset.ts` | 시드 고정 생성기 `generateDataset`(500명, 숨은 규칙 `labelCandidate`, 클래스 균형·셔플). 층화 샘플: 합은 같고 라벨이 다른 대조 쌍 30%, 태도 하한에 걸리는 보류 15%, 나머지 무작위. `evaluateDataset`(정확도·평균 손실) |
 | `networkSnapshot.ts` | 가중치 스냅샷과 학습 전후 비교 (`createSnapshot`, `compareSnapshots`) |
 | `weightComparison.ts` | 비교 데이터·역전파 요약 데이터 생성 |
 | `index.ts` | 공개 API 재export |
@@ -175,14 +182,14 @@ flowchart LR
 
     subgraph Rendering["렌더링"]
         Net["networkRenderer.ts<br/>drawNetwork: 레이어 배치, 노드 위치 반환"]
-        Conn["connectionRenderer.ts<br/>레이어 간 연결선"]
+        Conn["connectionRenderer.ts<br/>연결선: 두께=|w|, 색=부호"]
         Draw["drawingUtils.ts<br/>입력 박스, 뉴런 박스, 라벨"]
         Ui["uiConfig.ts<br/>크기·색상 상수, 활성화 색상"]
     end
 
     subgraph Overlay["오버레이"]
         F["overlayForward.ts<br/>순전파 계산 팝업"]
-        B["overlayBackward.ts<br/>δ 라벨, 역방향 연결, 역전파 팝업"]
+        B["overlayBackward.ts<br/>δ 게이지, 기여도·ΔW 라벨, 역전파 팝업"]
         Content["overlayContentGenerator.ts<br/>팝업 텍스트 생성 (i18n)"]
         Render["overlayRenderer.ts<br/>renderOverlay: 위치 계산 + 박스 그리기"]
     end

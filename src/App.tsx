@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Box, Container, Stack } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import Header, { Footer } from './components/Header';
 import ControlPanel from './components/ControlPanel';
 import StatsDisplay from './components/StatsDisplay';
 import NetworkCanvas from './components/NetworkCanvas';
 import CalculationPanel from './components/CalculationPanel';
+import LossChart from './components/LossChart';
+import DataStreamPanel from './components/DataStreamPanel';
 import LossModal from './components/LossModal';
 import BackpropModal from './components/BackpropModal';
 import HelpModal from './components/HelpModal';
@@ -13,16 +16,21 @@ import WeightComparisonModal from './components/WeightComparisonModal';
 import { useNeuralNetwork } from './hooks/useNeuralNetwork';
 
 export default function App() {
+  const { t } = useTranslation();
   const {
-    network,
     inputs,
     controls,
     stats,
     training,
+    stream,
+    inspection,
     modals,
     visualizer,
     actions,
+    network,
   } = useNeuralNetwork();
+
+  const dataMode = training.mode === 'dataset';
 
   // Recompute the forward pass on mount and whenever an input changes.
   // Only the inputs are dependencies on purpose: `actions` changes identity on
@@ -36,15 +44,20 @@ export default function App() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Container maxWidth="xl" sx={{ py: 2.5 }}>
-        <Header onHelpClick={() => setShowHelpModal(true)} />
+      <Container maxWidth={false} sx={{ py: 1.5, px: { xs: 1.5, md: 2 } }}>
+        <Header
+          mode={training.mode}
+          onModeChange={training.setMode}
+          modeDisabled={training.isAnimating || training.isTraining}
+          onHelpClick={() => setShowHelpModal(true)}
+        />
 
         <Box
           sx={{
             display: 'flex',
-            gap: 2.5,
-            mb: 2.5,
-            flexDirection: { xs: 'column', lg: 'row' }
+            gap: 1.5,
+            mb: 1.5,
+            flexDirection: { xs: 'column', lg: 'row' },
           }}
         >
           {/* Left Panel: Controls */}
@@ -64,11 +77,13 @@ export default function App() {
               onReset={actions.reset}
               isAnimating={training.isAnimating}
               isPaused={training.isPaused}
+              dataMode={dataMode}
             />
           </Box>
+
           {/* Center: Network Visualizer */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Stack spacing={2.5}>
+            <Stack spacing={1.5}>
               <NetworkCanvas
                 onVisualizerReady={network.setVisualizer}
                 onRedraw={network.redraw}
@@ -77,24 +92,46 @@ export default function App() {
               <ActivationHeatmap activations={visualizer.activations} />
             </Stack>
           </Box>
-          {/* Right Panel: Stats, Weight Comparison, Calculation Display */}
-          <Box sx={{ width: { xs: '100%', lg: 280 }, flexShrink: 0 }}>
-            <Stack spacing={2.5}>
-              <StatsDisplay
-                epoch={stats.epoch}
-                loss={stats.loss}
-                output={stats.output}
-                learningRate={inputs.learningRate}
-                isTraining={training.isTraining}
-                onLearningRateChange={controls.setLearningRate}
-                onTrainOnce={actions.trainOneEpoch}
-                onTrainToggle={actions.toggleTraining}
-              />
-              <CalculationPanel
-                steps={stats.steps}
-                hasComparisonData={modals.comparison.data !== null}
-                onViewComparison={modals.comparison.open}
-              />
+
+          {/* Right Panel */}
+          <Box sx={{ width: { xs: '100%', lg: dataMode ? 380 : 280 }, flexShrink: 0 }}>
+            <Stack spacing={1.5}>
+              {dataMode ? (
+                <>
+                  <DataStreamPanel
+                    stream={stream}
+                    inspection={inspection}
+                    onInspect={actions.inspectCandidate}
+                    onToggleInspection={actions.toggleInspection}
+                    onStopInspection={actions.stopInspection}
+                  />
+                  <LossChart
+                    history={stats.lossHistory}
+                    title={t('dataset.lossTitle')}
+                    xLabel={t('dataset.sample')}
+                    smoothingWindow={20}
+                  />
+                </>
+              ) : (
+                <>
+                  <StatsDisplay
+                    epoch={stats.epoch}
+                    loss={stats.loss}
+                    output={stats.output}
+                    learningRate={inputs.learningRate}
+                    isTraining={training.isTraining}
+                    onLearningRateChange={controls.setLearningRate}
+                    onTrainOnce={actions.trainOneEpoch}
+                    onTrainToggle={actions.toggleTraining}
+                  />
+                  <LossChart history={stats.lossHistory} />
+                  <CalculationPanel
+                    steps={stats.steps}
+                    hasComparisonData={modals.comparison.data !== null}
+                    onViewComparison={modals.comparison.open}
+                  />
+                </>
+              )}
             </Stack>
           </Box>
         </Box>

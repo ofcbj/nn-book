@@ -1,7 +1,10 @@
 {
   "header": {
     "title": "Neural Network: Interview System Visualizer",
-    "subtitle": "Decision-making process through dot product of inputs and weights, and activation functions"
+    "subtitle": "Decision-making process through dot product of inputs and weights, and activation functions",
+    "dataMode": "Data Training Mode",
+    "dataModeHint": "Train on a stream of {{count}} generated candidates and watch the accuracy rise",
+    "dataModeBusy": "Finish or stop the current training first"
   },
   "controls": {
     "inputSection": "Input Parameters",
@@ -18,7 +21,9 @@
     "autoTrain": "Auto Train",
     "pause": "Pause",
     "stop": "Stop",
-    "reset": "Reset"
+    "reset": "Reset",
+    "testCandidateSection": "Test Candidate",
+    "testCandidateHint": "Not part of the training data. Its prediction updates as the network learns from the stream on the right."
   },
   "common": {
     "count": "items",
@@ -43,10 +48,12 @@
     "interviewer": "Interviewer"
   },
   "network": {
-    "title": "Network Structure"
+    "legendPositive": "positive weight",
+    "legendNegative": "negative weight",
+    "legendThickness": "thickness = |w|",
+    "legendDelta": "backprop gauge / halo: blue = increase, red = decrease"
   },
   "visualizer": {
-    "activationTitle": "Layer Activations",
     "colorLegend": "Activation Strength"
   },
   "calculation": {
@@ -159,7 +166,7 @@
     },
     "features": {
       "title": "Key Features",
-      "list": "• **Adjust Inputs**: Change candidate characteristics with sliders\n• **Train Once**: Watch the learning process with animation\n• **Auto Train**: Quickly train multiple times\n• **Manual Mode**: Click canvas or use \"Next Step\" button to proceed manually\n• **Animation Speed**: Adjust 0~3x (0 is same as manual mode)\n• **Reset**: Return the neural network to initial state"
+      "list": "• **Adjust Inputs**: Change the candidate's attributes with the sliders\n• **Start**: Watch one training step stage by stage (click a neuron to step manually or jump)\n• **Train Once / Auto Train**: Train on the slider candidate without animation; watch the loss curve\n• **Data Training Mode** (switch in the header): 500 generated candidates, labelled by a hidden scoring rule, flow through the network one by one; the weights update after each and the accuracy rises\n• **Animation Speed**: 0.1x ~ 2x\n• **Reset**: Return the neural network to its initial state"
     },
     "close": "Close"
   },
@@ -229,5 +236,34 @@
   },
   "footer": {
     "description": "This visualizer shows how a candidate's 3 attributes (grade, attitude, response level) are passed through 1st stage interviewers (5) and 2nd stage interviewers (3), leading to the final decision."
+  },
+  "lossChart": {
+    "title": "Loss over Epochs",
+    "empty": "Train the network to see how the loss changes.",
+    "min": "min"
+  },
+  "dataset": {
+    "title": "Data Training",
+    "pass": "Pass",
+    "overallAccuracy": "Accuracy on all {{count}}",
+    "onlineAccuracy": "Predicted correctly before learning",
+    "onlineAccuracyHint": "For each candidate the network first guesses, then learns the answer. This is the share of correct guesses so far.",
+    "play": "Play",
+    "pause": "Pause",
+    "step": "Next candidate",
+    "restart": "Back to the first candidate",
+    "speed": "Speed",
+    "sample": "Sample",
+    "label": "Answer",
+    "prediction": "Guess",
+    "correct": "correct",
+    "wrong": "wrong",
+    "hint": "Press ▶ to send the candidates through the network one by one. The answers are not random: a hidden scoring rule decides them, and the network has to discover that rule from the examples alone. Click any row to watch one training step on that candidate in detail.",
+    "lossTitle": "Loss per Sample (moving avg 20)",
+    "inspecting": "Showing the training step for candidate #{{id}}",
+    "inspectPause": "Pause",
+    "inspectResume": "Resume",
+    "inspectStop": "Stop",
+    "rowHint": "Click to watch one training step on this candidate"
   }
 }

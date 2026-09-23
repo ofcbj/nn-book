@@ -25,7 +25,9 @@ export function drawForwardOverlay(
   const content = generateForwardContent(stage, neuronData, layer);
   if (!content.title) return;
 
+  // The incoming connections are the subject, so keep the left side clear
   renderOverlay(ctx, viewport, nodeInfo, content, {
+    preferSide: 'right',
     boxWidth: 380,
     lineHeight: 20,
     padding: 50,

@@ -16,9 +16,12 @@ export const CANVAS_BACKGROUND = '#0a0a0a';
 
 /** Canvas padding */
 export const CANVAS_PADDING = {
-  left: 60,
-  right: 80,
+  left: 40,
+  right: 40,
 } as const;
+
+/** Minimum horizontal gap between the four columns (input, layer1, layer2, output) */
+export const MIN_COLUMN_GAP = 24;
 
 // =============================================================================
 // Neuron Box Dimensions
@@ -26,28 +29,31 @@ export const CANVAS_PADDING = {
 
 /** Base neuron box dimensions */
 export const NEURON_BOX = {
-  minWidth: 130,
-  weightMultiplier: 25,  // width per weight
-  cornerRadius: 12,
-  /** Height varies by layer */
-  height: {
-    layer1: 80,
-    layer2: 90,
-    output: 90,
-  },
-  /** Extra width by layer */
+  minWidth: 120,
+  weightMultiplier: 24,  // width per weight
+  cornerRadius: 10,
+  /** Box height (label, W, b, σ rows at 11px) */
+  height: 68,
+  /** Extra height while backprop shows the "→ new weights" row */
+  backpropExtraHeight: 14,
+  /** Extra width by layer (sized so "W: -0.00 -0.00 ..." fits at 11px, including minus signs) */
   extraWidth: {
     layer1: 30,
     layer2: 60,
-    output: 20,
+    output: 40,
   },
+  /** Font size of the value rows */
+  fontSize: 11,
 } as const;
 
 /** Input vector box dimensions */
+/** One box per input value (grade / attitude / response) */
 export const INPUT_BOX = {
-  width: 140,
-  height: 100,
-  cornerRadius: 15,
+  width: 112,
+  height: 48,
+  cornerRadius: 10,
+  /** Vertical distance between box centres */
+  spacing: 64,
 } as const;
 
 // =============================================================================
@@ -56,9 +62,9 @@ export const INPUT_BOX = {
 
 /** Vertical spacing between neurons in each layer */
 export const VERTICAL_SPACING = {
-  layer1: 105,
-  layer2: 125,
-  output: 125,
+  layer1: 92,
+  layer2: 110,
+  output: 110,
 } as const;
 
 /** Layer name to node array index mapping */

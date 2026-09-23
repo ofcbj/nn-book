@@ -25,7 +25,7 @@ import {
   compareSnapshots,
   createBackpropSummaryData,
 } from '../lib/core';
-import type { LayerName, NeuronLocation } from '../lib/core';
+import type { LayerName, NeuronLocation, TrainingSample } from '../lib/core';
 import type { Visualizer } from '../lib/visualizer';
 import type { UseNetworkStateReturn } from './useNetworkState';
 import type {
@@ -45,11 +45,19 @@ export interface UseAnimationEngineReturn {
   isAnimating : boolean;
   isPaused    : boolean;
   // === Training Controls ===
-  trainOneStepWithAnimation    : () => Promise<void>;
-  trainOneEpochWithoutAnimation: () => void;
+  /** Animated training step. Without an argument it trains the slider candidate;
+   *  pass a sample to walk through that candidate instead (data mode inspection).
+   *  While an animation runs, calling it toggles pause / resume. */
+  trainOneStepWithAnimation    : (sample?: AnimatedSample) => Promise<void>;
+  /** Abort a running animation (and its modals) without touching the network */
+  stopAnimation                : () => void;
+  /** One training step on the slider candidate without animation; returns its loss */
+  trainOneEpochWithoutAnimation: () => number;
   toggleTraining               : () => void;
   reset                        : () => void;
   computeAndRefreshDisplay     : () => void;
+  /** Like computeAndRefreshDisplay but for an arbitrary input vector (data training mode) */
+  displayInputs                : (inputs: number[]) => void;
   refreshDisplayOnly           : () => void;
   // === Modal Controls ===
   closeLossModal    : () => Promise<void>;
@@ -60,6 +68,11 @@ export interface UseAnimationEngineReturn {
   setVisualizer: (v: Visualizer) => void;
   // === Utilities ===
   handleLearningRateChange: (v: number) => void;
+}
+
+/** What the animated step is training on */
+export interface AnimatedSample extends TrainingSample {
+  targetClass: number;
 }
 
 const AUTO_TRAIN_INTERVAL_MS = 50;
@@ -82,9 +95,14 @@ export function useAnimationEngine(
   const animationSpeedRef   = useRef(state.training.animationSpeed);
   // Auto-training
   const trainingIntervalRef = useRef<number | undefined>(undefined);
-  const trainStepRef        = useRef<() => void>(() => {});
+  const trainStepRef        = useRef<() => number>(() => Infinity);
   // Weight comparison of the most recent training step
   const pendingComparisonRef = useRef<WeightComparisonData | null>(null);
+  // Sample the running animation is about (slider candidate by default)
+  const activeSampleRef = useRef<AnimatedSample | null>(null);
+  // Set by stopAnimation(); unlike interruptReasonRef it is not re-synced from the FSM,
+  // so a loop that is asleep when the user stops cannot resume and "complete" afterwards
+  const cancelledRef = useRef(false);
 
   useEffect(() => {
     animationSpeedRef.current = state.training.animationSpeed;
@@ -110,7 +128,7 @@ export function useAnimationEngine(
   const isAnimating = checkAnimating(animationState);
   const isPaused    = checkPaused(animationState);
 
-  const shouldPauseAnimation = useCallback(() => interruptReasonRef.current !== 'none', []);
+  const shouldPauseAnimation = useCallback(() => cancelledRef.current || interruptReasonRef.current !== 'none', []);
 
   const clearTrainingInterval = useCallback(() => {
     if (trainingIntervalRef.current !== undefined) {
@@ -143,10 +161,10 @@ export function useAnimationEngine(
     refreshDisplayOnly();
   }, [animationState, refreshDisplayOnly]);
 
-  /** Run feedforward on the current inputs, update React state and redraw */
-  const computeAndRefreshDisplay = useCallback(() => {
+  /** Run feedforward on the given inputs, update React state and redraw */
+  const displayInputs = useCallback((inputs: number[]) => {
     const nn = nnRef.current;
-    nn.feedforward(getCurrentInputs());
+    nn.feedforward(inputs);
 
     if (nn.lastOutput) {
       state.statsSetters.setOutput(nn.lastOutput.toArray());
@@ -162,7 +180,12 @@ export function useAnimationEngine(
     }
 
     refreshDisplayOnly();
-  }, [getCurrentInputs, refreshDisplayOnly, nnRef, state.statsSetters, state.visualizerSetters]);
+  }, [refreshDisplayOnly, nnRef, state.statsSetters, state.visualizerSetters]);
+
+  /** Run feedforward on the slider candidate, update React state and redraw */
+  const computeAndRefreshDisplay = useCallback(() => {
+    displayInputs(getCurrentInputs());
+  }, [displayInputs, getCurrentInputs]);
 
   /** Sleep scaled by the *current* animation speed (read from a ref so slider changes apply immediately) */
   const sleep = useCallback((ms: number): Promise<void> => {
@@ -173,27 +196,53 @@ export function useAnimationEngine(
   // 3. TRAINING PRIMITIVES
   // =========================================================================
 
-  /** Train one step on the current inputs and remember the before/after weight comparison */
-  const trainAndCompare = useCallback(() => {
+  /** Run `train` on the network and remember the before/after weight comparison */
+  const withComparison = useCallback(<T,>(train: (nn: NeuralNetwork) => T): T => {
     const nn = nnRef.current;
     const before = createSnapshot(nn);
-    nn.train(getCurrentInputs(), getTargetOneHot());
+    const result = train(nn);
     pendingComparisonRef.current = compareSnapshots(before, createSnapshot(nn), nn.learningRate);
-  }, [nnRef, getCurrentInputs, getTargetOneHot]);
+    return result;
+  }, [nnRef]);
+
+  /** The slider candidate as a training sample */
+  const sliderSample = useCallback((): AnimatedSample => ({
+    inputs: getCurrentInputs(),
+    target: getTargetOneHot(),
+    targetClass: state.inputs.targetValue,
+  }), [getCurrentInputs, getTargetOneHot, state.inputs.targetValue]);
+
+  /** One training step on the slider candidate; returns its loss */
+  const trainSliderCandidate = useCallback((): number => {
+    return withComparison(nn => {
+      nn.train(getCurrentInputs(), getTargetOneHot());
+      return nn.lastLoss;
+    });
+  }, [withComparison, getCurrentInputs, getTargetOneHot]);
+
+  /** One training step on whatever the running animation is about */
+  const trainActiveSample = useCallback((): number => {
+    const sample = activeSampleRef.current ?? sliderSample();
+    return withComparison(nn => {
+      nn.train(sample.inputs, sample.target);
+      return nn.lastLoss;
+    });
+  }, [withComparison, sliderSample]);
 
   /** Publish the pending comparison and epoch/loss stats after a completed training step */
-  const commitTrainingStats = useCallback(() => {
+  const commitTrainingStats = useCallback((loss: number) => {
     if (pendingComparisonRef.current) {
       state.modalSetters.setWeightComparisonData(pendingComparisonRef.current);
     }
-    state.statsSetters.setLoss(nnRef.current.lastLoss);
+    state.statsSetters.setLoss(loss);
+    state.statsSetters.recordLoss(loss);
     state.statsSetters.setEpoch(prev => prev + 1);
-  }, [nnRef, state.modalSetters, state.statsSetters]);
+  }, [state.modalSetters, state.statsSetters]);
 
   const showLossModal = useCallback(() => {
     const nn = nnRef.current;
     state.modalSetters.setLossModalData({
-      targetClass: state.inputs.targetValue,
+      targetClass: activeSampleRef.current?.targetClass ?? state.inputs.targetValue,
       predictions: nn.lastOutput?.toArray() ?? Array<number>(OUTPUT_CLASSES).fill(0),
       loss: nn.lastLoss,
     });
@@ -201,12 +250,12 @@ export function useAnimationEngine(
 
   /** End of the forward pass: train (weights update, backprop data is stored) and show the loss modal */
   const completeForwardPass = useCallback((options?: { skipForwardComplete?: boolean }) => {
-    trainAndCompare();
+    trainActiveSample();
     if (!options?.skipForwardComplete) {
       fsmActions.forwardComplete();
     }
     showLossModal();
-  }, [trainAndCompare, showLossModal, fsmActions]);
+  }, [trainActiveSample, showLossModal, fsmActions]);
 
   // =========================================================================
   // 4. ANIMATION LOOPS
@@ -275,18 +324,19 @@ export function useAnimationEngine(
     visualizerRef.current = v;
   }, [visualizerRef]);
 
-  const trainOneEpochWithoutAnimation = useCallback(() => {
-    trainAndCompare();
-    commitTrainingStats();
+  const trainOneEpochWithoutAnimation = useCallback((): number => {
+    const loss = trainSliderCandidate();
+    commitTrainingStats(loss);
     computeAndRefreshDisplay();
-  }, [trainAndCompare, commitTrainingStats, computeAndRefreshDisplay]);
+    return loss;
+  }, [trainSliderCandidate, commitTrainingStats, computeAndRefreshDisplay]);
 
   // The auto-train interval calls through this ref so it always uses the latest inputs
   useEffect(() => {
     trainStepRef.current = trainOneEpochWithoutAnimation;
   }, [trainOneEpochWithoutAnimation]);
 
-  const trainOneStepWithAnimation = useCallback(async () => {
+  const trainOneStepWithAnimation = useCallback(async (sample?: AnimatedSample) => {
     if (isAnimating) {
       if (isPaused) {
         interruptReasonRef.current = 'none'; // the loop checks this synchronously
@@ -298,10 +348,22 @@ export function useAnimationEngine(
       return;
     }
 
+    activeSampleRef.current = sample ?? sliderSample();
+    cancelledRef.current = false;
     fsmActions.startTraining();
-    computeAndRefreshDisplay();
+    displayInputs(activeSampleRef.current.inputs);
     await animateForwardPropagation();
-  }, [isAnimating, isPaused, fsmActions, continueFromCurrentPosition, computeAndRefreshDisplay, animateForwardPropagation]);
+  }, [isAnimating, isPaused, fsmActions, continueFromCurrentPosition, sliderSample, displayInputs, animateForwardPropagation]);
+
+  /** Abort the running animation: stop the loop, close its modals, back to idle. Weights are untouched. */
+  const stopAnimation = useCallback(() => {
+    cancelledRef.current = true; // any running loop returns at its next check and skips completion
+    state.modalSetters.setLossModalData(null);
+    state.modalSetters.setBackpropSummaryData(null);
+    activeSampleRef.current = null;
+    fsmActions.reset();
+    computeAndRefreshDisplay();
+  }, [state.modalSetters, fsmActions, computeAndRefreshDisplay]);
 
   const toggleTraining = useCallback(() => {
     if (state.training.isTraining) {
@@ -312,13 +374,13 @@ export function useAnimationEngine(
 
     state.trainingSetters.setIsTraining(true);
     trainingIntervalRef.current = window.setInterval(() => {
-      trainStepRef.current();
-      if (nnRef.current.lastLoss < AUTO_TRAIN_STOP_LOSS) {
+      const loss = trainStepRef.current();
+      if (loss < AUTO_TRAIN_STOP_LOSS) {
         state.trainingSetters.setIsTraining(false);
         clearTrainingInterval();
       }
     }, AUTO_TRAIN_INTERVAL_MS);
-  }, [state.training.isTraining, state.trainingSetters, nnRef, clearTrainingInterval]);
+  }, [state.training.isTraining, state.trainingSetters, clearTrainingInterval]);
 
   const reset = useCallback(() => {
     if (state.training.isTraining) {
@@ -352,10 +414,10 @@ export function useAnimationEngine(
     await sleep(BACKWARD_COMPLETE_PAUSE_MS);
 
     if (completed) {
-      commitTrainingStats();
+      commitTrainingStats(nnRef.current.lastLoss);
     }
     computeAndRefreshDisplay();
-  }, [state.modalSetters, fsmActions, animateBackwardPropagation, sleep, commitTrainingStats, computeAndRefreshDisplay]);
+  }, [state.modalSetters, fsmActions, animateBackwardPropagation, sleep, commitTrainingStats, computeAndRefreshDisplay, nnRef]);
 
   const closeBackpropModal = useCallback(() => {
     state.modalSetters.setBackpropSummaryData(null);
@@ -453,10 +515,12 @@ export function useAnimationEngine(
     isAnimating,
     isPaused,
     trainOneStepWithAnimation,
+    stopAnimation,
     trainOneEpochWithoutAnimation,
     toggleTraining,
     reset,
     computeAndRefreshDisplay,
+    displayInputs,
     refreshDisplayOnly,
     closeLossModal,
     closeBackpropModal,

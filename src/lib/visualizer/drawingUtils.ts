@@ -1,7 +1,6 @@
 // Drawing utility functions for visualizer
 import type { NodePosition, LayerType } from '../types';
 import type { LayerName } from '../core';
-import i18n from '../../i18n';
 import {
   INPUT_BOX,
   NEURON_BOX,
@@ -89,28 +88,74 @@ function drawText(
   ctx.fillText(text, x, y);
 }
 
-/** Draw weights vector with auto font-size adjustment */
+/** Format a weight vector for the neuron box: space-separated, no brackets or commas */
+export function formatWeights(weights: number[]): string {
+  return weights.map(w => w.toFixed(2)).join(' ');
+}
+
+const UP_COLOR = '#60a5fa';    // weight increased
+const DOWN_COLOR = '#fb7185';  // weight decreased
+const SAME_COLOR = '#94a3b8';  // no visible change
+
+/** Colour for a value change: blue up, rose down, gray when the change is below display precision */
+function changeColor(oldValue: number, newValue: number): string {
+  const delta = newValue - oldValue;
+  if (Math.abs(delta) < 0.00005) return SAME_COLOR;
+  return delta > 0 ? UP_COLOR : DOWN_COLOR;
+}
+
+/**
+ * Draw the "→ new weights" row: same layout as the W row, but every value is
+ * coloured by the direction it moved so the update reads at a glance.
+ */
+function drawNewWeightsVector(
+  ctx: CanvasRenderingContext2D,
+  oldWeights: number[],
+  newWeights: number[],
+  x: number,
+  y: number,
+  containerWidth: number,
+  maxFontSize: number
+): void {
+  const tokens = newWeights.map(w => w.toFixed(2));
+  const text = tokens.join(' ');
+  const available = containerWidth - 24 - 8;
+  ctx.textAlign = 'left';
+  for (let size = maxFontSize; size >= 8; size--) {
+    ctx.font = `bold ${size}px monospace`;
+    if (ctx.measureText(text).width <= available) break;
+  }
+  const space = ctx.measureText(' ').width;
+  let cursor = x;
+  tokens.forEach((token, i) => {
+    ctx.fillStyle = changeColor(oldWeights[i] ?? newWeights[i], newWeights[i]);
+    ctx.fillText(token, cursor, y);
+    cursor += ctx.measureText(token).width + space;
+  });
+}
+
+/** Draw weights vector, shrinking the font until it fits inside the box */
 function drawWeightsVector(
   ctx: CanvasRenderingContext2D,
   weights: number[],
   x: number,
   y: number,
   containerWidth: number,
-  color: string = '#a5b4fc'
+  color: string = '#a5b4fc',
+  maxFontSize: number = 12
 ): void {
-  ctx.font = '12px monospace';
+  const text = formatWeights(weights);
+  // The text starts 24px inside the box (after the "W:" label); keep an 8px right margin
+  const available = containerWidth - 24 - 8;
+
   ctx.fillStyle = color;
   ctx.textAlign = 'left';
-  
-  const vectorStr = '[' + weights.map(w => w.toFixed(2)).join(', ') + ']';
-  const textWidth = ctx.measureText(vectorStr).width;
-  
-  // Reduce font size if text is too wide
-  if (textWidth > containerWidth - 40) {
-    ctx.font = '11px monospace';
+  for (let size = maxFontSize; size >= 8; size--) {
+    ctx.font = `${size}px monospace`;
+    if (ctx.measureText(text).width <= available) break;
   }
-  
-  ctx.fillText(vectorStr, x, y);
+
+  ctx.fillText(text, x, y);
 }
 
 function drawRoundedRect(
@@ -134,50 +179,56 @@ function drawRoundedRect(
   ctx.closePath();
 }
 
+/** Width of a neuron box for a layer, given how many weights it shows (scaled down on narrow canvases) */
+export function neuronBoxWidth(layer: LayerName, weightCount: number, widthScale: number = 1): number {
+  const natural = Math.max(NEURON_BOX.minWidth, weightCount * NEURON_BOX.weightMultiplier + 40) + NEURON_BOX.extraWidth[layer];
+  return Math.round(natural * widthScale);
+}
+
+/**
+ * Draw the input layer as one small box per value, stacked and centred on `y`.
+ * Returns one NodePosition per value so connections can leave each box separately.
+ */
 export function drawInputVector(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   values: number[],
-  inputLabels: string[]
-): NodePosition {
-  const { width, height, cornerRadius } = INPUT_BOX;
-  const centerX = x - width / 2;
-  const centerY = y - height / 2;
-
-  drawRoundedRect(ctx, centerX, centerY, width, height, cornerRadius);
-
+  inputLabels: string[],
+  widthScale: number = 1
+): NodePosition[] {
+  const { height, cornerRadius, spacing } = INPUT_BOX;
+  const width = Math.round(INPUT_BOX.width * widthScale);
   const colors = LAYER_COLORS.input;
-  const gradient = ctx.createLinearGradient(centerX, centerY, centerX, centerY + height);
-  gradient.addColorStop(0, colors.gradientStart);
-  gradient.addColorStop(1, colors.gradientEnd);
-  ctx.fillStyle = gradient;
-  ctx.fill();
+  const firstCenterY = y - ((values.length - 1) * spacing) / 2;
 
-  ctx.strokeStyle = colors.stroke;
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  return values.map((value, idx) => {
+    const centerY = firstCenterY + idx * spacing;
+    const left = x - width / 2;
+    const top = centerY - height / 2;
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 14px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(i18n.t('layers.input'), x, centerY + 20);
+    drawRoundedRect(ctx, left, top, width, height, cornerRadius);
+    const gradient = ctx.createLinearGradient(left, top, left, top + height);
+    gradient.addColorStop(0, colors.gradientStart);
+    gradient.addColorStop(1, colors.gradientEnd);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    ctx.strokeStyle = colors.stroke;
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
-  ctx.font = '12px monospace';
-  ctx.textAlign = 'left';
-  const startY = centerY + 40;
-  values.forEach((val, idx) => {
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillText(inputLabels[idx] + ':', centerX + 15, startY + idx * 18);
-    ctx.fillStyle = '#60a5fa';
-    ctx.font = 'bold 12px monospace';
-    ctx.fillText(val.toFixed(2), centerX + 60, startY + idx * 18);
-    ctx.font = '12px monospace';
+    // Label (shrunk if a translation is wide), then the value beneath it
+    let labelSize = 11;
+    for (; labelSize >= 8; labelSize--) {
+      ctx.font = `bold ${labelSize}px sans-serif`;
+      if (ctx.measureText(inputLabels[idx] ?? '').width <= width - 12) break;
+    }
+    drawText(ctx, inputLabels[idx] ?? '', x, top + 17, { font: `bold ${labelSize}px sans-serif`, color: '#ffffff', align: 'center' });
+    drawText(ctx, value.toFixed(2), x, top + 36, { font: 'bold 13px monospace', color: '#60a5fa', align: 'center' });
+
+    return { x: left, y: top, width, height, centerX: x, centerY };
   });
-
-  return { x: centerX, y: centerY, width, height, centerX: x, centerY: y };
 }
-
 
 export function drawNeuronVector(
   ctx: CanvasRenderingContext2D,
@@ -191,39 +242,25 @@ export function drawNeuronVector(
   isHighlighted: boolean = false,
   isBackpropHighlighted: boolean = false,
   activationRange?: { min: number; max: number },
-  backpropUpdateData?: BackpropUpdateData
+  backpropUpdateData?: BackpropUpdateData,
+  widthScale: number = 1
 ): NodePosition {
-  // Calculate width based on weights and layer type
-  const baseWidth = weights.length * NEURON_BOX.weightMultiplier;
-  let width = Math.max(NEURON_BOX.minWidth, baseWidth + 40);
-  
-  // Add extra width based on layer type
-  if (layerType === 'layer1') {
-    width += NEURON_BOX.extraWidth.layer1;
-  } else if (layerType === 'layer2') {
-    width += NEURON_BOX.extraWidth.layer2;
-  } else if (layerType === 'output') {
-    width += NEURON_BOX.extraWidth.output;
-  }
-  
-  // Get height based on layer type
-  const height = layerType === 'layer1' 
-    ? NEURON_BOX.height.layer1 
-    : (layerType === 'layer2' ? NEURON_BOX.height.layer2 : NEURON_BOX.height.output);
-  
-  const centerX = x - width / 2;
-  const centerY = y - height / 2;
-
-  drawRoundedRect(ctx, centerX, centerY, width, height, NEURON_BOX.cornerRadius);
-
-  // Get colors from config based on layer type
   // Note: drawNeuronVector is only called for layer1, layer2, output (not input)
-  const colors = LAYER_COLORS[layerType as LayerName];
+  const layer = layerType as LayerName;
+  const width = neuronBoxWidth(layer, weights.length, widthScale);
+  const height = NEURON_BOX.height + (backpropUpdateData ? NEURON_BOX.backpropExtraHeight : 0);
+  const fontSize = NEURON_BOX.fontSize;
+  const valueFont = `${fontSize}px monospace`;
+  const boldValueFont = `bold ${fontSize}px monospace`;
 
-  let gradient: CanvasGradient;
+  const left = x - width / 2;
+  const top = y - height / 2;
+
+  drawRoundedRect(ctx, left, top, width, height, NEURON_BOX.cornerRadius);
+
+  const colors = LAYER_COLORS[layer];
+  const gradient = ctx.createLinearGradient(left, top, left, top + height);
   let strokeColor: string;
-
-  gradient = ctx.createLinearGradient(centerX, centerY, centerX, centerY + height);
 
   if (isHighlighted) {
     // Highlighted neurons use full color intensity
@@ -231,24 +268,15 @@ export function drawNeuronVector(
     gradient.addColorStop(1, colors.highlightGradientEnd);
     strokeColor = colors.highlightStroke;
   } else {
-    // Apply activation-based opacity to base colors
-    // Use layer-specific activation range for dramatic contrast
+    // Opacity follows the activation, normalised within the layer for contrast
     const minOpacity = 0.3;
     const maxOpacity = 1.0;
+    const normalized = activationRange && activationRange.max > activationRange.min
+      ? (activation - activationRange.min) / (activationRange.max - activationRange.min)
+      : activation;
+    const opacity = minOpacity + normalized * (maxOpacity - minOpacity);
 
-    let opacity: number;
-    if (activationRange && activationRange.max > activationRange.min) {
-      // Normalize activation within the layer's range
-      const normalized = (activation - activationRange.min) / (activationRange.max - activationRange.min);
-      opacity = minOpacity + (normalized * (maxOpacity - minOpacity));
-    } else {
-      // Fallback to global mapping
-      opacity = minOpacity + (activation * (maxOpacity - minOpacity));
-    }
-
-    // Extract RGB values from the base colors and apply opacity
     const adjustOpacity = (colorStr: string, alpha: number): string => {
-      // Extract rgba values if already rgba, otherwise rgb
       const rgbaMatch = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
       if (rgbaMatch) {
         const [, r, g, b] = rgbaMatch;
@@ -263,58 +291,52 @@ export function drawNeuronVector(
   }
 
   ctx.fillStyle = gradient;
-
   ctx.fill();
 
-  // === 1. Draw border (highlight if active) ===
+  // Border (purple while this neuron is being back-propagated)
   if (isBackpropHighlighted) {
-    ctx.strokeStyle = '#a855f7'; // Purple for backprop
-    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 4;
   } else {
     ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = isHighlighted ? 4 : 2;
+    ctx.lineWidth = isHighlighted ? 3 : 2;
   }
   ctx.stroke();
 
-  // === 2. Draw neuron label ===
-  drawText(ctx, label, x, centerY + 16, {
-    font: 'bold 11px sans-serif',
-    color: '#ffffff',
-    align: 'center'
-  });
+  // Rows: label / W / (→ new W) / b / σ
+  const rowStep = fontSize + 3;
+  const textX = left + 8;
+  const valueX = left + 24;
+  let rowY = top + 14;
 
-  // === 3. Draw weights vector (W: [...]) ===
-  // Apply 2px y-offset adjustment for layer1
-  const layer1YOffset = layerType === 'layer1' ? -2 : 0;
-  const weightsY = centerY + 35 + layer1YOffset;
-  drawText(ctx, 'W:', centerX + 8, weightsY, { color: '#cbd5e1' });
-  drawWeightsVector(ctx, weights, centerX + 24, weightsY, width);
-  
-  // Draw new weights below if backprop update data is provided
+  drawText(ctx, label, x, rowY, { font: 'bold 11px sans-serif', color: '#ffffff', align: 'center' });
+
+  rowY += rowStep + 1;
+  drawText(ctx, 'W:', textX, rowY, { font: valueFont, color: '#cbd5e1' });
+  drawWeightsVector(ctx, weights, valueX, rowY, width, undefined, fontSize);
+
   if (backpropUpdateData) {
-    const newWeightsY = weightsY + 14;
-    drawText(ctx, '→', centerX + 8, newWeightsY, { color: '#f472b6', font: 'bold 12px monospace' });
-    drawWeightsVector(ctx, backpropUpdateData.newWeights, centerX + 24, newWeightsY, width, '#f472b6');
+    rowY += rowStep;
+    drawText(ctx, '→', textX, rowY, { font: boldValueFont, color: '#e2e8f0' });
+    drawNewWeightsVector(ctx, weights, backpropUpdateData.newWeights, valueX, rowY, width, fontSize);
   }
 
-  // === 4. Draw bias value (b: X.XX) ===
-  const biasY = (backpropUpdateData ? centerY + 64 : centerY + 50) + layer1YOffset;
-  drawText(ctx, 'b:', centerX + 8, biasY, { color: '#cbd5e1' });
-  
+  rowY += rowStep;
+  drawText(ctx, 'b:', textX, rowY, { font: valueFont, color: '#cbd5e1' });
   if (backpropUpdateData) {
-    // Show both old and new bias with arrow
-    const biasText = `${bias.toFixed(2)} => ${backpropUpdateData.newBias.toFixed(2)}`;
-    drawText(ctx, biasText, centerX + 24, biasY, { color: '#fbbf24', font: '11px monospace' });
+    const oldText = `${bias.toFixed(2)} → `;
+    drawText(ctx, oldText, valueX, rowY, { font: valueFont, color: '#fbbf24' });
+    ctx.font = valueFont;
+    drawText(ctx, backpropUpdateData.newBias.toFixed(2), valueX + ctx.measureText(oldText).width, rowY, {
+      font: boldValueFont,
+      color: changeColor(bias, backpropUpdateData.newBias),
+    });
   } else {
-    drawText(ctx, bias.toFixed(2), centerX + 24, biasY, { color: '#fbbf24' });
+    drawText(ctx, bias.toFixed(2), valueX, rowY, { font: valueFont, color: '#fbbf24' });
   }
 
-  // === 5. Draw activation output (σ=X.XXX) ===
-  const activationY = (backpropUpdateData ? centerY + 80 : centerY + 68) + layer1YOffset;
-  drawText(ctx, `σ=${activation.toFixed(3)}`, centerX + 70, activationY, {
-    font: 'bold 12px monospace',
-    color: '#34d399'
-  });
+  rowY += rowStep;
+  drawText(ctx, `σ=${activation.toFixed(3)}`, x + width / 2 - 8, rowY, { font: boldValueFont, color: '#34d399', align: 'right' });
 
-  return { x: centerX, y: centerY, width, height, centerX: x, centerY: y };
+  return { x: left, y: top, width, height, centerX: x, centerY: y };
 }

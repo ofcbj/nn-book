@@ -20,14 +20,31 @@ interface BoxPosition {
 /**
  * Calculate optimal box position avoiding overlap with neuron and canvas bounds.
  */
+export type OverlaySide = 'left' | 'right';
+
 function calculateBoxPosition(
   nodeInfo: NodePosition,
   boxWidth: number,
   boxHeight: number,
-  viewport: Viewport
+  viewport: Viewport,
+  preferSide?: OverlaySide
 ): BoxPosition {
   const margin = 10;
   const offset = 15;
+
+  // Preferred side first (keeps the connections being explained uncovered)
+  if (preferSide) {
+    const sideX = preferSide === 'right'
+      ? nodeInfo.x + nodeInfo.width + offset
+      : nodeInfo.x - boxWidth - offset;
+    const sideY = Math.min(
+      Math.max(nodeInfo.centerY - boxHeight / 2, margin),
+      viewport.height - margin - boxHeight
+    );
+    if (sideX >= margin && sideX + boxWidth <= viewport.width - margin) {
+      return { x: sideX, y: sideY };
+    }
+  }
 
   // Default position: above neuron
   let boxX = nodeInfo.centerX - boxWidth / 2;
@@ -75,6 +92,8 @@ function calculateBoxPosition(
 // ============================================================================
 
 export interface OverlayBoxOptions {
+  /** Try to place the popup on this side of the neuron before the default positions */
+  preferSide?: OverlaySide;
   boxWidth?: number;
   lineHeight?: number;
   padding?: number;
@@ -84,7 +103,7 @@ export interface OverlayBoxOptions {
   titlePadding?: number;
 }
 
-const DEFAULT_OPTIONS: Required<OverlayBoxOptions> = {
+const DEFAULT_OPTIONS: Required<Omit<OverlayBoxOptions, 'preferSide'>> = {
   boxWidth: 420,
   lineHeight: 22,
   padding: 60,
@@ -161,6 +180,6 @@ export function renderOverlay(
   options: OverlayBoxOptions = {}
 ): void {
   const { width: boxWidth, height: boxHeight } = calculateBoxDimensions(content, options);
-  const { x: boxX, y: boxY } = calculateBoxPosition(nodeInfo, boxWidth, boxHeight, viewport);
+  const { x: boxX, y: boxY } = calculateBoxPosition(nodeInfo, boxWidth, boxHeight, viewport, options.preferSide);
   drawOverlayBox(ctx, boxX, boxY, boxWidth, boxHeight, content, options);
 }

@@ -24,19 +24,19 @@ export default function ActivationHeatmap({ activations }: ActivationHeatmapProp
 
   const renderLayer = (layerName: string, values: number[], label: string) => {
     return (
-      <Box sx={{ flex: 1, minWidth: 150 }}>
+      <Box sx={{ flex: '0 0 auto' }}>
         <Typography variant="subtitle2" sx={{ mb: 1, textAlign: 'center', fontWeight: 'bold' }}>
           {label}
         </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'nowrap', gap: 0.5, justifyContent: 'center' }}>
           {values.map((value, idx) => {
             const color = activationToColor(value);
             return (
               <Box
                 key={`${layerName}-${idx}`}
                 sx={{
-                  width: 50,
-                  height: 50,
+                  width: 44,
+                  height: 44,
                   bgcolor: color,
                   borderRadius: 1,
                   display: 'flex',
@@ -68,12 +68,8 @@ export default function ActivationHeatmap({ activations }: ActivationHeatmapProp
   };
 
   return (
-    <Paper sx={{ p: 2.5, mt: 2 }}>
-      <Typography variant="h2" sx={{ mb: 2, textAlign: 'center' }}>
-        {t('visualizer.activationTitle')}
-      </Typography>
-
-      <Box sx={{ display: 'flex', gap: 3, mb: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+    <Paper sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', gap: { xs: 2, xl: 4 }, mb: 1, flexWrap: 'wrap', justifyContent: 'space-evenly' }}>
         {renderLayer('input', activations.input, t('layers.input'))}
         {renderLayer('layer1', activations.layer1, `${t('layers.layer1Prefix')} ${t('layers.interviewer')}`)}
         {renderLayer('layer2', activations.layer2, `${t('layers.layer2Prefix')} ${t('layers.interviewer')}`)}
@@ -81,7 +77,7 @@ export default function ActivationHeatmap({ activations }: ActivationHeatmapProp
       </Box>
 
       {/* Color Legend */}
-      <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+      <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <Typography variant="subtitle2" sx={{ mb: 1, textAlign: 'center', color: 'text.secondary' }}>
           {t('visualizer.colorLegend')}
         </Typography>

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { Box, Paper, Typography } from '@mui/material';
+import { Box, Paper, Typography, Stack } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { Visualizer } from '../lib/visualizer';
 
@@ -12,8 +12,32 @@ interface NetworkCanvasProps {
   onCanvasClick?: (x: number, y: number) => void;
 }
 
+/** Explains the connection-line encoding: colour = sign of the weight, thickness = |w| */
+function WeightLegend() {
+  const { t } = useTranslation();
+  const sample = (color: string, width: number) => (
+    <Box component="span" sx={{ display: 'inline-block', width: 28, height: width, bgcolor: color, borderRadius: 1, mr: 0.75, verticalAlign: 'middle' }} />
+  );
+  return (
+    <Stack direction="row" spacing={2.5} justifyContent="center" sx={{ mt: 1.5, flexWrap: 'wrap' }}>
+      <Typography variant="caption" color="text.secondary">
+        {sample('rgba(96, 165, 250, 0.9)', 3)}{t('network.legendPositive')}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        {sample('rgba(251, 113, 133, 0.9)', 3)}{t('network.legendNegative')}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        {sample('rgba(148, 163, 184, 0.8)', 1)}{sample('rgba(148, 163, 184, 0.8)', 4)}{t('network.legendThickness')}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        {sample('rgba(251, 113, 133, 0.9)', 6)}{sample('rgba(96, 165, 250, 0.9)', 6)}{t('network.legendDelta')}
+      </Typography>
+    </Stack>
+  );
+}
+
 export default function NetworkCanvas({ onVisualizerReady, onRedraw, onCanvasClick }: NetworkCanvasProps) {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const visualizerRef = useRef<Visualizer | null>(null);
@@ -54,15 +78,14 @@ export default function NetworkCanvas({ onVisualizerReady, onRedraw, onCanvasCli
   }, [onCanvasClick]);
 
   return (
-    <Paper sx={{ p: 2.5, height: '100%', minHeight: 700 }}>
-      <Typography variant="h2" sx={{ mb: 2, textAlign: 'center' }}>
-        {t('network.title')}
-      </Typography>
+    <Paper sx={{ p: 1.5 }}>
       <Box
         ref={containerRef}
         sx={{
           width: '100%',
-          height: 650,
+          // Fill the viewport below the header; the canvas follows via ResizeObserver
+          height: 'calc(100vh - 300px)',
+          minHeight: 520,
           borderRadius: 2,
           bgcolor: '#0a0a0a',
           border: '1px solid #334155',
@@ -75,6 +98,7 @@ export default function NetworkCanvas({ onVisualizerReady, onRedraw, onCanvasCli
           style={{ display: 'block', width: '100%', height: '100%', cursor: onCanvasClick ? 'pointer' : 'default' }}
         />
       </Box>
+      <WeightLegend />
     </Paper>
   );
 }

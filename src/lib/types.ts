@@ -86,6 +86,12 @@ export interface NodePosition {
   centerY: number;
 }
 
+/** One recorded training step for the loss chart */
+export interface LossPoint {
+  epoch: number;
+  loss: number;
+}
+
 /**
  * Logical drawing area of the canvas (CSS pixels, independent of devicePixelRatio)
  */

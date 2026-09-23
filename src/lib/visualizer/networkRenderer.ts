@@ -2,10 +2,11 @@
 import type { ForwardSteps, NodePosition, ForwardCalculation, LayerType, BackwardCalculation, Viewport } from '../types';
 import type { AnimationState } from '../animation';
 import { checkMode, getAnimatingNeuron } from '../animation';
-import type { NeuralNetwork } from '../core';
-import { LAYER_SIZES } from '../core';
-import { drawInputVector, drawNeuronVector, type BackpropUpdateData } from './drawingUtils';
-import { CANVAS_BACKGROUND, CANVAS_PADDING, VERTICAL_SPACING } from './uiConfig';
+import type { NeuralNetwork, LayerName } from '../core';
+import { drawInputVector, drawNeuronVector, neuronBoxWidth, type BackpropUpdateData } from './drawingUtils';
+import type { LayerWeights } from './connectionRenderer';
+import { LAYER_SIZES, LAYER_NAMES, INPUT_SIZE, BACKWARD_LAYER_ORDER } from '../core';
+import { CANVAS_BACKGROUND, CANVAS_PADDING, VERTICAL_SPACING, INPUT_BOX, MIN_COLUMN_GAP } from './uiConfig';
 import i18n from '../../i18n';
 
 // =============================================================================
@@ -20,6 +21,8 @@ interface LayerConfig {
   verticalSpacing  : number;
   getLabel         : (index: number) => string;
   backpropData?    : BackwardCalculation[];  // Backprop data for displaying weight/bias updates
+  /** Whether backprop has already reached this neuron's update stage */
+  isUpdated        : (index: number) => boolean;
 }
 
 interface DrawContext {
@@ -27,10 +30,12 @@ interface DrawContext {
   height         : number;
   animationState : AnimationState;
   activationRange: { min: number; max: number };
+  /** < 1 when the canvas is too narrow for the natural box widths */
+  widthScale     : number;
 }
 
 export interface OverlayCallbacks {
-  drawConnections: (ctx: CanvasRenderingContext2D, nodes: NodePosition[][], animationState: AnimationState) => void;
+  drawConnections: (ctx: CanvasRenderingContext2D, nodes: NodePosition[][], animationState: AnimationState, weights: LayerWeights) => void;
   drawForwardOverlay?: (ctx: CanvasRenderingContext2D, viewport: Viewport, nodes: NodePosition[][], animationState: AnimationState) => void;
   drawBackwardOverlay?: (ctx: CanvasRenderingContext2D, viewport: Viewport, nodes: NodePosition[][], nn: NeuralNetwork, animationState: AnimationState) => void;
 }
@@ -39,9 +44,28 @@ export interface OverlayCallbacks {
 // Helper Functions
 // =============================================================================
 
+/**
+ * Has backprop already applied this neuron's weight update?
+ * Backprop walks output → layer2 → layer1, each layer from its last neuron to its first,
+ * and a neuron's weights flip to their new values at its 'update' stage.
+ */
+function makeIsUpdated(animationState: AnimationState): (layer: LayerName, index: number) => boolean {
+  if (animationState.type === 'showing_backprop_modal') return () => true;
+  if (animationState.type !== 'backward_animating') return () => false;
+  const { layer: currentLayer, neuronIndex, stage } = animationState;
+  const currentPos = BACKWARD_LAYER_ORDER.indexOf(currentLayer);
+  return (layer, index) => {
+    const pos = BACKWARD_LAYER_ORDER.indexOf(layer);
+    if (pos < currentPos) return true;
+    if (pos > currentPos) return false;
+    if (index > neuronIndex) return true;
+    return index === neuronIndex && stage === 'update';
+  };
+}
+
 function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePosition[] {
-  const { layerName, neurons, x, neuronCount, verticalSpacing, getLabel, backpropData } = config;
-  const { ctx, height, animationState, activationRange } = context;
+  const { layerName, neurons, x, neuronCount, verticalSpacing, getLabel, backpropData, isUpdated } = config;
+  const { ctx, height, animationState, activationRange, widthScale } = context;
 
   const nodes: NodePosition[] = [];
   const totalHeight = (neuronCount - 1) * verticalSpacing;
@@ -56,19 +80,22 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
     const y = startY + i * verticalSpacing;
     const isAnimating = animatingNeuron?.layer === layerName && animatingNeuron.index === i;
 
-    // During backprop the network's weights are already updated, so show the
-    // pre-update values from the backprop data and the new values beneath them.
+    // During backprop the network already holds the new weights. Show the pre-update
+    // values, and reveal "→ new" only once backprop has actually reached this neuron's
+    // update stage, so the changes appear neuron by neuron in backward order.
     let backpropUpdateData: BackpropUpdateData | undefined;
     let displayWeights = neuron.weights;
     let displayBias = neuron.bias;
 
     if (isBackward && backpropData && backpropData[i]) {
-      backpropUpdateData = {
-        newWeights: backpropData[i].newWeights,
-        newBias: backpropData[i].newBias,
-      };
       displayWeights = backpropData[i].oldWeights;
       displayBias = backpropData[i].oldBias;
+      if (isUpdated(i)) {
+        backpropUpdateData = {
+          newWeights: backpropData[i].newWeights,
+          newBias: backpropData[i].newBias,
+        };
+      }
     }
 
     const node = drawNeuronVector(
@@ -78,7 +105,8 @@ function drawLayerNeurons(config: LayerConfig, context: DrawContext): NodePositi
       isAnimating && isForward,
       isAnimating && isBackward,
       activationRange,
-      backpropUpdateData
+      backpropUpdateData,
+      widthScale
     );
 
     nodes.push(node);
@@ -114,19 +142,33 @@ export function drawNetwork(
 
   const nodes: NodePosition[][] = [];
 
-  // Calculate dynamic positions based on canvas width
-  const paddingLeft = CANVAS_PADDING.left;
-  const paddingRight = CANVAS_PADDING.right;
-  const usableWidth = width - paddingLeft - paddingRight;
+  // Column layout: the four columns have different box widths, so place them by
+  // their edges with one equal gap between neighbours (centred within the canvas).
+  // If even the minimum gaps do not fit, scale every box width down together.
+  const usableWidth = width - CANVAS_PADDING.left - CANVAS_PADDING.right;
+  const naturalWidths = [
+    INPUT_BOX.width,
+    neuronBoxWidth('layer1', INPUT_SIZE),
+    neuronBoxWidth('layer2', LAYER_SIZES.layer1),
+    neuronBoxWidth('output', LAYER_SIZES.layer2),
+  ];
+  const gapCount = naturalWidths.length - 1;
+  const naturalTotal = naturalWidths.reduce((sum, w) => sum + w, 0);
+  const widthScale = Math.min(1, Math.max(0.6, (usableWidth - MIN_COLUMN_GAP * gapCount) / naturalTotal));
+  const columnWidths = naturalWidths.map(w => Math.round(w * widthScale));
+  const totalBoxWidth = columnWidths.reduce((sum, w) => sum + w, 0);
+  const gap = Math.max(MIN_COLUMN_GAP, (usableWidth - totalBoxWidth) / gapCount);
+  const contentWidth = totalBoxWidth + gap * (columnWidths.length - 1);
+  let cursor = Math.max(CANVAS_PADDING.left, (width - contentWidth) / 2);
+  const columnCenters = columnWidths.map(w => {
+    const center = cursor + w / 2;
+    cursor += w + gap;
+    return center;
+  });
+  const [inputX, layer1X, layer2X, outputX] = columnCenters;
 
-  const inputX = paddingLeft + 30;
-  const layer1X = paddingLeft + usableWidth * 0.32;
-  const layer2X = paddingLeft + usableWidth * 0.65;
-  const outputX = width - paddingRight - 10;
-
-  // Draw input layer
-  const inputNode = drawInputVector(ctx, inputX, height / 2, steps.input, inputLabels);
-  nodes.push([inputNode]);
+  // Draw input layer (one box per value)
+  nodes.push(drawInputVector(ctx, inputX, height / 2, steps.input, inputLabels, widthScale));
 
   // Layer configurations
   const classNames = [i18n.t('classes.fail'), i18n.t('classes.pending'), i18n.t('classes.pass')];
@@ -138,6 +180,7 @@ export function drawNetwork(
 
   // Get backprop data if in backward mode
   const backwardSteps = checkMode(animationState, 'backward') ? nn.lastBackwardSteps : null;
+  const isUpdated = makeIsUpdated(animationState);
 
   // Draw all layers
   layerConfigs.forEach(({ name, data, x, getLabel }) => {
@@ -151,15 +194,25 @@ export function drawNetwork(
       verticalSpacing: VERTICAL_SPACING[name],
       getLabel,
       backpropData: backwardSteps ? backwardSteps[name] : undefined,
+      isUpdated: (i) => isUpdated(name, i),
     }, {
       ctx, height, animationState,
       activationRange: { min: Math.min(...activations), max: Math.max(...activations) },
+      widthScale,
     });
     nodes.push(layerNodes);
   });
 
-  // Draw connections
-  callbacks.drawConnections(ctx, nodes, animationState);
+  // Draw connections. During backprop the network already holds the updated
+  // weights, so a neuron's incoming lines switch from its old to its new weights
+  // at the moment its update is shown.
+  const connectionWeights = {} as LayerWeights;
+  for (const name of LAYER_NAMES) {
+    connectionWeights[name] = backwardSteps
+      ? backwardSteps[name].map((n, i) => (isUpdated(name, i) ? n.newWeights : n.oldWeights))
+      : steps[name].map(n => n.weights);
+  }
+  callbacks.drawConnections(ctx, nodes, animationState, connectionWeights);
 
   // Draw overlays based on animation state
   const { type } = animationState;
